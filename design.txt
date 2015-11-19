@@ -1,9 +1,9 @@
-Features
-Pong for three players.
-Two players move the rackets. The third player moves the ball.
-The players rotate roles after each round. The game ends after three rounds,
-and the player with the highest score wins.
+**** Features ****
+- Pong for three players.
+- Two players move the rackets. The third player moves the ball.
+- The players rotate roles after each round. The game ends after three rounds,
+  and the player with the highest score wins.
 
-The rackets and the ball are moved by pressing <SPACE>. Each press causes the
-racket to jump a little. Without input, the rackets and ball fall due to 
-gravity.
+- The rackets and the ball are moved by pressing <SPACE>. Each press causes the
+  racket to jump a little. Without input, the rackets and ball fall due to 
+  gravity.
