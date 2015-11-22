@@ -1,9 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import struct
 
 class TPMessage(object):
     METHOD_NONE = 0
     METHOD_ASKREADY = 1
     METHOD_CONFIRM = 2
+    METHOD_STARTGAME = 3
     def __init__(self):
         self.method = 0
         pass

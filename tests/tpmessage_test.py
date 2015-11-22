@@ -1,10 +1,14 @@
+import logging
 import os
 import select
 import socket
 import sys
+import time
 import unittest
 sys.path.append(os.path.abspath('src'))
+import tplogger
 from tpmessage import TPMessage
+logger = tplogger.getTPLogger('tpmessage_test.log', logging.DEBUG)
 class TPMessageTest(unittest.TestCase):
     def setUp(self):
         pass
@@ -22,36 +26,18 @@ class TPMessageTest(unittest.TestCase):
         self.assertTrue(m.method == TPMessage.METHOD_ASKREADY)
         pass
     def test_pack_unpack(self):
-        pid = os.fork()
-        if pid == 0:
-            server = socket.socket()
-            server.bind((socket.gethostname(), 8080))
-            server.listen(1)
-            # wait for client to call connect()
-            select.select([server],[],[],1)
-            (conn, _) = server.accept()
-            b = conn.recv(4096)
-            conn.sendall(b)
-            conn.close()
-            server.close()
-            return
-        client = socket.socket()
-        while True:
-            try:
-                client.connect((socket.gethostname(), 8080))
-                break
-            except:
-                pass
-            pass
+        s1, s2 = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         m = TPMessage()
         m.method = TPMessage.METHOD_ASKREADY
         b1 = m.pack()
-        client.sendall(b1)
-        b2 = client.recv(4096)
-        client.close()
+        s1.sendall(b1)
+        bufsize = 4096
+        b2 = s2.recv(bufsize)
         n = TPMessage()
         n.unpack(b2)
-        self.assertTrue(n.method == TPMessage.METHOD_ASKREADY)
+        self.assertTrue(n.method == m.method)
+        s1.close()
+        s2.close()
         pass
     pass
 
