@@ -3,7 +3,16 @@
 - Two players move the rackets. The third player moves the ball.
 - The players rotate roles after each round. The game ends after three rounds,
   and the player with the highest score wins.
-
 - The rackets and the ball are moved by pressing <SPACE>. Each press causes the
   racket to jump a little. Without input, the rackets and ball fall due to 
   gravity.
+- play online
+- speed of racket on contact influences ball velocity
+
+**** Optional ****
+- AI player
+- Chatroom
+- smartphone app
+- website
+- browser version
+
