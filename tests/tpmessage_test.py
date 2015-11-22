@@ -33,11 +33,11 @@ class TPMessageTest(unittest.TestCase):
         s1.sendall(b1)
         bufsize = 4096
         b2 = s2.recv(bufsize)
+        s1.close()
+        s2.close()
         n = TPMessage()
         n.unpack(b2)
         self.assertTrue(n.method == m.method)
-        s1.close()
-        s2.close()
         pass
     pass
 

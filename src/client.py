@@ -12,6 +12,30 @@ logger = tplogger.getTPLogger('client.log', logging.DEBUG)
 class TPClient(object):
     def __init__(self):
         pass
+    # handshake to start a game session
+    # sock is a socket connected to the game server
+    def handshake(self, sock):
+        logger.info('initiating handshake')
+        logger.info('waiting for server to ask for confirmation')
+        bufsize = 4096
+        b = sock.recv(bufsize)
+        logger.info('message received. Unpacking...')
+        m = TPMessage()
+        m.unpack(b)
+        if m.method != TPMessage.METHOD_ASKREADY:
+            logger.error('received incorrect message')
+            return
+        logger.info('sending confirmation')
+        m.method = TPMessage.METHOD_CONFIRM
+        sock.sendall(m.pack())
+        logger.info('waiting for server to announce start of game')
+        m.unpack(sock.recv(bufsize))
+        if m.method != TPMessage.METHOD_STARTGAME:
+            logger.error('server could not start game')
+            return
+        logger.info('handshake completed successfully')
+        pass
+
     def run(self, servaddr):
         pid = os.fork()
         if pid > 0:
@@ -28,28 +52,9 @@ class TPClient(object):
             except:
                 logger.info('connection failed, retrying')
                 continue
-            logger.info('waiting for server to ask for confirmation')
-            m = TPMessage()
-            bufsize = 4096
-            try:
-                m.unpack(sock.recv(bufsize))
-            except Exception as e:
-                logger.exception(e)
-                continue
-            if m.method != TPMessage.METHOD_ASKREADY:
-                logger.info('received incorrect message - retrying')
-                continue
-            logger.info('sending confirmation')
-            m.method = TPMessage.METHOD_CONFIRM
-            sock.sendall(m.pack())
-            logger.info('waiting for server to announce start of game')
-            m.unpack(sock.recv(bufsize))
-            if m.method != TPMessage.METHOD_STARTGAME:
-                logger.info('server could not start game -  retrying')
-                continue
-            # to do: start game
+            logger.info('initiating handshake')
+            self.handshake(sock)
             logger.info('starting game')
-            break
             pass
         sock.close()
         return 0
