@@ -13,6 +13,7 @@ from client import TPClient
 # not-work-with-unittest
 # unittest.TestCase is not pickleable (i.e. serializable) as of at least 
 # Python 3.4. 
+# This seems to not be an issue on Python 3.5
 class TPServerTestPickleJar(object):
     def __init__(self):
         pass
@@ -20,7 +21,7 @@ class TPServerTestPickleJar(object):
         s = TPServer()
         cs = [svrsock]
         s.handshake(cs)
-        q.put(cs)
+        q.put(cs.__len__())
         pass
     pass
 
@@ -46,10 +47,8 @@ class TPServerTest(unittest.TestCase):
         svrp.join() # wait for server to finish
         svrsock.close()
         clientsock.close()
-        self.assertTrue(result == [svrsock])
+        self.assertTrue(result == 1)
         pass
     pass
-
-
 
 
