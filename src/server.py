@@ -48,7 +48,7 @@ class TPServer(object):
         waitconns = list(conns)
         while waitconns.__len__() > 0:
             timeout = 2.0
-            time.sleep(0)
+            time.sleep(0.10001)
             (socks, _, _) = select.select(waitconns,[],[],timeout)
             if socks.__len__() == 0:
                 logger.error(
