@@ -29,6 +29,11 @@ class TPServerTestPickleJar(object):
         s.handshake(socks)
         q.put(socks.__len__())
         pass
+    def connectAndHandshake(self, svraddr, clientsock):
+        c = TPClient()
+        clientsock.connect(svraddr)
+        c.handshake(clientsock)
+        pass
     pass
 
 class TPServerTest(unittest.TestCase):
@@ -76,7 +81,98 @@ class TPServerTest(unittest.TestCase):
         csock1.close()
         csock2.close()
         svrp.join()
+        svrsock.close()
         self.assertTrue(result == 2)
+        pass
+    def test_handshake_three_clients_sequence(self):
+        addr = ('127.0.0.1', 8080)
+        c1 = TPClient()
+        c2 = TPClient()
+        c3 = TPClient()
+        q = multiprocessing.Queue()
+        jar = TPServerTestPickleJar()
+        svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        svrsock.bind(addr)
+        svrsock.listen(3)
+        svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
+                args=(svrsock,3,q,))
+        svrp.start()
+        csock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock1.connect(addr)
+        csock2.connect(addr)
+        csock3.connect(addr)
+        c1.handshake(csock1)
+        c2.handshake(csock2)
+        c3.handshake(csock3)
+        result = q.get()
+        csock1.close()
+        csock2.close()
+        csock3.close()
+        svrp.join()
+        svrsock.close()
+        self.assertTrue(result == 3)
+        pass
+    def test_handshake_two_clients_parallel(self):
+        addr = ('127.0.0.1', 8080)
+        q = multiprocessing.Queue()
+        jar = TPServerTestPickleJar()
+        svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        svrsock.bind(addr)
+        svrsock.listen(2)
+        svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
+                args=(svrsock,2,q,))
+        svrp.start()
+        csock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        cp1 = multiprocessing.Process(target=jar.connectAndHandshake,
+                args=(addr,csock1,))
+        cp2 = multiprocessing.Process(target=jar.connectAndHandshake,
+                args=(addr,csock2,))
+        cp1.start()
+        cp2.start()
+        result = q.get()
+        cp2.join()
+        cp1.join()
+        csock2.close()
+        csock1.close()
+        svrp.join()
+        svrsock.close()
+        self.assertTrue(result == 2)
+        pass
+    def test_handshake_three_clients_parallel(self):
+        addr = ('127.0.0.1', 8080)
+        q = multiprocessing.Queue()
+        jar = TPServerTestPickleJar()
+        svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        svrsock.bind(addr)
+        svrsock.listen(3)
+        svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
+                args=(svrsock,3,q,))
+        svrp.start()
+        csock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        csock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        cp1 = multiprocessing.Process(target=jar.connectAndHandshake,
+                args=(addr,csock1,))
+        cp2 = multiprocessing.Process(target=jar.connectAndHandshake,
+                args=(addr,csock2,))
+        cp3 = multiprocessing.Process(target=jar.connectAndHandshake,
+                args=(addr,csock3,))
+        cp1.start()
+        cp2.start()
+        cp3.start()
+        result = q.get()
+        cp3.join()
+        cp2.join()
+        cp1.join()
+        csock3.close()
+        csock2.close()
+        csock1.close()
+        svrp.join()
+        svrsock.close()
+        self.assertTrue(result == 3)
         pass
     pass
 
