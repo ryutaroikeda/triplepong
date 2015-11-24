@@ -73,8 +73,8 @@ class TPServerTest(unittest.TestCase):
         c1.handshake(csock1)
         c2.handshake(csock2)
         result = q.get()
-        c1.close()
-        c2.close()
+        csock1.close()
+        csock2.close()
         svrp.join()
         self.assertTrue(result == 2)
         pass

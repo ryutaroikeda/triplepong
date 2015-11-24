@@ -6,6 +6,7 @@ import socket
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+import tpsocket
 from tpmessage import TPMessage
 import tplogger
 logger = tplogger.getTPLogger('client.log', logging.DEBUG)
@@ -19,8 +20,12 @@ class TPClient(object):
         logger.info('waiting for server to ask for confirmation')
         m = TPMessage()
         bufsize = m.getsize()
-        b = sock.recv(bufsize, socket.MSG_WAITALL) # wait until we get full msg
-        logger.info('message received. Unpacking...')
+        b = tpsocket.recvall(sock, bufsize, 1.0)
+        logger.info('message received')
+        if len(b) < bufsize:
+            logger.error(
+                    'recv timed out on incomplete message. Handshake failed')
+            return
         m.unpack(b)
         if m.method != TPMessage.METHOD_ASKREADY:
             logger.error('received incorrect message')
@@ -29,8 +34,12 @@ class TPClient(object):
         m.method = TPMessage.METHOD_CONFIRM
         sock.sendall(m.pack())
         logger.info('waiting for server to announce start of game')
-        b = sock.recv(bufsize, socket.MSG_WAITALL)
+        b = tpsocket.recvall(sock, bufsize, 1.0)
         logger.debug('received bytes {0}'.format(b))
+        if len(b) < bufsize:
+            logger.error(
+                    'recv timed out on imcomplete message. Handshake failed')
+            return
         m.unpack(b)
         if m.method != TPMessage.METHOD_STARTGAME:
             logger.error('server could not start game')

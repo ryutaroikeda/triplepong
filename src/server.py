@@ -7,6 +7,7 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+import tpsocket
 from tpmessage import TPMessage
 import tplogger
 logger = tplogger.getTPLogger('server.log', logging.DEBUG)
@@ -42,7 +43,7 @@ class TPServer(object):
                 sock.getpeername()))
             try:
                 sock.sendall(b)
-            except:
+            except Exception as e:
                 logger.error('removing a dead client. Handshake failed')
                 sock.close()
                 conns.remove(sock)
@@ -63,7 +64,7 @@ class TPServer(object):
             for sock in socks:
                 logger.info('checking for confirmation')
                 bufsize = m.getsize()
-                b = sock.recv(bufsize, socket.MSG_WAITALL)
+                b = tpsocket.recvall(sock, bufsize, 1.0)
                 logger.debug('received bytes {0} from {1}'.format(b,
                     sock.getpeername()))
                 try:
@@ -102,7 +103,7 @@ class TPServer(object):
                 conns.remove(sock)
                 pass
             pass
-        logging.info('handshake successful')
+        logger.info('handshake successful')
         return conns
     # addr is the address of the server
     # clientNum is the number of clients per game
