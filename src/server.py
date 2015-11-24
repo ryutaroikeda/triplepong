@@ -62,9 +62,12 @@ class TPServer(object):
                 return
             for sock in socks:
                 logger.info('checking for confirmation')
-                bufsize = 4096
+                bufsize = m.getsize()
+                b = sock.recv(bufsize, socket.MSG_WAITALL)
+                logger.debug('received bytes {0} from {1}'.format(b,
+                    sock.getpeername()))
                 try:
-                    m.unpack(sock.recv(bufsize))
+                    m.unpack(b)
                 except:
                     logger.error('invalid message received. Handshake failed')
                     conns.remove(sock)
@@ -106,7 +109,7 @@ class TPServer(object):
     # fork a thread and run the server. Return the pid of the child
     def run(self, addr, clientNum) -> int:
         logger.info('starting server at {0}'.format(addr))
-        # fix me: use UDP
+        # fix me: use UDP?
         serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)

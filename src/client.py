@@ -17,10 +17,10 @@ class TPClient(object):
     def handshake(self, sock):
         logger.info('initiating handshake')
         logger.info('waiting for server to ask for confirmation')
-        bufsize = 4096
-        b = sock.recv(bufsize)
-        logger.info('message received. Unpacking...')
         m = TPMessage()
+        bufsize = m.getsize()
+        b = sock.recv(bufsize, socket.MSG_WAITALL) # wait until we get full msg
+        logger.info('message received. Unpacking...')
         m.unpack(b)
         if m.method != TPMessage.METHOD_ASKREADY:
             logger.error('received incorrect message')
@@ -29,7 +29,7 @@ class TPClient(object):
         m.method = TPMessage.METHOD_CONFIRM
         sock.sendall(m.pack())
         logger.info('waiting for server to announce start of game')
-        b = sock.recv(bufsize)
+        b = sock.recv(bufsize, socket.MSG_WAITALL)
         logger.debug('received bytes {0}'.format(b))
         m.unpack(b)
         if m.method != TPMessage.METHOD_STARTGAME:

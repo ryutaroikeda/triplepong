@@ -7,13 +7,17 @@ class TPMessage(object):
     METHOD_ASKREADY = 1
     METHOD_CONFIRM = 2
     METHOD_STARTGAME = 3
+    FORMAT = '!i'
     def __init__(self):
-        self.method = 0
+        self.method = self.METHOD_NONE
         pass
+    def getsize(self):
+        return struct.calcsize(self.FORMAT)
+
     def pack(self) -> bytes:
-        return struct.pack('!i', self.method)
+        return struct.pack(self.FORMAT, self.method)
     def unpack(self, b: bytes) -> None:
-        (method,) = struct.unpack('!i', b)
+        (method,) = struct.unpack(self.FORMAT, b)
         self.method = method
         pass
     pass
