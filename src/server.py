@@ -25,6 +25,7 @@ class TPServer(object):
             logger.info('accepted connection from {0}'.format(connAddr))
             socks.append(conn)
             pass
+        logger.info('accepted connections from {0} clients'.format(n))
         return socks
     # Attempt handshakes with the given sockets.
     # conns is a list of connected sockets
@@ -35,9 +36,12 @@ class TPServer(object):
         logger.info('asking clients if they are ready')
         m = TPMessage()
         m.method = TPMessage.METHOD_ASKREADY
+        b = m.pack()
         for sock in list(conns): # iterate over a copy of the list
+            logger.debug('sending bytes {0} to {1}'.format(b, 
+                sock.getpeername()))
             try:
-                sock.sendall(m.pack())
+                sock.sendall(b)
             except:
                 logger.error('removing a dead client. Handshake failed')
                 sock.close()
@@ -48,7 +52,6 @@ class TPServer(object):
         waitconns = list(conns)
         while waitconns.__len__() > 0:
             timeout = 2.0
-            time.sleep(0.10001)
             (socks, _, _) = select.select(waitconns,[],[],timeout)
             if socks.__len__() == 0:
                 logger.error(
@@ -84,9 +87,11 @@ class TPServer(object):
             return
         logger.info('sending game start message')
         m.method = TPMessage.METHOD_STARTGAME
+        b = m.pack()
         for sock in conns:
+            logger.debug('sending bytes {0}'.format(b))
             try:
-                sock.sendall(m.pack())
+                sock.sendall(b)
             except:
                 logger.warning(
 'client at {0} died - it\'s too late to stop game'.format(sock.getpeername()))
@@ -101,6 +106,7 @@ class TPServer(object):
     # fork a thread and run the server. Return the pid of the child
     def run(self, addr, clientNum) -> int:
         logger.info('starting server at {0}'.format(addr))
+        # fix me: use UDP
         serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)
@@ -117,4 +123,4 @@ class TPServer(object):
         return 0
     pass
 
-
+# to do: test dead client removal in handshake

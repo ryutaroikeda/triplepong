@@ -29,7 +29,9 @@ class TPClient(object):
         m.method = TPMessage.METHOD_CONFIRM
         sock.sendall(m.pack())
         logger.info('waiting for server to announce start of game')
-        m.unpack(sock.recv(bufsize))
+        b = sock.recv(bufsize)
+        logger.debug('received bytes {0}'.format(b))
+        m.unpack(b)
         if m.method != TPMessage.METHOD_STARTGAME:
             logger.error('server could not start game')
             return
