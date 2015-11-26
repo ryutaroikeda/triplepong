@@ -1,2 +1,6 @@
 Dependencies:
 pygame
+
+Installing pygame on OSX with homebrew
+`brew tap homebrew/python`
+`brew install pygame`
