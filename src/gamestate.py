@@ -1,3 +1,9 @@
+import os
+import struct
+import sys
+sys.path.append(os.path.abspath('src'))
+from eventqueue import Event
+
 class GameObject:
     '''A class for representing the objects in the game.'''
     def __init__(self):
@@ -37,9 +43,21 @@ class GameObject:
         return True
     pass
 
+class GameEvent(Event):
+    EVENT_NO_OP = 0
+    EVENT_FLAP_LEFT_PADDLE = 1
+    EVENT_FLAP_RIGHT_PADDLE = 2
+    EVENT_FLAP_BALL = 3
+    def __init__(self):
+        pass
+    def Serialize(self):
+        pass
+    def Deserialize(self):
+        pass
+
 class GameState:
     ROLE_PADDLE_LEFT = 0
-    ROLE_PADDLE_RIGHT = 1
+    ROLE_RIGHT_PADDLE = 1
     ROLE_BALL = 2
     def __init__(self):
         ##
@@ -63,7 +81,7 @@ class GameState:
         self.scores = [0, 0, 0]
         # roles[p] is the current role of player p.
         self.roles = [GameState.ROLE_PADDLE_LEFT, 
-                GameState.ROLE_PADDLE_RIGHT, GameState.ROLE_BALL]
+                GameState.ROLE_RIGHT_PADDLE, GameState.ROLE_BALL]
         # players[r] is the player of role r.
         self.players = [0, 1, 2]
         ##

@@ -11,7 +11,8 @@ class Event:
 		'''Serialize this object into a tuple.
 		
 		This method should be overridden by the child class. It should represent
-		the event object as a tuple consisting only of the following types:
+		the event object as a byte string consisting only of the following 
+        types:
 		- int
 		- float
 		- str
@@ -22,8 +23,8 @@ class Event:
 	
 	@staticmethod
 	def Deserialize(serialized_tuple):
-		'''Construct an Event derrived object from a tuple that is returned from
-		Serialize
+		'''Construct an Event derrived object from a byte string that is 
+        returned from Serialize
 		
 		This static method should be overridden by the child class. It should
 		construct an Event object of the child class type using the serialized
