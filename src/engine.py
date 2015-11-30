@@ -4,6 +4,7 @@ import time
 sys.path.append(os.path.abspath('src'))
 from gamestate import GameObject
 from gamestate import GameState
+from renderer import Renderer
 # def min(x, y):
 #     if x < y:
 #         return x
@@ -69,12 +70,74 @@ from gamestate import GameState
 #         return False
 #     pass
 
-class TPEngine(object):
-    ROLE_LEFT_PADDLE = 0
-    ROLE_RIGHT_PADDLE = 1
-    ROLE_BALL = 2
+class GameEngine(object):
     def __init__(self):
         pass
+    def PlayFrame(self, s):
+        '''Update the game state by one frame.
+        
+        Argument:
+            s -- the state of the game.'''
+
+        # receive and handle input
+
+        # update positions 
+        s.ball.pos_x += s.ball.vel_x
+        s.ball.pos_y += s.ball.vel_y
+        s.paddle_left.pos_y = s.paddle_left.vel_y
+        s.paddle_right.pos_y = s.paddle_right.vel_y
+        # check for and handle collisions
+        if s.paddle_left.IsCollidingWith(s.ball):
+            s.ball.pos_x = s.paddle_left.pos_x + s.paddle_left.half_width
+            s.ball.vel_x = - s.ball.vel_x
+            pass
+        if s.paddle_right.IsCollidingWith(s.ball):
+            s.ball.pos_x = s.paddlerightx - s.paddle_right.half_width
+            s.ball.vel_x = - s.ball.vel_x
+            pass
+        if s.ball.IsCollidingWith(s.ball_wall_top):
+            s.ball.pos_y = s.ball_wall_top.pos_y
+            s.ball.vel_y = - s.ball.vel_y
+            pass
+        if s.ball.IsCollidingWith(s.ball_wall_bottom):
+            s.ball.pos_y = s.ball_wall_bottom.pos_y
+            s.ball.vel_y = - s.ball.vel_y
+            pass
+        if s.paddle_left.IsCollidingWith(s.paddle_wall_top):
+            s.paddle_left.pos_y = s.paddle_wall_top.pos_y
+            s.paddle_left.vel_y = - s.paddle_left.vel_y
+            pass
+        if s.paddle_right.IsCollidingWith(s.paddle_wall_top):
+            s.paddle_right.pos_y = s.paddle_wall_top.pos_y
+            s.paddle_right.vel_y = - s.paddle_right.vel_y
+            pass
+        if s.paddle_left.IsCollidingWith(s.paddle_wall_bottom):
+            s.paddle_left.pos_y = s.paddle_wall_bottom.pos_y
+            s.paddle_left.vel_y = - s.paddle_left.vel_y
+            pass
+        if s.paddle_right.IsCollidingWith(s.paddle_wall_bottom):
+            s.paddle_right.pos_y = s.paddle_wall_bottom.pos_y
+            s.paddle_right.vel_y = - s.paddle_right.vel_y
+            pass
+        if s.ball.IsCollidingWith(s.goal_left):
+            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+            s.ball.pos_y = ( s.ball_wall_top.pos_y +
+                    s.ball_wall_bottom.pos_y ) / 2
+            s.ball.vel_x = -4
+            s.ball.vel_y = 0
+            s.scores[ s.players[ GameState.ROLE_PADDLE_RIGHT ] ] += 1
+            pass
+        if s.ball.IsCollidingWith(s.goal_right):
+            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+            s.ball.pos_y = ( s.ball_wall_top.pos_y +
+                    s.ball_wall_bottom.pos_y ) / 2
+            s.ball.vel_x = 4
+            s.ball.vel_y = 0
+            s.scores[ s.players[ GameState.ROLE_PADDLE_LEFT ] ] += 1
+            pass
+        pass
+
+
     def Run(self):
         s = GameState()
         s.game_length = 9.0
@@ -114,88 +177,41 @@ class TPEngine(object):
         s.ball.pos_y = s.screen.half_height
         s.ball.vel_x = -4
         s.ball.vel_y = 0
+        s.ball.half_width = 2
+        s.ball.half_height = 2
         s.paddle_left.pos_x = 60
         s.paddle_left.pos_y = 0
         s.paddle_left.vel_x = 0
         s.paddle_left.vel_y = 0
+        s.paddle_left.half_width = 10
+        s.paddle_left.half_height = 120
         s.paddle_right.pos_x = 2 * s.screen.half_width - 60
         s.paddle_right.pos_y = 0
         s.paddle_right.vel_x = 0
         s.paddle_right.vel_y = 0
+        s.paddle_right.half_width = 10
+        s.paddle_right.half_height = 120
         # scores[p] is the score for player p.
         s.scores = [0, 0, 0]
         # roles[p] is the current role of player p.
-        s.roles = [ROLE_LEFT_PADDLE, ROLE_RIGHT_PADDLE, ROLE_BALL]
+        s.roles = [GameState.ROLE_PADDLE_LEFT, GameState.ROLE_PADDLE_RIGHT,
+                GameState.ROLE_BALL]
         # players[r] is the player of role r.
         s.players = [0, 1, 2]
         s.start_time = time.time()
+        r = Renderer()
+        r.Init()
         while True:
             s.frame_start = time.time()
             if s.frame_start - s.start_time >= s.game_length:
                 break
-            # receive and handle input
-
-            # update positions 
-            s.ball.pos_x += s.ball.vel_x
-            s.ball.pos_y += s.ball.vel_y
-            s.paddle_left.pos_y = s.paddle_left.vel_y
-            s.paddle_right.pos_y = s.paddle_right.vel_y
-            # check for and handle collisions
-            if s.paddle_left.pos_x - s.paddle_left.half_width <= s.ball.pos_x \
-        and s.ball.pos_x <= s.paddle_left.pos_x + s.paddle_left.half_width \
-        and s.paddle_left.pos_y - s.paddle_left.half_height <= s.ball.pos_y \
-        and s.ball.pos_y <= s.paddle_left.pos_y + s.paddle_left.half_height:
-                s.ball.pos_x = s.paddle_left.pos_x + s.paddle_left.half_width
-                s.ball.vel_x = - s.ball.vel_x
-                pass
-            if s.paddlerightx - s.paddle_right.half_width <= s.ball.pos_x \
-        and s.ball.pos_x <= s.paddlerightx + s.paddle_right.half_width \
-        and s.paddle_right.pos_y - s.paddle_right.half_height <= s.ball.pos_y \
-        and s.ball.pos_y <= s.paddle_right.pos_y + s.paddle_right.half_height:
-                s.ball.pos_x = s.paddlerightx - s.paddle_right.half_width
-                s.ball.vel_x = - s.ball.vel_x
-                pass
-            if s.ball.pos_y <= s.ball_wall_top.pos_y:
-                s.ball.pos_y = s.ball_wall_top.pos_y
-                s.ball.vel_y = - s.ball.vel_y
-                pass
-            if s.ball.pos_y >= s.ball_wall_bottom.pos_y:
-                s.ball.pos_y = s.ball_wall_bottom.pos_y
-                s.ball.vel_y = - s.ball.vel_y
-                pass
-            if s.paddle_left.pos_y <= s.paddle_wall_top.pos_y:
-                s.paddle_left.pos_y = s.paddle_wall_top.pos_y
-                s.paddle_left.vel_y = - s.paddle_left.vel_y
-                pass
-            if s.paddle_right.pos_y <= s.paddle_wall_top.pos_y:
-                s.paddle_right.pos_y = s.paddle_wall_top.pos_y
-                s.paddle_right.vel_y = - s.paddle_right.vel_y
-                pass
-            if s.paddle_left.pos_y >= s.paddle_wall_bottom.pos_y:
-                s.paddle_left.pos_y = s.paddle_wall_bottom.pos_y
-                s.paddle_left.vel_y = - s.paddle_left.vel_y
-                pass
-            if s.paddle_right.pos_y >= s.paddle_wall_bottom.pos_y:
-                s.paddle_right.pos_y = s.paddle_wall_bottom.pos_y
-                s.paddle_right.vel_y = - s.paddle_right.vel_y
-                pass
-            if s.ball.pos_x <= s.goal_left.pos_x:
-                s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
-                s.ball.pos_y = ( s.ball_wall_top.pos_y +
-                        s.ball_wall_bottom.pos_y ) / 2
-                s.ball.vel_x = -4
-                s.ball.vel_y = 0
-                s.scores[ s.players[ s.ROLE_PADDLE_RIGHT ] ]++
-                pass
-            if s.ball.pos_x >= s.goal_right.pos_x:
-                s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
-                s.ball.pos_y = ( s.ball_wall_top.pos_y +
-                        s.ball_wall_bottom.pos_y ) / 2
-                s.ball.vel_x = 4
-                s.ball.vel_y = 0
-                s.scores[ s.players[ s.ROLE_PADDLE_LEFT ] ]++
-                pass
+            self.PlayFrame(s)
+            r.RenderAll(s)
             pass
         pass
     pass
 
+if __name__ == '__main__':
+    e = GameEngine()
+    e.Run()
+    pass

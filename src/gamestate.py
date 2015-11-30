@@ -36,9 +36,10 @@ class GameObject:
             pass
         return True
     pass
+
 class GameState:
-    ROLE_LEFT_PADDLE = 0
-    ROLE_RIGHT_PADDLE = 1
+    ROLE_PADDLE_LEFT = 0
+    ROLE_PADDLE_RIGHT = 1
     ROLE_BALL = 2
     def __init__(self):
         ##
@@ -56,13 +57,13 @@ class GameState:
         self.goal_right = GameObject()
         self.ball_wall_top = GameObject()
         self.ball_wall_bottom = GameObject()
-        self.paddle_wall_top = GameOjbect()
+        self.paddle_wall_top = GameObject()
         self.paddle_wall_bottom = GameObject()
         # scores[p] is the score for player p.
         self.scores = [0, 0, 0]
         # roles[p] is the current role of player p.
-        self.roles = [self.ROLE_LEFT_PADDLE, self.ROLE_RIGHT_PADDLE,
-                self.ROLE_BALL]
+        self.roles = [GameState.ROLE_PADDLE_LEFT, 
+                GameState.ROLE_PADDLE_RIGHT, GameState.ROLE_BALL]
         # players[r] is the player of role r.
         self.players = [0, 1, 2]
         ##
