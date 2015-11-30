@@ -20,13 +20,13 @@ class TPServerTestPickleJar(object):
     def svrhandshake1(self, svrsock, q):
         s = TPServer()
         cs = [svrsock]
-        s.handshake(cs)
+        s.Handshake(cs)
         q.put(cs.__len__())
         pass
     def acceptAndHandshake(self, svrsock, clientNum, q):
         s = TPServer()
-        socks = s.acceptN(svrsock, clientNum)
-        s.handshake(socks)
+        socks = s.AcceptN(svrsock, clientNum)
+        s.Handshake(socks)
         q.put(socks.__len__())
         pass
     def connectAndHandshake(self, svraddr, clientsock):
