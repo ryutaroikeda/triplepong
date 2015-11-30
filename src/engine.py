@@ -136,61 +136,63 @@ class TPEngine(object):
             # receive and handle input
 
             # update positions 
-            s.ballx += s.ballvelx
-            s.bally += s.ballvely
-            s.paddlelefty = s.paddleleftvel
-            s.paddlerighty = s.paddlerightvel
+            s.ball.pos_x += s.ball.vel_x
+            s.ball.pos_y += s.ball.vel_y
+            s.paddle_left.pos_y = s.paddle_left.vel_y
+            s.paddle_right.pos_y = s.paddle_right.vel_y
             # check for and handle collisions
-            if s.paddleleftx - s.paddlehalfwidth <= s.ballx and \
-                    s.ballx <= s.paddleleftx + s.paddlehalfwidth and \
-                    s.paddlelefty - s.paddlehalfheight <= s.bally and \
-                    s.bally <= s.paddlelefty + s.paddlehalfheight:
-                s.ballx = s.paddleleftx + s.paddlehalfwidth
-                s.ballvelx = - s.ballvelx
+            if s.paddle_left.pos_x - s.paddle_left.half_width <= s.ball.pos_x \
+        and s.ball.pos_x <= s.paddle_left.pos_x + s.paddle_left.half_width \
+        and s.paddle_left.pos_y - s.paddle_left.half_height <= s.ball.pos_y \
+        and s.ball.pos_y <= s.paddle_left.pos_y + s.paddle_left.half_height:
+                s.ball.pos_x = s.paddle_left.pos_x + s.paddle_left.half_width
+                s.ball.vel_x = - s.ball.vel_x
                 pass
-            if s.paddlerightx - s.paddlehalfwidth <= s.ballx and \
-                    s.ballx <= s.paddlerightx + s.paddlehalfwidth and \
-                    s.paddlerighty - s.paddlehalfheight <= s.bally and \
-                    s.bally <= s.paddlerighty + s.paddlehalfheight:
-                s.ballx = s.paddlerightx - s.paddlehalfwidth
-                s.ballvelx = - s.ballvelx
+            if s.paddlerightx - s.paddle_right.half_width <= s.ball.pos_x \
+        and s.ball.pos_x <= s.paddlerightx + s.paddle_right.half_width \
+        and s.paddle_right.pos_y - s.paddle_right.half_height <= s.ball.pos_y \
+        and s.ball.pos_y <= s.paddle_right.pos_y + s.paddle_right.half_height:
+                s.ball.pos_x = s.paddlerightx - s.paddle_right.half_width
+                s.ball.vel_x = - s.ball.vel_x
                 pass
-            if s.bally <= s.ballwalltop:
-                s.bally = s.ballwalltop
-                s.ballvely = - s.ballvely
+            if s.ball.pos_y <= s.ball_wall_top.pos_y:
+                s.ball.pos_y = s.ball_wall_top.pos_y
+                s.ball.vel_y = - s.ball.vel_y
                 pass
-            if s.bally >= s.ballwallbottom:
-                s.bally = s.ballwallbottom
-                s.ballvely = - s.ballvely
+            if s.ball.pos_y >= s.ball_wall_bottom.pos_y:
+                s.ball.pos_y = s.ball_wall_bottom.pos_y
+                s.ball.vel_y = - s.ball.vel_y
                 pass
-            if s.paddlelefty <= s.paddlewalltop:
-                s.paddlelefty = s.paddlewalltop
-                s.paddleleftvel = - s.paddleleftvel
+            if s.paddle_left.pos_y <= s.paddle_wall_top.pos_y:
+                s.paddle_left.pos_y = s.paddle_wall_top.pos_y
+                s.paddle_left.vel_y = - s.paddle_left.vel_y
                 pass
-            if s.paddlerighty <= s.paddlewalltop:
-                s.paddlerighty = s.paddlewalltop
-                s.paddlerightvel = - s.paddlerightvel
+            if s.paddle_right.pos_y <= s.paddle_wall_top.pos_y:
+                s.paddle_right.pos_y = s.paddle_wall_top.pos_y
+                s.paddle_right.vel_y = - s.paddle_right.vel_y
                 pass
-            if s.paddlelefty >= s.paddlewallbottom:
-                s.paddlelefty = s.paddlewallbottom
-                s.paddleleftvel = - s.paddleleftvel
+            if s.paddle_left.pos_y >= s.paddle_wall_bottom.pos_y:
+                s.paddle_left.pos_y = s.paddle_wall_bottom.pos_y
+                s.paddle_left.vel_y = - s.paddle_left.vel_y
                 pass
-            if s.paddlerighty >= s.paddlewallbottom:
-                s.paddlerighty = s.paddlewallbottom
-                s.paddlerightvel = - s.paddlerightvel
+            if s.paddle_right.pos_y >= s.paddle_wall_bottom.pos_y:
+                s.paddle_right.pos_y = s.paddle_wall_bottom.pos_y
+                s.paddle_right.vel_y = - s.paddle_right.vel_y
                 pass
-            if s.ballx <= s.goalleftx:
-                s.ballx = ( s.goalrightx + s.goalleftx ) / 2
-                s.bally = ( s.ballwalltop + s.ballwallbottom ) / 2
-                s.ballvelx = -4
-                s.ballvely = 0
+            if s.ball.pos_x <= s.goal_left.pos_x:
+                s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+                s.ball.pos_y = ( s.ball_wall_top.pos_y +
+                        s.ball_wall_bottom.pos_y ) / 2
+                s.ball.vel_x = -4
+                s.ball.vel_y = 0
                 s.scores[ s.players[ s.ROLE_PADDLE_RIGHT ] ]++
                 pass
-            if s.ballx >= s.goalrightx:
-                s.ballx = ( s.goalrightx + s.goalleftx ) / 2
-                s.bally = ( s.ballwalltop + s.ballwallbottom ) / 2
-                s.ballvelx = 4
-                s.ballvely = 0
+            if s.ball.pos_x >= s.goal_right.pos_x:
+                s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+                s.ball.pos_y = ( s.ball_wall_top.pos_y +
+                        s.ball_wall_bottom.pos_y ) / 2
+                s.ball.vel_x = 4
+                s.ball.vel_y = 0
                 s.scores[ s.players[ s.ROLE_PADDLE_LEFT ] ]++
                 pass
             pass
