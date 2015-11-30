@@ -16,7 +16,16 @@ class TPClient(object):
     # handshake to start a game session
     # sock is a socket connected to the game server
     def Handshake(self, sock):
-        '''Performs a handshake '''
+        '''Performs a handshake with the server.
+        
+        The handshake is described in server.py:41:Handshake()
+
+        Arguments:
+        sock -- a socket connected to a game server.
+        Return value:
+        This method returns 0 on successful completion of the handshake (from 
+        the client's point of view) and -1 otherwise.'''
+
         logger.info('initiating handshake')
         logger.info('waiting for server to ask for confirmation')
         m = TPMessage()
@@ -26,11 +35,11 @@ class TPClient(object):
         if len(b) < bufsize:
             logger.error(
                     'recv timed out on incomplete message. Handshake failed')
-            return
+            return -1
         m.unpack(b)
         if m.method != TPMessage.METHOD_ASKREADY:
             logger.error('received incorrect message')
-            return
+            return -1
         logger.info('sending confirmation')
         m.method = TPMessage.METHOD_CONFIRM
         sock.sendall(m.pack())
@@ -40,13 +49,13 @@ class TPClient(object):
         if len(b) < bufsize:
             logger.error(
                     'recv timed out on imcomplete message. Handshake failed')
-            return
+            return -1
         m.unpack(b)
         if m.method != TPMessage.METHOD_STARTGAME:
             logger.error('server could not start game')
-            return
+            return -1
         logger.info('handshake completed successfully')
-        pass
+        return 0
 
     def Run(self, servaddr):
         pid = os.fork()
