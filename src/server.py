@@ -86,7 +86,7 @@ class TPServer(object):
                 logger.error('removing a dead client. Handshake failed')
                 sock.close()
                 conns.remove(sock)
-                return
+                return -1
             pass
         logger.info('waiting for clients to send confirmation')
         waitconns = list(conns)
@@ -99,7 +99,7 @@ class TPServer(object):
                 for s in waitconns:
                     s.close()
                     pass
-                return
+                return -1
             for sock in socks:
                 logger.info('checking for confirmation')
                 bufsize = m.getsize()
@@ -111,7 +111,7 @@ class TPServer(object):
                 except:
                     logger.error('invalid message received. Handshake failed')
                     conns.remove(sock)
-                    return
+                    return -1
                 if m.method == TPMessage.METHOD_CONFIRM:
                     logger.info(
                 'received confirmation from {0}'.format(sock.getpeername()))
@@ -127,7 +127,7 @@ class TPServer(object):
             logger.error(
                     'did not get confirmation from all clients. '
                     + 'Handshake failed')
-            return
+            return -1
         logger.info('sending game start message')
         m.method = TPMessage.METHOD_STARTGAME
         b = m.pack()
@@ -143,7 +143,7 @@ class TPServer(object):
                 pass
             pass
         logger.info('handshake successful')
-        return conns
+        return 0
     # addr is the address of the server
     # clientNum is the number of clients per game
     # fork a thread and run the server. Return the pid of the child

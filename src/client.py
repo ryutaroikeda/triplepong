@@ -15,7 +15,8 @@ class TPClient(object):
         pass
     # handshake to start a game session
     # sock is a socket connected to the game server
-    def handshake(self, sock):
+    def Handshake(self, sock):
+        '''Performs a handshake '''
         logger.info('initiating handshake')
         logger.info('waiting for server to ask for confirmation')
         m = TPMessage()
@@ -47,7 +48,7 @@ class TPClient(object):
         logger.info('handshake completed successfully')
         pass
 
-    def run(self, servaddr):
+    def Run(self, servaddr):
         pid = os.fork()
         if pid > 0:
             return pid

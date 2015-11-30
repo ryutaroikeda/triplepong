@@ -7,14 +7,14 @@ import unittest
 sys.path.append(os.path.abspath('src'))
 from server import TPServer
 from client import TPClient
-# This class provides access to methods that are targets of spawned processes 
-# in TPServerTest. According to 
-# http://stackoverflow.com/questions/25646382/python-3-4-multiprocessing-does-
-# not-work-with-unittest
-# unittest.TestCase is not pickleable (i.e. serializable) as of at least 
-# Python 3.4. 
-# This seems to not be an issue on Python 3.5
 class TPServerTestPickleJar(object):
+    '''This class provides access to methods that are targets of spawned 
+    processes  in TPServerTest. According to 
+    http://stackoverflow.com/questions/25646382/python-3-4-multiprocessing-does-
+    not-work-with-unittest,
+    unittest.TestCase is not pickleable (i.e. serializable) as of at least 
+    Python 3.4. This seems to not be an issue on Python 3.5'''
+
     def __init__(self):
         pass
     def svrhandshake1(self, svrsock, q):
@@ -32,7 +32,7 @@ class TPServerTestPickleJar(object):
     def connectAndHandshake(self, svraddr, clientsock):
         c = TPClient()
         clientsock.connect(svraddr)
-        c.handshake(clientsock)
+        c.Handshake(clientsock)
         pass
     pass
 
@@ -52,7 +52,7 @@ class TPServerTest(unittest.TestCase):
         svrp = multiprocessing.Process(target=jar.svrhandshake1,
                 args=(svrsock,q,))
         svrp.start()
-        c.handshake(clientsock)
+        c.Handshake(clientsock)
         result = q.get()
         svrp.join() # wait for server to finish
         svrsock.close()
@@ -75,8 +75,8 @@ class TPServerTest(unittest.TestCase):
         csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         csock1.connect(addr)
         csock2.connect(addr)
-        c1.handshake(csock1)
-        c2.handshake(csock2)
+        c1.Handshake(csock1)
+        c2.Handshake(csock2)
         result = q.get()
         csock1.close()
         csock2.close()
@@ -103,9 +103,9 @@ class TPServerTest(unittest.TestCase):
         csock1.connect(addr)
         csock2.connect(addr)
         csock3.connect(addr)
-        c1.handshake(csock1)
-        c2.handshake(csock2)
-        c3.handshake(csock3)
+        c1.Handshake(csock1)
+        c2.Handshake(csock2)
+        c3.Handshake(csock3)
         result = q.get()
         csock1.close()
         csock2.close()
