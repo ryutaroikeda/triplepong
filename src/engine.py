@@ -65,39 +65,39 @@ class GameEngine(object):
         # update positions 
         s.ball.pos_x += s.ball.vel_x
         s.ball.pos_y += s.ball.vel_y
-        s.paddle_left.pos_y = s.paddle_left.vel_y
-        s.paddle_right.pos_y = s.paddle_right.vel_y
+        s.paddle_left.pos_y += s.paddle_left.vel_y
+        s.paddle_right.pos_y += s.paddle_right.vel_y
         # handle collisions
         if s.paddle_left.IsCollidingWith(s.ball):
-            s.ball.pos_x = s.paddle_left.pos_x + s.paddle_left.half_width
+            s.paddle_left.AlignRight(s.ball)
             s.ball.vel_x = - s.ball.vel_x
             pass
         if s.paddle_right.IsCollidingWith(s.ball):
-            s.ball.pos_x = s.paddlerightx - s.paddle_right.half_width
+            s.paddle_right.AlignLeft(s.ball)
             s.ball.vel_x = - s.ball.vel_x
             pass
         if s.ball.IsCollidingWith(s.ball_wall_top):
-            s.ball.pos_y = s.ball_wall_top.pos_y 
+            s.ball_wall_top.AlignBottom(s.ball)
             s.ball.vel_y = - s.ball.vel_y
             pass
         if s.ball.IsCollidingWith(s.ball_wall_bottom):
-            s.ball.pos_y = s.ball_wall_bottom.pos_y
+            s.ball_wall_bottom.AlignTop(s.ball)
             s.ball.vel_y = - s.ball.vel_y
             pass
         if s.paddle_left.IsCollidingWith(s.paddle_wall_top):
-            s.paddle_left.pos_y = s.paddle_wall_top.pos_y
+            s.paddle_wall_top.AlignBottom(s.paddle_left)
             s.paddle_left.vel_y = - s.paddle_left.vel_y
             pass
         if s.paddle_right.IsCollidingWith(s.paddle_wall_top):
-            s.paddle_right.pos_y = s.paddle_wall_top.pos_y
+            s.paddle_wall_top.AlignBottom(s.paddle_right)
             s.paddle_right.vel_y = - s.paddle_right.vel_y
             pass
         if s.paddle_left.IsCollidingWith(s.paddle_wall_bottom):
-            s.paddle_left.pos_y = s.paddle_wall_bottom.pos_y
+            s.paddle_wall_bottom.AlignTop(s.paddle_left)
             s.paddle_left.vel_y = - s.paddle_left.vel_y
             pass
         if s.paddle_right.IsCollidingWith(s.paddle_wall_bottom):
-            s.paddle_right.pos_y = s.paddle_wall_bottom.pos_y
+            s.paddle_wall_bottom.AlignTop(s.paddle_right)
             s.paddle_right.vel_y = - s.paddle_right.vel_y
             pass
         if s.ball.IsCollidingWith(s.goal_left):
@@ -164,13 +164,13 @@ class GameEngine(object):
         s.paddle_left.vel_x = 0
         s.paddle_left.vel_y = 0
         s.paddle_left.half_width = 10
-        s.paddle_left.half_height = 120
+        s.paddle_left.half_height = 60 
         s.paddle_right.pos_x = 2 * s.screen.half_width - 60
         s.paddle_right.pos_y = 0
         s.paddle_right.vel_x = 0
         s.paddle_right.vel_y = 0
         s.paddle_right.half_width = 10
-        s.paddle_right.half_height = 120
+        s.paddle_right.half_height = 60
         # scores[p] is the score for player p.
         s.scores = [0, 0, 0]
         # roles[p] is the current role of player p.
