@@ -11,20 +11,22 @@ class Event:
 		'''Serialize this object into a tuple.
 		
 		This method should be overridden by the child class. It should represent
-		the event object as a byte string consisting only of the following 
-        types:
+		the event object as a tuple consisting only of the following types:
 		- int
 		- float
 		- str
 		
-		This representation should be returned by this method.'''
+		This representation should be returned by this method. The tuple retured
+		by this method is converted to a bytes object by the eventqueue module.
+		The reason for the restriction on types in the tuple is that these are
+		the types understood by the eventqueue module.'''
 		
 		raise NotImplementedError
 	
 	@staticmethod
 	def Deserialize(serialized_tuple):
-		'''Construct an Event derrived object from a byte string that is 
-        returned from Serialize
+		'''Construct an Event derrived object from a tuple that is returned from
+        Serialize.
 		
 		This static method should be overridden by the child class. It should
 		construct an Event object of the child class type using the serialized
@@ -104,7 +106,13 @@ class EventQueue:
 		'''Register an EventTransmissionHandler object to handle transmission of
 		events over a network.
 		
-		'''
+		If this method is called more than once, the transmission handler will
+		be replaced. If this method is called with None, the transmission
+		handler will be removed.
+		
+		Arguments:
+		transmission_handler -- The transmission handler to use to send events
+		                        over the network from now on.'''
 	
 	def RegisterEventType(self, event_type):
 		'''Register an event type.
