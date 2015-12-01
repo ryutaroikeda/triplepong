@@ -57,10 +57,17 @@ class TPClient(object):
         logger.info('handshake completed successfully')
         return 0
 
-    def Run(self, servaddr):
-        pid = os.fork()
-        if pid > 0:
-            return pid
+    def Run(self, svraddr):
+        '''Run the game as a client.
+
+        This method attempts to connect to the game server at svraddr and start 
+        the game. This involves making a TCP connection and performing a 
+        server-clients handshake described in server.py. Upon success, the game 
+        engine is run.
+
+        Argument:
+        svraddr - the address of the server as a tuple (ip, port).'''
+
         sock = None
         while True:
             if sock != None:
