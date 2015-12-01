@@ -2,14 +2,33 @@ import multiprocessing
 import os
 import sys
 import time
+import pygame
 sys.path.append(os.path.abspath('src'))
-from gamestate import GameObject
+from gameobject import GameObject
 from gamestate import GameState
+from gameevent import GameEvent
 from renderer import Renderer
 
 class GameEngine(object):
     def __init__(self):
         pass
+
+    def GetEvents(self):
+        '''Return a list of GameEvent events to apply.
+
+        To do: Use EventQueue and move the keyboard event getter elsewhere.'''
+        evts = []
+        # Events should be pumped before calling get_pressed(). These functions 
+        # are wrappers for SDL functions intended to be used in this way.
+        # See https://www.pygame.org/docs/ref/
+        # key.html#comment_pygame_key_get_pressed
+        pygame.event.pump()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+            pass
+        return evts
+
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
 
@@ -185,7 +204,9 @@ class GameEngine(object):
             s.frame_start = time.time()
             if s.frame_start - s.start_time >= s.game_length:
                 break
+            evts = self.GetEvents()
             self.ApplyGravity(s)
+            self.ApplyEvents(s, evts)
             self.PlayFrame(s)
             r.RenderAll(s)
             pass

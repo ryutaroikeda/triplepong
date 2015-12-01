@@ -41,4 +41,7 @@ class GameState:
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
         pass
+    def Update(self, update):
+        '''Update the game state. '''
+        pass
     pass
