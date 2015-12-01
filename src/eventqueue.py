@@ -8,32 +8,30 @@ class Event:
 	'''Base class for events processed with an EventQueue.'''
 	
 	def Serialize(self):
-		'''Serialize this object into a tuple.
+		'''Serialize this object into a byte string.
 		
 		This method should be overridden by the child class. It should represent
-		the event object as a tuple consisting only of the following types:
+		the event object as a byte string consisting only of the following 
+        types:
 		- int
 		- float
 		- str
 		
-		This representation should be returned by this method. The tuple retured
-		by this method is converted to a bytes object by the eventqueue module.
-		The reason for the restriction on types in the tuple is that these are
-		the types understood by the eventqueue module.'''
+		This representation should be returned by this method.'''
 		
 		raise NotImplementedError
 	
 	@staticmethod
-	def Deserialize(serialized_tuple):
-		'''Construct an Event derrived object from a tuple that is returned from
-        Serialize.
+	def Deserialize(byte_string):
+		'''Construct an Event derrived object from a byte string that is 
+        returned from Serialize.
 		
 		This static method should be overridden by the child class. It should
 		construct an Event object of the child class type using the serialized
-		data int 'serialized_tuple'.
+		data 'serialized_string'.
 		
 		Arguments:
-		serialized_tuple -- The representation of the event object as returned
+		byte_string -- The representation of the event object as returned
 		                    by Serialize.'''
 		
 		raise NotImplementedError
