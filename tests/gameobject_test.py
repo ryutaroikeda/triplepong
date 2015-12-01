@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
-from gamestate import GameObject
+from gameobject import GameObject
 
 class GameObjectTest(unittest.TestCase):
     def setUp(self):

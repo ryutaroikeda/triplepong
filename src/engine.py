@@ -10,6 +10,23 @@ from renderer import Renderer
 class GameEngine(object):
     def __init__(self):
         pass
+    def ApplyGravity(self, s):
+        '''Apply gravity to the paddles and the ball
+
+        Arguments:
+        s -- the game state'''
+
+        if s.paddle_left.vel_y < 16:
+            s.paddle_left.vel_y += 1
+            pass
+        if s.paddle_right.vel_y < 16:
+            s.paddle_right.vel_y += 1
+            pass
+        if s.ball.vel_y < 16:
+            s.ball.vel_y += 1
+            pass
+        pass
+
     def ApplyEvents(self, s, evts):
         '''Apply the effect of events to the game state.
 
@@ -39,12 +56,11 @@ class GameEngine(object):
             pass
         pass
 
-    def PlayFrame(self, s, evts):
+    def PlayFrame(self, s):
         '''Update the game state by one frame.
         
         Arguments:
-            s    -- the state of the game.
-            evts -- a list of events to apply'''
+            s    -- the state of the game.'''
 
         # update positions 
         s.ball.pos_x += s.ball.vel_x
@@ -61,7 +77,7 @@ class GameEngine(object):
             s.ball.vel_x = - s.ball.vel_x
             pass
         if s.ball.IsCollidingWith(s.ball_wall_top):
-            s.ball.pos_y = s.ball_wall_top.pos_y
+            s.ball.pos_y = s.ball_wall_top.pos_y 
             s.ball.vel_y = - s.ball.vel_y
             pass
         if s.ball.IsCollidingWith(s.ball_wall_bottom):
@@ -169,6 +185,7 @@ class GameEngine(object):
             s.frame_start = time.time()
             if s.frame_start - s.start_time >= s.game_length:
                 break
+            self.ApplyGravity(s)
             self.PlayFrame(s)
             r.RenderAll(s)
             pass
