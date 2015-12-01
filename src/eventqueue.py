@@ -17,7 +17,10 @@ class Event:
 		- float
 		- str
 		
-		This representation should be returned by this method.'''
+		This representation should be returned by this method. The byte string 
+        retured	by this method is converted to a tuple object by the eventqueue 
+        module.	The reason for the restriction on types in the byte string is
+        that these are the types understood by the eventqueue module.'''
 		
 		raise NotImplementedError
 	
@@ -104,7 +107,13 @@ class EventQueue:
 		'''Register an EventTransmissionHandler object to handle transmission of
 		events over a network.
 		
-		'''
+		If this method is called more than once, the transmission handler will
+		be replaced. If this method is called with None, the transmission
+		handler will be removed.
+		
+		Arguments:
+		transmission_handler -- The transmission handler to use to send events
+		                        over the network from now on.'''
 	
 	def RegisterEventType(self, event_type):
 		'''Register an event type.

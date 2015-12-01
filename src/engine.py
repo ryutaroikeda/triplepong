@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import sys
 import time
@@ -5,74 +6,39 @@ sys.path.append(os.path.abspath('src'))
 from gamestate import GameObject
 from gamestate import GameState
 from renderer import Renderer
-# def min(x, y):
-#     if x < y:
-#         return x
-#     else: 
-#         return y
-#     pass
-# def max(x, y):
-#     if x > y:
-#         return x
-#     else:
-#         return y
-#     pass
-# def vec2minus(x, y):
-#     return (x[0]-y[0], x[1]-y[1])
-# def vec2cross(x, y):
-#     return x[0] * y[1] - x[1] * y[0]
-# class TPObject(object):
-#     def __init__(self):
-#         self.posx = 0
-#         self.posy = 0
-#         self.velx = 0
-#         self.vely = 0
-#         self.width = 0
-#         self.height = 0
-#         pass
-#     def didcollidewith(self, other):
-#         if self.velx >= 0 and self.vely >= 0:
-#             p = (self.posx, self.posy)
-#             r = (self.velx + self.width, self.vely + self.height)
-#         else if self.velx >= 0 and self.vely < 0:
-#             p = (self.posx, self.posy + self.height)
-#             r = (self.velx + self.width, self.vely)
-#         else if self.velx < 0 and self.vely >= 0:
-#             p = (self.posx + self.width, self.posy)
-#             r = (self.velx, self.vely + self.height)
-#         else if self.velx < 0 and self.vely < 0:
-#             p = (self.posx + self.width, self.posy + self.height)
-#             r = (self.velx, self.vely)
-#             pass
-#         if other.velx >= 0 and other.vely >= 0:
-#             q = (other.posx, other.posy)
-#             s = (other.velx + other.width, other.vely + other.height)
-#         else if other.velx >= 0 and other.vely < 0:
-#             q = (other.posx, other.posy + other.height)
-#             s = (other.velx + other.width, other.vely)
-#         else if other.velx < 0 and other.vely >= 0:
-#             q = (other.posx + other.width, other.posy)
-#             s = (other.velx, other.vely + other.height)
-#         else if other.velx < 0 and other.vely < 0:
-#             q = (other.posx + other.width, other.posy + other.height)
-#             s = (other.velx, other.vely)
-#             pass
-#         qmp = vec2minus(q, p)
-#         rxs = vec2cross(r, s)
-#         qmpxs = vec2cross(qmp, s)
-#         qmpxr = vec2cross(qmp, r)
-#         if rxs == 0:
-#             if qmpxs == 0:
-#                 # collinear; this shouldn't happen in this game
-#                 pass
-#             pass
-#         # check if starts-to-ends cross
-#         return False
-#     pass
 
 class GameEngine(object):
     def __init__(self):
         pass
+    def ApplyEvents(self, s, evts):
+        '''Apply the effect of events to the game state.
+
+        evts should be a list consisting of the following values defined 
+        in gamestate.py:
+        EVENT_FLAP_NO_OP         -- Do nothing.
+        EVENT_FLAP_LEFT_PADDLE
+        EVENT_FLAP_RIGHT_PADDLE
+        EVENT_FLAP_BALL          -- Update the velocity.
+
+        More events could be defined in the future.
+
+        Arguments:
+        s    -- the game state.
+        evts -- a list of events to apply.'''
+
+        for e in evts:
+            if e == GameEvent.EVENT_FLAP_LEFT_PADDLE:
+                s.paddle_left.vel_y = -8
+                pass
+            if e == GameEvent.EVENT_FLAP_RIGHT_PADDLE:
+                s.paddle_right.vel_y = -8
+                pass
+            if e == GameEvent.EVENT_FLAP_BALL:
+                s.ball.vel_y = -4
+                pass
+            pass
+        pass
+
     def PlayFrame(self, s, evts):
         '''Update the game state by one frame.
         
@@ -80,8 +46,6 @@ class GameEngine(object):
             s    -- the state of the game.
             evts -- a list of events to apply'''
 
-        # handle events
-        
         # update positions 
         s.ball.pos_x += s.ball.vel_x
         s.ball.pos_y += s.ball.vel_y
@@ -196,7 +160,7 @@ class GameEngine(object):
         # roles[p] is the current role of player p.
         s.roles = [GameState.ROLE_LEFT_PADDLE, GameState.ROLE_RIGHT_PADDLE,
                 GameState.ROLE_BALL]
-        # players[r] is the player of role r.
+        # players[r] is the ID of the player with role r.
         s.players = [0, 1, 2]
         s.start_time = time.time()
         r = Renderer()
