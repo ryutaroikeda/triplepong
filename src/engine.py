@@ -14,9 +14,15 @@ class GameEngine(object):
         pass
 
     def GetEvents(self):
-        '''Return a list of GameEvent events to apply.
+        '''Return a list of events to apply.
 
-        To do: Use EventQueue and move the keyboard event getter elsewhere.'''
+        Return value:
+        The list of events that should be applied to the current frame. Each 
+        event is a value defined in GameEvent (see ApplyEvents() and 
+        gameevent.py).
+
+        To do: Use EventQueue and move the keyboard event getter elsewhere.
+        To do: Allow user to configure key bindings.'''
         evts = []
         # Events should be pumped before calling get_pressed(). These functions 
         # are wrappers for SDL functions intended to be used in this way.
@@ -50,7 +56,7 @@ class GameEngine(object):
         '''Apply the effect of events to the game state.
 
         evts should be a list consisting of the following values defined 
-        in gamestate.py:
+        in gameevent.py:
         EVENT_FLAP_NO_OP         -- Do nothing.
         EVENT_FLAP_LEFT_PADDLE
         EVENT_FLAP_RIGHT_PADDLE
