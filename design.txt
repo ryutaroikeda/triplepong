@@ -27,11 +27,14 @@ immediately. At the same time, the client sends the key press together with the
 frame number f to the server. After about L frames, the server receives these. 
 To compensate for the lag L, the server rewinds to the frame when the key was 
 pressed and replays all the key events received since that time. The server 
-then sends back all key events and the frame number f + L. The client receives 
+then sends back 'relevant data to represent the state' and the frame number 
+f + L. The client receives 
 these after another L frames. The client can then similarly rewind to frame f 
 and replay any keys since that time to compute the current state.
 
-**** Old, kept for reference ****
+There are at least two approaches to what the server should send. One is 
+sending the state resulting from the replay. 
+
 There is a problem when the client enters a key between frames f and f + L. 
 When the client receives the state from the server at f + 2L, we only rewind 
 to f + L. Since what we receive is only a response to events up to time f, 
@@ -39,3 +42,13 @@ any event between f and f + L, say f + e  will not be taken into account. To
 the client, it will look as if that event was 'cancelled' - until the client 
 receives the reply for it at time f + e + 2L. A workaround would be to 
 prohibit key presses for L frames after the last.
+
+Another approach is to send a list of pairs, each pair a frame number and the 
+corresponding events at that frame. This solution avoids the need for key 
+press prohibition above. However, if the server takes longer than expected to 
+send the reply (i.e. 2L frames), the client may not be able to rewind far 
+enough into the past to correctly reproduce the state. To avoid this, the 
+client must stall the game if the game record has been filled to 2L frames 
+since the last reply from the server.
+
+At the moment, the first solution is preferred for its simplicity.

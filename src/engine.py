@@ -16,6 +16,7 @@ class GameRecord:
     
     Attributes:
     size   -- The maximum number of records to keep.
+    idx    -- The index to states and events to write to next.
     states -- The recorded game states.
     events -- The recorded key events.'''
     def __init__(self):
@@ -24,6 +25,31 @@ class GameRecord:
         self.states = []
         self.events = []
         pass
+
+    def SetSize(self, size):
+        '''Set the maximum number of records to keep. This must be called 
+        before calling any other method in this class.
+
+        Argument:
+        size -- The new size of the record.'''
+        self.size = size
+        for i in range(0, size):
+            self.states.append(0)
+            self.events.append(0)
+            pass
+        pass
+
+    def AddEntry(self, s, evts):
+        '''Add an entry to the game record.
+
+        Arguments:
+        s    -- The game state.
+        evts -- A list of game events.'''
+        self.states[self.idx] = s
+        self.events[self.idx] = evts
+        self.idx = (self.idx + 1) % self.size
+        pass
+        
     pass
 
 class GameEngine(object):
@@ -107,8 +133,8 @@ class GameEngine(object):
             pass
         pass
 
-    def PlayFrame(self, s):
-        '''Update the game state by one frame.
+    def ApplyLogic(self, s):
+        '''Update positions and handle collision detection.
         
         Arguments:
             s    -- the state of the game.'''
@@ -167,6 +193,36 @@ class GameEngine(object):
             s.ball.vel_y = 0
             s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
             pass
+        pass
+
+    def PlayFrame(self, s, evts):
+        '''Move the game forward by one frame.
+
+        Arguments:
+        s    -- The game state.
+        evts -- The game events to apply.'''
+        self.ApplyGravity(s)
+        self.ApplyEvents(s, evts)
+        self.ApplyLogic(s)
+        pass
+
+    def RewindAndReplay(self, s, rec, rewind, framed_evts):
+        '''Rewind and replay the game, playing the events in rec and 
+        framed_evts. The state s is updated.
+
+        This method goes rewind frames to the past and replays events in rec 
+        and framed_evts. This is intended to be used by the server and client, 
+        upon receiving new events over the network, for lag compensation.
+
+        Arguments:
+        s           -- The game state to update.
+        rec         -- A game record.
+        rewind      -- The number of frames to rewind. This must not exceed 
+        the size of rec, rec.size.
+        framed_evts -- A list of pairs, each consisting of a frame number 
+        followed by a list of events to be applied for that frame.'''
+
+
         pass
 
     def Run(self):
@@ -237,9 +293,7 @@ class GameEngine(object):
             if s.frame_start - s.start_time >= s.game_length:
                 break
             evts = self.GetEvents()
-            self.ApplyGravity(s)
-            self.ApplyEvents(s, evts)
-            self.PlayFrame(s)
+            self.PlayFrame(s, evts)
             r.RenderAll(s)
             pass
         pass
