@@ -95,6 +95,10 @@ class EventQueue:
 	'''An event queue class is responsible for managing Event objects, and
 	delivering them to their destination.'''
 	
+	def __init__(self):
+		self._transmission_handler = None
+		self._subscriptions = list()
+	
 	def PostEvent(self, event, transmit = True, subscription = False):
 		'''Add an event to the event queue.
 		
@@ -112,6 +116,12 @@ class EventQueue:
 		                network, and False otherwise.
 		subscription -- True if the event should be handled by subscribers to
 		                this event type, and False otherwise.'''
+		
+		# Send the event to its subscribers
+		if subscription:
+			for event_type,handler in self._subscriptions:
+				if isinstance(event, event_type):
+					handler(event)
 	
 	def RegisterEventHandler(self, event_type, handler):
 		'''Register an event handler.
@@ -121,6 +131,8 @@ class EventQueue:
 		single argument: the Event object to be handled. Objects that wish to
 		subscribe to events should therefore do so with a lambda function that
 		calls a method (including its 'self' parameter).'''
+		
+		self._subscriptions.append((event_type, handler))
 	
 	def RegisterEventTransmissionHandler(self, transmission_handler):
 		'''Register an EventTransmissionHandler object to handle transmission of
