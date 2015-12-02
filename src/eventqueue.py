@@ -37,6 +37,26 @@ class Event:
 		                    by Serialize.'''
 		
 		raise NotImplementedError
+	
+	@staticmethod
+	def GetAssumedDeserializationTypes():
+		'''Return the types that the first fields of serialized data for this
+		event.
+		
+		Deserialization requires knowledge of the types to which the byte stream
+		should be converted. This information can be included in the byte
+		stream, but it's more efficient for it to be known by both sides without
+		spending bytes describing it. This static method can be overridden by
+		the subclass to provide this information. An event may be transmitted
+		with fewer than are returned by this method without cost. An event may
+		be transmitted with more fields, in which case the remaining fields will
+		be described by the tuple to bytes serializer. It is an error for the
+		first fields of a serialized event to fail to match the types returned
+		by this method.
+		
+		This static method returns a tuple of (serializable) types.'''
+		
+		return ()
 
 class EventTransmissionHandler:
 	'''Allow EventQueue objects to transmit events over a network.
