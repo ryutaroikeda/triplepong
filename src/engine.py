@@ -9,6 +9,23 @@ from gamestate import GameState
 from gameevent import GameEvent
 from renderer import Renderer
 
+class GameRecord:
+    '''This class records the game state and key events of each frame for up 
+    to 2L frames into the past, where 2L is the estimated number of frames to 
+    be played during a round-trip time.
+    
+    Attributes:
+    size   -- The maximum number of records to keep.
+    states -- The recorded game states.
+    events -- The recorded key events.'''
+    def __init__(self):
+        self.size = 0
+        self.idx = 0
+        self.states = []
+        self.events = []
+        pass
+    pass
+
 class GameEngine(object):
     def __init__(self):
         pass

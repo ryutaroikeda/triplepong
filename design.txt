@@ -27,11 +27,11 @@ immediately. At the same time, the client sends the key press together with the
 frame number f to the server. After about L frames, the server receives these. 
 To compensate for the lag L, the server rewinds to the frame when the key was 
 pressed and replays all the key events received since that time. The server 
-then sends back the 
-updated state and the frame number f + L. The client receives these after 
-another L frames. The client can then similarly rewind to frame f + L and 
-replay any keys since that time to compute the current state.
+then sends back all key events and the frame number f + L. The client receives 
+these after another L frames. The client can then similarly rewind to frame f 
+and replay any keys since that time to compute the current state.
 
+**** Old, kept for reference ****
 There is a problem when the client enters a key between frames f and f + L. 
 When the client receives the state from the server at f + 2L, we only rewind 
 to f + L. Since what we receive is only a response to events up to time f, 
