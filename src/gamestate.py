@@ -4,6 +4,10 @@ sys.path.append(os.path.abspath('src'))
 from gameobject import GameObject
 
 class GameState:
+    '''This class represents the current game state.
+
+    Attributes:
+    frame -- the number of frames since the start of the game.'''
     ROLE_NONE = 0
     ROLE_LEFT_PADDLE = 1
     ROLE_RIGHT_PADDLE = 2
@@ -13,6 +17,7 @@ class GameState:
         ## Game configuration
         ## These states do not need to be sent during the game
         ##
+        self.frame = 0
         # the duration of the game in seconds
         self.game_length = 0.0
         # the number of rounds (i.e. rotation of roles) per game

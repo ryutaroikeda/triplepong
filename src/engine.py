@@ -35,6 +35,15 @@ class GameEngine(object):
             pass
         return evts
 
+    def RecordKeyEvent(self, s, evt):
+        '''Record that event evt happened at the current frame.
+        
+        Arguments:
+        s   -- The current game state.
+        evt -- The event to record.'''
+
+        pass
+
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
 
