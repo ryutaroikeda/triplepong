@@ -1,3 +1,4 @@
+import copy
 import multiprocessing
 import os
 import sys
@@ -81,6 +82,8 @@ class GameEngine(object):
     def RecordKeyEvent(self, s, evt):
         '''Record that event evt happened at the current frame.
         
+        Note: This interface is subject to change.
+
         Arguments:
         s   -- The current game state.
         evt -- The event to record.'''
@@ -206,7 +209,7 @@ class GameEngine(object):
         pass
 
     def RewindAndReplayWithState(self, auth_state, current_frame, rec):
-        '''Rewind and replay the game.
+        '''Rewind and replay the game from a given state.
 
         This method rewinds the game to auth_state.frame and replays inputs 
         from that frame until the current frame over auth_state. 
@@ -242,6 +245,39 @@ class GameEngine(object):
                     rec.events[(rec.idx - (rewind - i)) % rec.size])
             pass
         return auth_state
+    
+    def RewindAndReplayWithKey(self, current_state, frame, evts, rec):
+        '''Rewind and replay the game based on an event in the past.
+
+        This method is intended to be used by the server to correct its 
+        authoritative state in response to key events sent by the client.
+
+        Arguments:
+        current_state -- The game state of the server.
+        frame         -- The frame at which the event happened.
+        evts          -- A list of events to play at frame.
+        rec           -- A game record.
+
+        Return value:
+        The game state resulting from the rewind and replay if the rewind 
+        was successful, and None otherwise.'''
+        rewind = current_state.frame - frame
+        if rewind <= 0:
+            # The client is ahead of the server. Ignore.
+            return None
+        if rewind > rec.size:
+            # The event is too old to rewind. Ignore.
+            # Fix me: We could consider rewinding to the oldest available 
+            # frame.
+            return None
+        # Create a copy of the state to work on so we don't tamper with the 
+        # record. 
+        s = copy.deepcopy(rec.state[(rec.idx - rewind) % rec.size])
+        self.PlayFrame(s, evts)
+        for i in range(0, rewind):
+            self.PlayFrame(s, rec.evts[(rec.idx - rewind + i) % rec.size])
+            pass
+        return s
 
     def Run(self):
         s = GameState()
@@ -304,6 +340,8 @@ class GameEngine(object):
         # players[r] is the ID of the player with role r.
         s.players = [0, 1, 2]
         s.start_time = time.time()
+        rec = GameRecord()
+        rec.SetSize(30)
         r = Renderer()
         r.Init()
         while True:
@@ -312,6 +350,7 @@ class GameEngine(object):
                 break
             evts = self.GetEvents()
             self.PlayFrame(s, evts)
+            rec.AddEntry(s, evts)
             r.RenderAll(s)
             pass
         pass
