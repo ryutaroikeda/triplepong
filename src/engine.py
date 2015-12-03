@@ -84,8 +84,7 @@ class GameEngine(object):
         Arguments:
         s   -- The current game state.
         evt -- The event to record.'''
-
-        pass
+        raise NotImplementedError
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
@@ -206,24 +205,43 @@ class GameEngine(object):
         self.ApplyLogic(s)
         pass
 
-    def RewindAndReplay(self, s, rec, rewind, framed_evts):
-        '''Rewind and replay the game, playing the events in rec and 
-        framed_evts. The state s is updated.
+    def RewindAndReplayWithState(self, auth_state, current_frame, rec):
+        '''Rewind and replay the game.
 
-        This method goes rewind frames to the past and replays events in rec 
-        and framed_evts. This is intended to be used by the server and client, 
-        upon receiving new events over the network, for lag compensation.
+        This method rewinds the game to auth_state.frame and replays inputs 
+        from that frame until the current frame over auth_state. 
+        The inputs for the current frame are not handled here, so any events 
+        must be applied to the result of this method.
+        The inputs  are recorded in rec. Records older than auth_state.frame 
+        are  discarded  from rec.
+
+        This method is intended to be used by the client receiving an 
+        authoritative state auth_state from the server to correct the local 
+        game state.
 
         Arguments:
-        s           -- The game state to update.
-        rec         -- A game record.
-        rewind      -- The number of frames to rewind. This must not exceed 
-        the size of rec, rec.size.
-        framed_evts -- A list of pairs, each consisting of a frame number 
-        followed by a list of events to be applied for that frame.'''
-
-
-        pass
+        auth_state    -- The state to replay from. 
+        current_frame -- The frame to replay to.
+        rec           -- A game record.
+        
+        Return value:
+        The game state resulting from the rewind and replay or None if 
+        no rewind is possible..'''
+        rewind = current_frame - auth_state.frame
+        if rewind <= 0:
+            # The server is ahead of the client. Go to auth_state directly.
+            rec.idx = 0
+            rec.state[0] = auth_state
+            rec.events[0] = []
+            return auth_state
+        if rewind > rec.size:
+            # The state is too old for rewind. Ignore.
+            return None
+        for i in range(0, rewind):
+            self.PlayFrame(auth_state,
+                    rec.events[(rec.idx - (rewind - i)) % rec.size])
+            pass
+        return auth_state
 
     def Run(self):
         s = GameState()

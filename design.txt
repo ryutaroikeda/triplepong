@@ -32,7 +32,7 @@ f + L. The client receives
 these after another L frames. The client can then similarly rewind to frame f 
 and replay any keys since that time to compute the current state.
 
-There are at least two approaches to what the server should send. One is 
+There are at least three approaches to what the server could send. One is 
 sending the state resulting from the replay. 
 
 There is a problem when the client enters a key between frames f and f + L. 
@@ -50,5 +50,8 @@ send the reply (i.e. 2L frames), the client may not be able to rewind far
 enough into the past to correctly reproduce the state. To avoid this, the 
 client must stall the game if the game record has been filled to 2L frames 
 since the last reply from the server.
+
+Alternatively, the server could send both keys and state, to get the best of 
+both.
 
 At the moment, the first solution is preferred for its simplicity.
