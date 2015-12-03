@@ -281,11 +281,11 @@ class GameEngine(object):
 
     def Run(self):
         s = GameState()
-        s.game_length = 9.0
+        s.game_length = 1000.0
         s.sessionlength = s.game_length / 3
         # the number of rounds (i.e. rotation of roles) per game
         s.rounds = 1
-        s.frames_per_sec = 30.0
+        s.frames_per_sec = 60.0
         s.sec_per_frame = 1 / s.frames_per_sec
         s.screen.half_width = 320
         s.screen.half_height = 240
@@ -341,7 +341,11 @@ class GameEngine(object):
         s.players = [0, 1, 2]
         s.start_time = time.time()
         rec = GameRecord()
-        rec.SetSize(30)
+        # Pick an estimate for a value greater than 2L. We won't bother 
+        #  measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
+        # enough for a decent connection, and the player wouldn't want to play 
+        # on anything worse.
+        rec.SetSize(360)
         r = Renderer()
         r.Init()
         while True:
@@ -352,6 +356,9 @@ class GameEngine(object):
             self.PlayFrame(s, evts)
             rec.AddEntry(s, evts)
             r.RenderAll(s)
+            delta = time.time() - s.frame_start
+            if 0 < delta and delta < s.sec_per_frame:
+                time.sleep(s.sec_per_frame - delta)
             pass
         pass
     pass
