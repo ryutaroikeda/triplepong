@@ -278,8 +278,13 @@ class GameEngine(object):
             self.PlayFrame(s, rec.evts[(rec.idx - rewind + i) % rec.size])
             pass
         return s
+    def CreateGame(self):
+        '''Create the initial game state.
 
-    def Run(self):
+        To do: Add arguments to configure the game.
+
+        Return value:
+        The initial game state.'''
         s = GameState()
         s.game_length = 1000.0
         s.sessionlength = s.game_length / 3
@@ -340,6 +345,10 @@ class GameEngine(object):
         # players[r] is the ID of the player with role r.
         s.players = [0, 1, 2]
         s.start_time = time.time()
+        return s
+
+    def Run(self):
+        s = self.CreateGame()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L. We won't bother 
         #  measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
