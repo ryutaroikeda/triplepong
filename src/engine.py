@@ -54,7 +54,20 @@ class GameRecord:
     pass
 
 class GameEngine(object):
+    '''The game engine.
+
+    This class contains the logic and interfaces for the game. When run as the 
+    client, it takes input from the keyboard and state updates from the server. 
+    When run as the server, it takes game events sent by clients.
+
+    Attributes:
+    last_key_time      -- The time of the last game event sent to the server. 
+    key_cool_down_time -- The minimum time between game events. See design.txt 
+    for more details.'''
+
     def __init__(self):
+        self.last_key_time = 0.0
+        self.key_cool_down_time = 0.200
         pass
 
     def GetEvents(self):
@@ -75,7 +88,11 @@ class GameEngine(object):
         pygame.event.pump()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
-            evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+            # Check if we are in cool-down.
+            now = time.time()
+            if now - self.last_key_time >= self.key_cool_down_time:
+                self.last_key_time = now
+                evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
             pass
         return evts
 
@@ -122,15 +139,17 @@ class GameEngine(object):
         s    -- the game state.
         evts -- a list of events to apply.'''
 
+        PADDLE_FLAP_VEL = -12
+        BALL_FLAP_VEL   = -8
         for e in evts:
             if e == GameEvent.EVENT_FLAP_LEFT_PADDLE:
-                s.paddle_left.vel_y = -8
+                s.paddle_left.vel_y = PADDLE_FLAP_VEL
                 pass
             if e == GameEvent.EVENT_FLAP_RIGHT_PADDLE:
-                s.paddle_right.vel_y = -8
+                s.paddle_right.vel_y = PADDLE_FLAP_VEL
                 pass
             if e == GameEvent.EVENT_FLAP_BALL:
-                s.ball.vel_y = -4
+                s.ball.vel_y = BALL_FLAP_VEL
                 pass
             pass
         pass
@@ -278,6 +297,7 @@ class GameEngine(object):
             self.PlayFrame(s, rec.evts[(rec.idx - rewind + i) % rec.size])
             pass
         return s
+
     def CreateGame(self):
         '''Create the initial game state.
 
@@ -329,14 +349,14 @@ class GameEngine(object):
         s.paddle_left.pos_y = 0
         s.paddle_left.vel_x = 0
         s.paddle_left.vel_y = 0
-        s.paddle_left.half_width = 10
-        s.paddle_left.half_height = 60 
+        s.paddle_left.half_width = 8
+        s.paddle_left.half_height = 30
         s.paddle_right.pos_x = 2 * s.screen.half_width - 60
         s.paddle_right.pos_y = 0
         s.paddle_right.vel_x = 0
         s.paddle_right.vel_y = 0
-        s.paddle_right.half_width = 10
-        s.paddle_right.half_height = 60
+        s.paddle_right.half_width = 8
+        s.paddle_right.half_height = 30
         # scores[p] is the score for player p.
         s.scores = [0, 0, 0]
         # roles[p] is the current role of player p.
