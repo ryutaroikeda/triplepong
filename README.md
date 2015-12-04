@@ -1,6 +1,8 @@
 Triple pong
 A pong game for three players. And flappy birds!
 
+[![Build Status](https://travis-ci.org/ryutaroikeda/triplepong.svg?branch=master)](https://travis-ci.org/ryutaroikeda/triplepong)
+
 To do:
 
 Engine:
