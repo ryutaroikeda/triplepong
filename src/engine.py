@@ -1,4 +1,5 @@
 import copy
+import logging
 import multiprocessing
 import os
 import sys
@@ -9,6 +10,48 @@ from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
 from renderer import Renderer
+import tplogger
+logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
+'''The gameengine module.
+
+Notes on lag compensation.
+We want the user to experience as little  network latency as possible. To 
+achieve this, we can perform lag compensation on the server. The server and 
+client keep a record of the game state and inputs for each frame up to about 2L 
+frames, where L is the latency (more precisely, the number of frames that would 
+be played in that time). When the client presses a key, the game responds 
+immediately. At the same time, the client sends the key press together with the 
+frame number f to the server. After about L frames, the server receives these. 
+To compensate for the lag L, the server rewinds to the frame when the key was 
+pressed and replays all the key events received since that time. The server 
+then sends back 'relevant data to represent the state' and the frame number 
+f + L. The client receives 
+these after another L frames. The client can then similarly rewind to frame f 
+and replay any keys since that time to compute the current state.
+
+There are at least three approaches to what the server could send. One is 
+sending the state resulting from the replay. 
+
+There is a problem when the client enters a key between frames f and f + L. 
+When the client receives the state from the server at f + 2L, we only rewind 
+to f + L. Since what we receive is only a response to events up to time f, 
+any event between f and f + L, say f + e  will not be taken into account. To 
+the client, it will look as if that event was 'cancelled' - until the client 
+receives the reply for it at time f + e + 2L. A workaround would be to 
+prohibit key presses for L frames after the last.
+
+Another approach is to send a list of pairs, each pair a frame number and the 
+corresponding events at that frame. This solution avoids the need for key 
+press prohibition above. However, if the server takes longer than expected to 
+send the reply (i.e. 2L frames), the client may not be able to rewind far 
+enough into the past to correctly reproduce the state. To avoid this, the 
+client must stall the game if the game record has been filled to 2L frames 
+since the last reply from the server.
+
+Alternatively, the server could send both keys and state, to get the best of 
+both.
+
+At the moment, the first solution is preferred for its simplicity.'''
 
 class GameRecord:
     '''This class records the game state and key events of each frame for up 
@@ -62,15 +105,17 @@ class GameEngine(object):
 
     Attributes:
     last_key_time      -- The time of the last game event sent to the server. 
-    key_cool_down_time -- The minimum time between game events. See design.txt 
-    for more details.'''
+    key_cool_down_time -- The minimum time between game events. See above notes 
+                          on lag compensation for more details.
+    player_id          -- The player ID of the client.'''
 
     def __init__(self):
         self.last_key_time = 0.0
         self.key_cool_down_time = 0.200
+        self.player_id = 0
         pass
 
-    def GetEvents(self):
+    def GetEvents(self, s):
         '''Return a list of events to apply.
 
         Return value:
@@ -79,7 +124,11 @@ class GameEngine(object):
         gameevent.py).
 
         To do: Use EventQueue and move the keyboard event getter elsewhere.
-        To do: Allow user to configure key bindings.'''
+        To do: Allow user to configure key bindings.
+
+        Arguments:
+        s -- The game state.'''
+
         evts = []
         # Events should be pumped before calling get_pressed(). These functions 
         # are wrappers for SDL functions intended to be used in this way.
@@ -92,7 +141,13 @@ class GameEngine(object):
             now = time.time()
             if now - self.last_key_time >= self.key_cool_down_time:
                 self.last_key_time = now
-                evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+                if s.roles[self.player_id] == GameState.ROLE_LEFT_PADDLE:
+                    evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+                elif s.roles[self.player_id] == GameState.ROLE_RIGHT_PADDLE:
+                    evts.append(GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+                elif s.roles[self.player_id] == GameState.ROLE_BALL:
+                    evts.append(GameEvent.EVENT_FLAP_BALL)
+                pass
             pass
         return evts
 
@@ -306,10 +361,13 @@ class GameEngine(object):
         Return value:
         The initial game state.'''
         s = GameState()
-        s.game_length = 1000.0
-        s.sessionlength = s.game_length / 3
-        # the number of rounds (i.e. rotation of roles) per game
+        # The number of players.
+        s.player_size = 3
+        s.game_length = 30.0
+        # the number of rounds (i.e. full rotation of roles) per game
         s.rounds = 1
+        s.round_length = s.game_length / s.rounds
+        s.rotation_length = s.round_length / s.player_size
         s.frames_per_sec = 60.0
         s.sec_per_frame = 1 / s.frames_per_sec
         s.screen.half_width = 320
@@ -363,25 +421,24 @@ class GameEngine(object):
         s.roles = [GameState.ROLE_LEFT_PADDLE, GameState.ROLE_RIGHT_PADDLE,
                 GameState.ROLE_BALL]
         # players[r] is the ID of the player with role r.
-        s.players = [0, 1, 2]
+        s.players = [0, 0, 1, 2]
         s.start_time = time.time()
         return s
 
-    def Run(self):
-        s = self.CreateGame()
-        rec = GameRecord()
-        # Pick an estimate for a value greater than 2L. We won't bother 
-        #  measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
-        # enough for a decent connection, and the player wouldn't want to play 
-        # on anything worse.
-        rec.SetSize(360)
-        r = Renderer()
-        r.Init()
+    def RunGame(self, s, rec, r, timeout):
+        '''Run the game.
+
+        Arguments:
+        s       -- The game state to run the game from.
+        rec     -- The game record for saving state and events.
+        r       -- The renderer.
+        timeout -- The amount of time to run the game.'''
+        start_time = time.time()
         while True:
             s.frame_start = time.time()
-            if s.frame_start - s.start_time >= s.game_length:
+            if s.frame_start - start_time >= timeout:
                 break
-            evts = self.GetEvents()
+            evts = self.GetEvents(s)
             self.PlayFrame(s, evts)
             rec.AddEntry(s, evts)
             r.RenderAll(s)
@@ -392,7 +449,51 @@ class GameEngine(object):
         pass
     pass
 
+    def PlayRotation(self, s, rec, r):
+        '''Play one rotation of the game.
+
+        Argument:
+        s -- The game state to start the rotation from.'''
+
+        logger.debug('starting rotation')
+        self.RunGame(s, rec, r, s.rotation_length)
+
+    def PlayRound(self, s, rec, r):
+        '''Play one round of the game, with each player playing every role.
+
+        Argument:
+        s -- The game state to start the round from.'''
+
+        logger.debug('starting round')
+        for i in range(0, s.player_size):
+            self.PlayRotation(s, rec, r)
+            # rotate roles
+            tmp = s.roles[1:]
+            tmp.append(s.roles[0])
+            s.roles = tmp
+            for pid in range(0, s.player_size):
+                s.players[ s.roles[pid] ] = pid
+                pass
+            pass
+        pass
+
+    def Play(self):
+        s = self.CreateGame()
+        rec = GameRecord()
+        # Pick an estimate for a value greater than 2L. We won't bother 
+        #  measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
+        # enough for a decent connection, and the player wouldn't want to play 
+        # on anything worse.
+        rec.SetSize(360)
+        r = Renderer()
+        r.Init()
+        #e.RunGame(s, rec, r, 10)
+        for i in range(0, s.rounds):
+            self.PlayRound(s, rec, r)
+            pass
+        pass
+
 if __name__ == '__main__':
     e = GameEngine()
-    e.Run()
+    e.Play()
     pass
