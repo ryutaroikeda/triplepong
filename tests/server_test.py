@@ -42,7 +42,7 @@ class TPServerTest(unittest.TestCase):
     def tearDown(self):
         pass
     def test_handshake_one_client(self):
-        addr = ('127.0.0.1', 8080)
+        addr = ('127.0.0.1', 8085)
         svrsock, clientsock = socket.socketpair(
                 socket.AF_UNIX, socket.SOCK_STREAM)
         c = TPClient()
@@ -60,7 +60,7 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 1)
         pass
     def test_handshake_two_clients_sequence(self):
-        addr = ('127.0.0.1', 8080)
+        addr = ('127.0.0.1', 8081)
         c1 = TPClient()
         c2 = TPClient()
         q = multiprocessing.Queue()
@@ -85,7 +85,7 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 2)
         pass
     def test_handshake_three_clients_sequence(self):
-        addr = ('127.0.0.1', 8080)
+        addr = ('127.0.0.1', 8082)
         c1 = TPClient()
         c2 = TPClient()
         c3 = TPClient()
@@ -115,7 +115,7 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 3)
         pass
     def test_handshake_two_clients_parallel(self):
-        addr = ('127.0.0.1', 8080)
+        addr = ('127.0.0.1', 8083)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -142,7 +142,7 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 2)
         pass
     def test_handshake_three_clients_parallel(self):
-        addr = ('127.0.0.1', 8080)
+        addr = ('127.0.0.1', 8084)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
