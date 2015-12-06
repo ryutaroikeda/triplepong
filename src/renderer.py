@@ -22,12 +22,22 @@ class Renderer:
     def RenderScore(self, surface, state):
         pass
     def RenderState(self, surface, state):
+        '''Render the game state.
+
+        Arguments:
+        surface -- The pygame surface to render to.
+        state   -- The game state to render.'''
+
         paddle_left = self.GetRect(state.paddle_left)
         paddle_right = self.GetRect(state.paddle_right)
         ball = self.GetRect(state.ball)
+        ball_wall_top = self.GetRect(state.ball_wall_top)
+        ball_wall_bottom = self.GetRect(state.ball_wall_bottom)
         pygame.draw.rect(surface, (255, 255, 255), paddle_left)
         pygame.draw.rect(surface, (255, 255, 255), paddle_right)
         pygame.draw.rect(surface, (255, 255, 255), ball)
+        pygame.draw.rect(surface, (255, 255, 255), ball_wall_top)
+        pygame.draw.rect(surface, (255, 255, 255), ball_wall_bottom)
         pass
     def RenderAll(self, state):
         self.RenderBackground(self.surface)

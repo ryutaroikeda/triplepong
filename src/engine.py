@@ -166,14 +166,16 @@ class GameEngine(object):
 
         Arguments:
         s -- the game state'''
+        PADDLE_TERM_VELOCITY = 16
+        BALL_TERM_VELOCITY   = 32
 
-        if s.paddle_left.vel_y < 16:
+        if s.paddle_left.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_left.vel_y += 1
             pass
-        if s.paddle_right.vel_y < 16:
+        if s.paddle_right.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_right.vel_y += 1
             pass
-        if s.ball.vel_y < 16:
+        if s.ball.vel_y < BALL_TERM_VELOCITY:
             s.ball.vel_y += 1
             pass
         pass
@@ -360,10 +362,16 @@ class GameEngine(object):
 
         Return value:
         The initial game state.'''
+        buffer_region = 50
+        ball_wall_offset_x = 8
+        ball_wall_offset_y = 40
+        paddle_offset = 60
+        paddle_half_width = 8
+        paddle_half_height = 30
         s = GameState()
         # The number of players.
         s.player_size = 3
-        s.game_length = 30.0
+        s.game_length = 60.0
         # the number of rounds (i.e. full rotation of roles) per game
         s.rounds = 1
         s.round_length = s.game_length / s.rounds
@@ -372,7 +380,6 @@ class GameEngine(object):
         s.sec_per_frame = 1 / s.frames_per_sec
         s.screen.half_width = 320
         s.screen.half_height = 240
-        buffer_region = 50
         s.goal_left.pos_x = - buffer_region
         s.goal_left.pos_y = s.screen.half_height
         s.goal_left.half_width = buffer_region
@@ -382,12 +389,15 @@ class GameEngine(object):
         s.goal_right.half_width = buffer_region
         s.goal_right.half_height = 100 * s.screen.half_height
         s.ball_wall_top.pos_x = s.screen.half_width
-        s.ball_wall_top.pos_y = - buffer_region
-        s.ball_wall_top.half_width = s.screen.half_width
+        s.ball_wall_top.pos_y = - buffer_region + ball_wall_offset_y
+        s.ball_wall_top.half_width = (s.screen.half_width - paddle_offset -
+        paddle_half_width - ball_wall_offset_x)
         s.ball_wall_top.half_height = buffer_region
         s.ball_wall_bottom.pos_x = s.screen.half_width
-        s.ball_wall_bottom.pos_y = 2 * s.screen.half_height +  buffer_region
-        s.ball_wall_bottom.half_width = s.screen.half_width
+        s.ball_wall_bottom.pos_y = (2 * s.screen.half_height +  buffer_region -
+        ball_wall_offset_y)
+        s.ball_wall_bottom.half_width = (s.screen.half_width - paddle_offset -
+        paddle_half_width - ball_wall_offset_x)
         s.ball_wall_bottom.half_height = buffer_region
         s.paddle_wall_top.pos_x = s.screen.half_width
         s.paddle_wall_top.pos_y = - buffer_region
@@ -403,18 +413,18 @@ class GameEngine(object):
         s.ball.vel_y = 0
         s.ball.half_width = 2
         s.ball.half_height = 2
-        s.paddle_left.pos_x = 60
+        s.paddle_left.pos_x = paddle_offset
         s.paddle_left.pos_y = 0
         s.paddle_left.vel_x = 0
         s.paddle_left.vel_y = 0
-        s.paddle_left.half_width = 8
-        s.paddle_left.half_height = 30
-        s.paddle_right.pos_x = 2 * s.screen.half_width - 60
+        s.paddle_left.half_width = paddle_half_width
+        s.paddle_left.half_height = paddle_half_height
+        s.paddle_right.pos_x = 2 * s.screen.half_width - paddle_offset 
         s.paddle_right.pos_y = 0
         s.paddle_right.vel_x = 0
         s.paddle_right.vel_y = 0
-        s.paddle_right.half_width = 8
-        s.paddle_right.half_height = 30
+        s.paddle_right.half_width = paddle_half_width
+        s.paddle_right.half_height = paddle_half_height
         # scores[p] is the score for player p.
         s.scores = [0, 0, 0]
         # roles[p] is the current role of player p.

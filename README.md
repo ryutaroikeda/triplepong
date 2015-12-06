@@ -7,12 +7,10 @@ A pong game for three players. And flappy birds!
 
 To do:
 
-Engine:
-Player role rotation.
-
 Networking:
 Write methods to get game events from server / client (non-blocking).
 Event serialization.
+Initialize player roles.
 
 User Interface:
 Render the score.
