@@ -5,6 +5,15 @@ sys.path.append(os.path.abspath('src'))
 from gamestate import GameState
 
 class Renderer:
+    '''The Renderer renders the game state to the window. It uses pygame.
+
+    To use the renderer r, call r.Init(), then r.RenderAll(s), where s is a 
+    game state.
+    
+    Attributes:
+    screen_width  -- The width of the screen.
+    screen_height -- The height of the screen.'''
+
     def __init__(self):
         self.screen_width = 640
         self.screen_height = 480
@@ -16,10 +25,15 @@ class Renderer:
         return (obj.pos_x - obj.half_width, obj.pos_y - obj.half_height,
                 2 * obj.half_width, 2 * obj.half_height)
     def RenderBackground(self, surface):
+        '''Fills the background with one color.'''
+
         pygame.draw.rect(surface, (0, 0, 0),
                 (0, 0, self.screen_width, self.screen_height))
         pass
     def RenderScore(self, surface, state):
+        '''Render the score of all players.
+
+        To do:'''
         pass
     def RenderState(self, surface, state):
         '''Render the game state.
@@ -40,17 +54,27 @@ class Renderer:
         pygame.draw.rect(surface, (255, 255, 255), ball_wall_bottom)
         pass
     def RenderAll(self, state):
+        '''Render the screen.
+        
+        Argument:
+        state -- The game state to render.'''
+
         self.RenderBackground(self.surface)
         self.RenderScore(self.surface, state)
         self.RenderState(self.surface, state)
         pygame.display.flip()
         pass
     def Init(self):
+        '''Initialize the renderer. This must be called before use.'''
+
         pygame.init()
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()
         pass
     def Run(self):
+        '''To do: Use this to run the renderer as a separate process.
+        This is not important now.'''
+
         pygame.init()
         pygame.display.set_mode((640, 480))
         #

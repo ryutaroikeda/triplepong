@@ -7,18 +7,26 @@ A pong game for three players. And flappy birds!
 
 To do:
 
+Engine:
+
 Networking:
-Write methods to get game events from server / client (non-blocking).
-Event serialization.
-Initialize player roles.
+* Write methods to get game events from server / client (non-blocking).
+* Event serialization.
+* Initialize player roles.
 
 User Interface:
-Render the score.
-Render the time (until next rotation, end of game).
-End of game message.
-Menu for choosing game server.
-Sound effects.
-Music.
+* Render the score.
+* Render the time (until next rotation, end of game).
+* End of game message.
+* Menu for choosing game server.
+* Sound effects.
+* Music.
 
 Testing:
-Fix Travis.
+
+Extensions:
+* Support UPnP.
+* AI player.
+* Official website. 
+* Smart-phone app.
+* Port to browser.
