@@ -6,7 +6,7 @@ import socket
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
-from gameengine import GameEngine
+from engine import GameEngine
 import tpsocket
 from tpmessage import TPMessage
 import tplogger

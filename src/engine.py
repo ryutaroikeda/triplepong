@@ -158,7 +158,7 @@ class GameEngine(object):
 
         Return value:
         The game state sent by the server.'''
-        if self.server = None:
+        if self.server == None:
             return None
         (svrs, _, _) = select.select([self.server], [], [], 0.0)
         if len(svrs) == 0:
