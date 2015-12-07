@@ -4,6 +4,11 @@ import struct
 import time
 
 def recvall(sock, bufsize, timeout):
+    '''Tries to read bufsize bytes from socket sock until timeout.
+
+    Return value:
+    A byte string consisting of the bytes read.'''
+
     buf = b''
     start = time.time()
     while True: 

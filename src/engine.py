@@ -118,6 +118,51 @@ class GameEngine(object):
         self.clients = []
         self.server = None
         pass
+    def GetKeyboardEvents(self, s):
+        '''Create a list of keyboard events.
+
+        The keyboard events are represented by key event codes, defined in 
+        gameevent.py.
+
+        Key presses during cool-down periods are suppressed.
+
+        Argument:
+        s -- The game state.
+
+        Return value:
+        A list of keyboard event codes.'''
+        evts = []
+        # Events should be pumped before calling get_pressed(). These functions 
+        # are wrappers for SDL functions intended to be used in this way.
+        # See https://www.pygame.org/docs/ref/
+        # key.html#comment_pygame_key_get_pressed
+        pygame.event.pump()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            # Check if we are in cool-down.
+            now = time.time()
+            if now - self.last_key_time >= self.key_cool_down_time:
+                self.last_key_time = now
+                if s.roles[self.player_id] == GameState.ROLE_LEFT_PADDLE:
+                    evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+                elif s.roles[self.player_id] == GameState.ROLE_RIGHT_PADDLE:
+                    evts.append(GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+                elif s.roles[self.player_id] == GameState.ROLE_BALL:
+                    evts.append(GameEvent.EVENT_FLAP_BALL)
+                pass
+            pass
+        return evts
+
+    def GetStateUpdateEvent(self):
+        '''Get state update from the server.
+
+        Return value:
+        The game state sent by the server.'''
+        if self.server = None:
+            return None
+        (svrs, _, _) = select.select([self.server], [], [], 0.0)
+        if len(svrs) == 0:
+            return None
 
     def GetEvents(self, s):
         '''Return a list of events to apply.
@@ -157,6 +202,15 @@ class GameEngine(object):
         timeout = 0.0
         (clients, _, _) = select.select(self.clients, [], [], timeout)
         for c in clients:
+            b = tpsocket.recvall(c, EventType.GetSize(), timeout)
+            evt_type = EventType()
+            evt_type.Deserialize(b)
+            if evt_type.evt_type == EventType.KEYBOARD:
+                b = tpsocket.recvall(c, GameEvent.GetSize(), timeout)
+                evt = GameEvent()
+                evt.Deserialize(b)
+                evts.extend(evt.keys)
+                pass
             pass
         return evts
 
@@ -166,16 +220,6 @@ class GameEngine(object):
         Arguments:
         s    -- The game state.
         evts -- the list of events to send'''
-
-    def RecordKeyEvent(self, s, evt):
-        '''Record that event evt happened at the current frame.
-        
-        Note: This interface is subject to change.
-
-        Arguments:
-        s   -- The current game state.
-        evt -- The event to record.'''
-        raise NotImplementedError
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
