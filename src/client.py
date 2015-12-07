@@ -6,15 +6,16 @@ import socket
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from gameengine import GameEngine
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
 logger = tplogger.getTPLogger('client.log', logging.DEBUG)
+
 class TPClient(object):
     def __init__(self):
         pass
-    # handshake to start a game session
-    # sock is a socket connected to the game server
+
     def Handshake(self, sock):
         '''Performs a handshake with the server.
         
@@ -57,6 +58,16 @@ class TPClient(object):
         logger.info('handshake completed successfully')
         return 0
 
+    def PlayGame(self, svrsock):
+        '''Play the game hosted by the server. svrsock must be connected to the 
+        server before calling this method.
+
+        Argument:
+        svrsock -- A socket connected to the server.'''
+
+        #e = GameEngine(svraddr)
+
+
     def Run(self, svraddr):
         '''Run the game as a client.
 
@@ -83,6 +94,7 @@ class TPClient(object):
             logger.info('initiating handshake')
             self.handshake(sock)
             logger.info('starting game')
+            self.PlayGame(sock)
             pass
         sock.close()
         return 0

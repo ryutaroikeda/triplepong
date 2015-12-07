@@ -107,12 +107,16 @@ class GameEngine(object):
     last_key_time      -- The time of the last game event sent to the server. 
     key_cool_down_time -- The minimum time between game events. See above notes 
                           on lag compensation for more details.
-    player_id          -- The player ID of the client.'''
+    player_id          -- The player ID of the client.
+    clients            -- The list of client sockets.
+    server             -- The socket connected to the server.'''
 
     def __init__(self):
         self.last_key_time = 0.0
         self.key_cool_down_time = 0.200
         self.player_id = 0
+        self.clients = []
+        self.server = None
         pass
 
     def GetEvents(self, s):
@@ -149,7 +153,19 @@ class GameEngine(object):
                     evts.append(GameEvent.EVENT_FLAP_BALL)
                 pass
             pass
+        # Read client sockets for key events.
+        timeout = 0.0
+        (clients, _, _) = select.select(self.clients, [], [], timeout)
+        for c in clients:
+            pass
         return evts
+
+    def SendEvents(self, evts):
+        '''Serialize game events and send to the server.
+
+        Arguments:
+        s    -- The game state.
+        evts -- the list of events to send'''
 
     def RecordKeyEvent(self, s, evt):
         '''Record that event evt happened at the current frame.
@@ -449,6 +465,7 @@ class GameEngine(object):
             if s.frame_start - start_time >= timeout:
                 break
             evts = self.GetEvents(s)
+            # to do: send events
             self.PlayFrame(s, evts)
             rec.AddEntry(s, evts)
             r.RenderAll(s)
