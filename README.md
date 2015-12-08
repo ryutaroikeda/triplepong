@@ -23,6 +23,7 @@ User Interface:
 * Music.
 
 Testing:
+* Make travis pass. (Travis can't find pygame.)
 
 Extensions:
 * Support UPnP.

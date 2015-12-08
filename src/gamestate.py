@@ -51,7 +51,7 @@ class GameState:
         self.paddle_right = GameObject()
         pass
     def GetSize():
-        return struct.calcsize(GameState.FORMAT)
+        return struct.calcsize(GameState.SUBFORMAT)
     def Serialize(self):
         '''Serialize a partial representation of the state.
 

@@ -1,6 +1,7 @@
 import os
 import socket
 import sys
+import time
 import unittest
 sys.path.append(os.path.abspath('src'))
 from eventsocket import EventSocket
@@ -19,6 +20,20 @@ class EventSocketTest(unittest.TestCase):
         self.assertTrue(received_evt.keys[0] == \
                 GameEvent.EVENT_FLAP_LEFT_PADDLE)
         pass
+    def test_read_and_write_state_update(self):
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        evt = GameState()
+        evt.ball.pos_x = 100
+        svr.WriteEvent(evt)
+        start_time = time.time()
+        timeout = 2
+        while time.time() - start_time <= timeout:
+            self.received_evt = client.ReadEvent()
+            if not self.received_evt == None:
+                break
+        self.assertTrue(self.received_evt.ball.pos_x == evt.ball.pos_x)
     pass
 
 
