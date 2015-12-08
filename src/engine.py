@@ -115,6 +115,8 @@ class GameEngine(object):
         self.last_key_time = 0.0
         self.key_cool_down_time = 0.200
         self.player_id = 0
+        self.is_client = True
+        self.is_server = False
         self.clients = []
         self.server = None
         pass
@@ -153,51 +155,29 @@ class GameEngine(object):
             pass
         return evts
 
-    def GetStateUpdateEvent(self):
+    def GetServerEvent(self):
         '''Get state update from the server.
 
         Return value:
-        The game state sent by the server.'''
+        The game state sent by the server, or None if no update was 
+        available.'''
         if self.server == None:
             return None
         (svrs, _, _) = select.select([self.server], [], [], 0.0)
         if len(svrs) == 0:
             return None
+        b = tpsocket.recvall(svrs[0], EventType.GetSize(), 0.0)
+        evt_type = EventType()
+        evt_type.unpack(b)
+        if evt_type.evt_type == EventType.STATE_UPDATE:
+            b = tpsocket.recvall(svrs[0], GameState.GetSize(), 0.0)
+            evt = GameState()
+            evt.unpack(b)
+            return evt
+        return None
 
-    def GetEvents(self, s):
-        '''Return a list of events to apply.
-
-        Return value:
-        The list of events that should be applied to the current frame. Each 
-        event is a value defined in GameEvent (see ApplyEvents() and 
-        gameevent.py).
-
-        To do: Use EventQueue and move the keyboard event getter elsewhere.
-        To do: Allow user to configure key bindings.
-
-        Arguments:
-        s -- The game state.'''
-
+    def GetClientEvents(self):
         evts = []
-        # Events should be pumped before calling get_pressed(). These functions 
-        # are wrappers for SDL functions intended to be used in this way.
-        # See https://www.pygame.org/docs/ref/
-        # key.html#comment_pygame_key_get_pressed
-        pygame.event.pump()
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE]:
-            # Check if we are in cool-down.
-            now = time.time()
-            if now - self.last_key_time >= self.key_cool_down_time:
-                self.last_key_time = now
-                if s.roles[self.player_id] == GameState.ROLE_LEFT_PADDLE:
-                    evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
-                elif s.roles[self.player_id] == GameState.ROLE_RIGHT_PADDLE:
-                    evts.append(GameEvent.EVENT_FLAP_RIGHT_PADDLE)
-                elif s.roles[self.player_id] == GameState.ROLE_BALL:
-                    evts.append(GameEvent.EVENT_FLAP_BALL)
-                pass
-            pass
         # Read client sockets for key events.
         timeout = 0.0
         (clients, _, _) = select.select(self.clients, [], [], timeout)
@@ -212,6 +192,25 @@ class GameEngine(object):
                 evts.extend(evt.keys)
                 pass
             pass
+        return evts
+
+    def GetEvents(self, s):
+        '''Return a list of events to apply.
+
+        Return value:
+        The list of events that should be applied to the current frame. Each 
+        event is a value defined in GameEvent (see ApplyEvents() and 
+        gameevent.py).
+
+        To do: Use EventQueue and move the keyboard event getter elsewhere.
+        To do: Allow user to configure key bindings.
+
+        Arguments:
+        s -- The game state.'''
+        evts = []
+        if self.is_client:
+            evts.extend(self.GetKeyboardEvents(s))
+
         return evts
 
     def SendEvents(self, evts):

@@ -48,6 +48,8 @@ class GameState:
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
         pass
+    def GetSize(self):
+        return struct.calcsize(GameState.FORMAT)
     def Serialize(self):
         '''Serialize a partial representation of the state.
 
@@ -79,4 +81,11 @@ class GameState:
 
         Argument:
         update -- The partial game state to apply.'''
+        self.ball.pos_x = update.ball.pos_x
+        self.ball.pos_y = update.ball.pos_y
+        self.paddle_left.pos_y = update.paddle_left.pos_y
+        self.paddle_right.pos_y = update.paddle_right.pos_y
+        self.paddle_right.vel_y = update.paddle_right.vel_y
+        self.frame = update.frame
+        pass
     pass
