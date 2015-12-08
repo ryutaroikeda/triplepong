@@ -18,11 +18,11 @@ class TPMessageTest(unittest.TestCase):
         m = TPMessage()
         m.method = TPMessage.METHOD_ASKREADY
         b = m.pack()
-        self.assertTrue(b == b'\x00\x00\x00\x01')
+        self.assertTrue(b == b'\x00\x00\x00\x01\x00\x00\x00\x00')
         pass
     def test_unpack(self):
         m = TPMessage()
-        m.unpack(b'\x00\x00\x00\x01')
+        m.unpack(b'\x00\x00\x00\x01\x00\x00\x00\x00')
         self.assertTrue(m.method == TPMessage.METHOD_ASKREADY)
         pass
     def test_pack_unpack(self):

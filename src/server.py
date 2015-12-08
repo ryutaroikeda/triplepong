@@ -7,6 +7,7 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from engine import GameEngine
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
@@ -66,6 +67,9 @@ class TPServer(object):
         We do not count this as a handshake failure. This is because some 
         clients may have received  STARTGAME already, thus completing the 
         handshake for that client. This should be dealt with elsewhere.
+
+        The last STARTGAME message contains a player_id (which determines the 
+        initial role of the client).
 
         Arguments:
         conns - a mutable list of sockets connected to the server.
@@ -129,9 +133,11 @@ class TPServer(object):
                     + 'Handshake failed')
             return -1
         logger.info('sending game start message')
-        m.method = TPMessage.METHOD_STARTGAME
-        b = m.pack()
-        for sock in conns:
+        for i in range(0, len(conns)):
+            sock = conns[i]
+            m.method = TPMessage.METHOD_STARTGAME
+            m.player_id = i
+            b = m.pack()
             logger.debug('sending bytes {0}'.format(b))
             try:
                 sock.sendall(b)
@@ -144,10 +150,25 @@ class TPServer(object):
             pass
         logger.info('handshake successful')
         return 0
-    # addr is the address of the server
-    # clientNum is the number of clients per game
-    # fork a thread and run the server. Return the pid of the child
-    def Run(self, addr, clientNum) -> int:
+
+    def PlayGame(self, clients):
+        '''Runs the game for clients.
+
+        Argument:
+        clients -- A list of sockets connected to the clients.'''
+        e = GameEngine()
+        e.is_server = True
+        e.is_client = False
+        e.clients = clients
+        e.Play()
+
+    def Run(self, addr, clientNum):
+        '''Run the game server.
+
+        Arguments:
+        addr      -- The address of the server (ip, port).
+        clientNum -- The number of clients in the game.'''
+
         logger.info('starting server at {0}'.format(addr))
         # fix me: use UDP?
         serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -156,14 +177,15 @@ class TPServer(object):
         serversock.listen(10)
         while True:
             clients = self.AcceptN(serversock, clientNum)
-            self.handshake(clients)
+            self.Handshake(clients)
             if clients.__len__() < clientNum:
                 logger.error('handshake failed, retrying')
                 continue
-            # to do: start the game
+            self.PlayGame(clients)
             break
         serversock.close()
-        return 0
     pass
 
-# to do: test dead client removal in handshake
+if __name__ == '__main__':
+    s = TPServer()
+    s.Run(('127.0.0.1', 8090), 1)

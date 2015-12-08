@@ -14,15 +14,22 @@ logger = tplogger.getTPLogger('client.log', logging.DEBUG)
 
 class TPClient(object):
     def __init__(self):
+        self.player_id = 0
         pass
 
-    def Handshake(self, sock):
+    def Handshake(self, sock, timeout):
         '''Performs a handshake with the server.
         
         The handshake is described in server.py:41:Handshake()
 
+        After a successful handshake, .player_id is set to the value specified 
+        by the server.
+
         Arguments:
-        sock -- a socket connected to a game server.
+        sock    -- A socket connected to a game server.
+        timeout -- The maximum time to wait for each reply from the server, in 
+        seconds.
+
         Return value:
         This method returns 0 on successful completion of the handshake (from 
         the client's point of view) and -1 otherwise.'''
@@ -31,7 +38,7 @@ class TPClient(object):
         logger.info('waiting for server to ask for confirmation')
         m = TPMessage()
         bufsize = m.getsize()
-        b = tpsocket.recvall(sock, bufsize, 1.0)
+        b = tpsocket.recvall(sock, bufsize, timeout)
         logger.info('message received')
         if len(b) < bufsize:
             logger.error(
@@ -45,7 +52,7 @@ class TPClient(object):
         m.method = TPMessage.METHOD_CONFIRM
         sock.sendall(m.pack())
         logger.info('waiting for server to announce start of game')
-        b = tpsocket.recvall(sock, bufsize, 1.0)
+        b = tpsocket.recvall(sock, bufsize, timeout)
         logger.debug('received bytes {0}'.format(b))
         if len(b) < bufsize:
             logger.error(
@@ -55,6 +62,7 @@ class TPClient(object):
         if m.method != TPMessage.METHOD_STARTGAME:
             logger.error('server could not start game')
             return -1
+        self.player_id = m.player_id
         logger.info('handshake completed successfully')
         return 0
 
@@ -65,8 +73,12 @@ class TPClient(object):
         Argument:
         svrsock -- A socket connected to the server.'''
 
-        #e = GameEngine(svraddr)
-
+        e = GameEngine()
+        e.server = svrsock
+        e.is_client = True
+        e.is_server = False
+        e.player_id = self.player_id
+        e.Play()
 
     def Run(self, svraddr):
         '''Run the game as a client.
@@ -85,14 +97,15 @@ class TPClient(object):
                 sock.close()
                 pass
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            logger.info('connecting to {0}'.format(servaddr))
+            logger.info('connecting to {0}'.format(svraddr))
             try:
-                sock.connect(servaddr)
+                sock.connect(svraddr)
             except:
                 logger.info('connection failed, retrying')
                 continue
             logger.info('initiating handshake')
-            self.handshake(sock)
+            if self.Handshake(sock, 60) == -1:
+                continue
             logger.info('starting game')
             self.PlayGame(sock)
             pass
@@ -101,4 +114,6 @@ class TPClient(object):
         pass
     pass
 
-
+if __name__ == '__main__':
+    c = TPClient()
+    c.Run(('127.0.0.1', 8090))

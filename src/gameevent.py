@@ -20,15 +20,15 @@ class GameEvent:
     EVENT_FLAP_LEFT_PADDLE = 1
     EVENT_FLAP_RIGHT_PADDLE = 2
     EVENT_FLAP_BALL = 4
-    SUBFORMAT = '!i!L'
-    FORMAT = '!i' + SUBFORMAT
+    SUBFORMAT = '!iL'
+    FORMAT = '!iiL'
     def __init__(self):
         self.event_type = EventType.KEYBOARD
         self.keys = []
         self.frame = 0
         pass
-    def GetSize(self):
-        return struct.calcsize(self.SUBFORMAT)
+    def GetSize():
+        return struct.calcsize(GameEvent.SUBFORMAT)
     def Serialize(self):
         '''
         Return value:
@@ -36,7 +36,7 @@ class GameEvent:
         flag = 0
         for k in self.keys:
             flag += k
-        return struct.pack(self.FORMAT, self.event_type, self.flag,
+        return struct.pack(self.FORMAT, self.event_type, flag,
                 self.frame)
 
     def Deserialize(self, b):

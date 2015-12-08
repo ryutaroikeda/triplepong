@@ -2,14 +2,17 @@ import copy
 import logging
 import multiprocessing
 import os
+import select
 import sys
 import time
 import pygame
 sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
 from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
 from renderer import Renderer
+import tpsocket
 import tplogger
 logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
 '''The gameengine module.
@@ -155,37 +158,45 @@ class GameEngine(object):
             pass
         return evts
 
-    def GetServerEvent(self):
+    def GetServerEvent(self, svr):
         '''Get state update from the server.
 
+        Argument:
+        svr -- The socket connected to the server.
         Return value:
         The game state sent by the server, or None if no update was 
         available.'''
-        if self.server == None:
+        if svr == None:
             return None
-        (svrs, _, _) = select.select([self.server], [], [], 0.0)
+        (svrs, _, _) = select.select([svr], [], [], 0.0)
         if len(svrs) == 0:
             return None
-        b = tpsocket.recvall(svrs[0], EventType.GetSize(), 0.0)
+        timeout = 0.5
+        b = tpsocket.recvall(svrs[0], EventType.GetSize(), timeout)
         evt_type = EventType()
-        evt_type.unpack(b)
-        if evt_type.evt_type == EventType.STATE_UPDATE:
-            b = tpsocket.recvall(svrs[0], GameState.GetSize(), 0.0)
+        evt_type.Deserialize(b)
+        if evt_type.event_type == EventType.STATE_UPDATE:
+            b = tpsocket.recvall(svrs[0], GameState.GetSize(), timeout)
             evt = GameState()
-            evt.unpack(b)
+            evt.Deserialize(b)
             return evt
         return None
 
-    def GetClientEvents(self):
+    def GetClientEvents(self, clients):
+        '''Read client sockets for keyboard events.
+
+        Arguments:
+        clients -- A list of client sockets.
+        Return value:
+        A list of keyboard event codes.'''
         evts = []
-        # Read client sockets for key events.
-        timeout = 0.0
-        (clients, _, _) = select.select(self.clients, [], [], timeout)
-        for c in clients:
+        timeout = 0.5
+        (ready_clients, _, _) = select.select(clients, [], [], timeout)
+        for c in ready_clients:
             b = tpsocket.recvall(c, EventType.GetSize(), timeout)
             evt_type = EventType()
             evt_type.Deserialize(b)
-            if evt_type.evt_type == EventType.KEYBOARD:
+            if evt_type.event_type == EventType.KEYBOARD:
                 b = tpsocket.recvall(c, GameEvent.GetSize(), timeout)
                 evt = GameEvent()
                 evt.Deserialize(b)
@@ -194,38 +205,30 @@ class GameEngine(object):
             pass
         return evts
 
-    def GetEvents(self, s):
-        '''Return a list of events to apply.
-
-        Return value:
-        The list of events that should be applied to the current frame. Each 
-        event is a value defined in GameEvent (see ApplyEvents() and 
-        gameevent.py).
-
-        To do: Use EventQueue and move the keyboard event getter elsewhere.
-        To do: Allow user to configure key bindings.
+    def SendStateUpdate(self, s, clients):
+        '''Send a partial state to the connected sockets in clients.
 
         Arguments:
-        s -- The game state.'''
-        evts = []
-        if self.is_client:
-            evts.extend(self.GetKeyboardEvents(s))
-            if not self.server == None:
-                evts.extend(self.GetServerEvent())
-                pass
-            pass
-        if self.is_server:
-            evts.extend(self.GetClientEvents())
-            pass
+        s      -- The game state to send.
+        clients -- The clients to send to.'''
+        b = s.Serialize()
+        for c in clients:
+            c.sendall(b)
 
-        return evts
-
-    def SendEvents(self, evts):
-        '''Serialize game events and send to the server.
+    def SendKeyboardEvents(self, svr, s, keys):
+        '''Serialize a list of game event codes and send to the server.
 
         Arguments:
+        svr  -- The server socket to send to.
         s    -- The game state.
-        evts -- the list of events to send'''
+        keys -- A list of game event codes, defined in gameevent.py'''
+        if svr == None:
+            return
+        evt = GameEvent()
+        evt.keys = keys
+        evt.frame = s.frame
+        b = evt.Serialize()
+        svr.sendall(b)
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
@@ -322,17 +325,17 @@ class GameEngine(object):
             s.paddle_right.vel_y = - s.paddle_right.vel_y
             pass
         if s.ball.IsCollidingWith(s.goal_left):
-            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
-                    s.ball_wall_bottom.pos_y ) / 2
+                    s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = -4
             s.ball.vel_y = 0
             s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
             pass
         if s.ball.IsCollidingWith(s.goal_right):
-            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) / 2
+            s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
-                    s.ball_wall_bottom.pos_y ) / 2
+                    s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = 4
             s.ball.vel_y = 0
             s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
@@ -504,6 +507,8 @@ class GameEngine(object):
     def RunGame(self, s, rec, r, timeout):
         '''Run the game.
 
+        This is the main game loop.
+
         Arguments:
         s       -- The game state to run the game from.
         rec     -- The game record for saving state and events.
@@ -514,9 +519,22 @@ class GameEngine(object):
             s.frame_start = time.time()
             if s.frame_start - start_time >= timeout:
                 break
-            evts = self.GetEvents(s)
-            # to do: send events
+            evts = []
+            update = None
+            if self.is_client:
+                evts.extend(self.GetKeyboardEvents(s))
+                # update = self.GetServerEvent(self.server)
+            if self.is_server:
+                evts.extend(self.GetClientEvents(self.clients))
+            if not update == None:
+                # s.ApplyUpdate(update)
+                pass
             self.PlayFrame(s, evts)
+            if self.is_client:
+                self.SendKeyboardEvents(self.server, s, evts)
+            if self.is_server:
+                self.SendStateUpdate(s, self.clients)
+
             rec.AddEntry(s, evts)
             r.RenderAll(s)
             delta = time.time() - s.frame_start
@@ -558,7 +576,7 @@ class GameEngine(object):
         s = self.CreateGame()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L. We won't bother 
-        #  measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
+        # measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
         # enough for a decent connection, and the player wouldn't want to play 
         # on anything worse.
         rec.SetSize(360)

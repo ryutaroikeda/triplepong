@@ -3,6 +3,7 @@ import struct
 import sys
 sys.path.append(os.path.abspath('src'))
 from gameobject import GameObject
+from eventtype import EventType
 
 class GameState:
     '''This class represents the current game state.
@@ -13,7 +14,8 @@ class GameState:
     ROLE_LEFT_PADDLE = 1
     ROLE_RIGHT_PADDLE = 2
     ROLE_BALL = 3
-    FORMAT = '!i!i!i!i!i!i!i!i!L'
+    SUBFORMAT = '!iiiiiiiiL'
+    FORMAT    = '!iiiiiiiiiL'
     def __init__(self):
         ##
         ## Game configuration
@@ -48,7 +50,7 @@ class GameState:
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
         pass
-    def GetSize(self):
+    def GetSize():
         return struct.calcsize(GameState.FORMAT)
     def Serialize(self):
         '''Serialize a partial representation of the state.
@@ -60,6 +62,7 @@ class GameState:
         Return value:
         A byte string representation of the partial state.'''
         return struct.pack(GameState.FORMAT,
+                EventType.STATE_UPDATE,
                 self.ball.pos_x, self.ball.pos_y,
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
@@ -71,7 +74,7 @@ class GameState:
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
-                self.frame,) = struct.unpack(GameState.FORMAT, b)
+                self.frame,) = struct.unpack(GameState.SUBFORMAT, b)
         pass
     def ApplyUpdate(self, update):
         '''Updates the state of the game with update, a partial game state.
