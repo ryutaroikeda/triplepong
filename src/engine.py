@@ -210,6 +210,13 @@ class GameEngine(object):
         evts = []
         if self.is_client:
             evts.extend(self.GetKeyboardEvents(s))
+            if not self.server == None:
+                evts.extend(self.GetServerEvent())
+                pass
+            pass
+        if self.is_server:
+            evts.extend(self.GetClientEvents())
+            pass
 
         return evts
 
