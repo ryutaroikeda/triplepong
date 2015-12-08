@@ -13,13 +13,16 @@ def recvall(sock, bufsize, timeout):
     start = time.time()
     while True: 
         delta = time.time() - start
-        if delta >= timeout:
-            break
-        (ready, _, _) = select.select([sock], [], [], timeout - delta)
+        select_time = timeout - delta
+        if select_time < 0.0:
+            select_time = 0.0
+        (ready, _, _) = select.select([sock], [], [], select_time)
         if ready == []:
             break
         buf += sock.recv(bufsize - len(buf))
         if len(buf)  >= bufsize:
+            break
+        if delta >= timeout:
             break
         pass
     return buf
