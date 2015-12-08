@@ -43,7 +43,6 @@ class TPServerTest(unittest.TestCase):
     def tearDown(self):
         pass
     def test_handshake_one_client(self):
-        addr = ('127.0.0.1', 8085)
         svrsock, clientsock = socket.socketpair(
                 socket.AF_UNIX, socket.SOCK_STREAM)
         c = TPClient()
