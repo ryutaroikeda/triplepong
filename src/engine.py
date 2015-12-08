@@ -93,8 +93,8 @@ class GameRecord:
         Arguments:
         s    -- The game state.
         evts -- A list of game events.'''
-        self.states[self.idx] = s
-        self.events[self.idx] = evts
+        self.states[self.idx] = copy.deepcopy(s)
+        self.events[self.idx] = copy.deepcopy(evts)
         self.idx = (self.idx + 1) % self.size
         pass
         
@@ -179,12 +179,12 @@ class GameEngine(object):
         Arguments:
         clients -- A list of client sockets.
         Return value:
-        A list of keyboard event codes.'''
+        A list of game events.'''
         evts = []
         for c in clients:
             evt = c.ReadEvent()
             if not evt == None:
-                evts.extend(evt.keys)
+                evts.append(evt)
             pass
         return evts
 
@@ -361,7 +361,7 @@ class GameEngine(object):
         if rewind <= 0:
             # The server is ahead of the client. Go to auth_state directly.
             rec.idx = 0
-            rec.state[0] = auth_state
+            rec.states[0] = copy.deepcopy(auth_state)
             rec.events[0] = []
             return auth_state
         if rewind > rec.size:
@@ -373,22 +373,23 @@ class GameEngine(object):
             pass
         return auth_state
     
-    def RewindAndReplayWithKey(self, current_state, frame, evts, rec):
-        '''Rewind and replay the game based on an event in the past.
+    def RewindAndReplayWithKey(self, current_state, evt, rec):
+        '''Rewind and replay the game based on events in the past.
 
         This method is intended to be used by the server to correct its 
         authoritative state in response to key events sent by the client.
 
+        This method updates the record at frame evt.frame.
+
         Arguments:
         current_state -- The game state of the server.
-        frame         -- The frame at which the event happened.
-        evts          -- A list of events to play at frame.
+        evt           -- A game event to play.
         rec           -- A game record.
 
         Return value:
         The game state resulting from the rewind and replay if the rewind 
         was successful, and None otherwise.'''
-        rewind = current_state.frame - frame
+        rewind = current_state.frame - evt.frame
         if rewind <= 0:
             # The client is ahead of the server. Ignore.
             return None
@@ -397,9 +398,11 @@ class GameEngine(object):
             # Fix me: We could consider rewinding to the oldest available 
             # frame.
             return None
+        # Update the record
+        rec.evts[(rec.idx - rewind) % rec.size].extend(evt.keys)
         # Create a copy of the state to work on so we don't tamper with the 
-        # record. 
-        s = copy.deepcopy(rec.state[(rec.idx - rewind) % rec.size])
+        # record any more. 
+        s = copy.deepcopy(rec.states[(rec.idx - rewind) % rec.size])
         self.PlayFrame(s, evts)
         for i in range(0, rewind):
             self.PlayFrame(s, rec.evts[(rec.idx - rewind + i) % rec.size])
@@ -506,17 +509,26 @@ class GameEngine(object):
             if self.is_client:
                 evts.extend(self.GetKeyboardEvents(s))
                 update = self.GetServerEvent(self.server)
+                if not update == None:
+                    current_frame = s.frame
+                    s.ApplyUpdate(update)
+                    #self.RewindAndReplayWithState(s, current_frame, rec)
+                    pass
+                pass
             if self.is_server:
-                evts.extend(self.GetClientEvents(self.clients))
-            if not update == None:
-                s.ApplyUpdate(update)
+                key_evts = self.GetClientEvents(self.clients)
+                for evt in key_evts:
+                    new_state = self.RewindAndReplayWithKey(s, evt, rec)
+                    if not new_state == None:
+                        s = new_state
+                        pass
+                    pass
                 pass
             self.PlayFrame(s, evts)
             if self.is_client:
                 self.SendKeyboardEvents(self.server, s, evts)
             if self.is_server:
                 self.SendStateUpdate(self.clients, s)
-
             rec.AddEntry(s, evts)
             r.RenderAll(s)
             delta = time.time() - s.frame_start
