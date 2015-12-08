@@ -505,11 +505,11 @@ class GameEngine(object):
             update = None
             if self.is_client:
                 evts.extend(self.GetKeyboardEvents(s))
-                # update = self.GetServerEvent(self.server)
+                update = self.GetServerEvent(self.server)
             if self.is_server:
                 evts.extend(self.GetClientEvents(self.clients))
             if not update == None:
-                # s.ApplyUpdate(update)
+                s.ApplyUpdate(update)
                 pass
             self.PlayFrame(s, evts)
             if self.is_client:

@@ -190,4 +190,4 @@ class TPServer(object):
 
 if __name__ == '__main__':
     s = TPServer()
-    s.Run(('127.0.0.1', 8090), 1)
+    s.Run(('127.0.0.1', 8090), 2)
