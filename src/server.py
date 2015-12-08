@@ -7,6 +7,7 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from eventsocket import EventSocket
 from engine import GameEngine
 import tpsocket
 from tpmessage import TPMessage
@@ -181,7 +182,8 @@ class TPServer(object):
             if clients.__len__() < clientNum:
                 logger.error('handshake failed, retrying')
                 continue
-            self.PlayGame(clients)
+            evtsock_clients = [EventSocket(c) for c in clients]
+            self.PlayGame(evtsock_clients)
             break
         serversock.close()
     pass

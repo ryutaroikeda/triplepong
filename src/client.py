@@ -6,6 +6,7 @@ import socket
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from eventsocket import EventSocket
 from engine import GameEngine
 import tpsocket
 from tpmessage import TPMessage
@@ -107,7 +108,7 @@ class TPClient(object):
             if self.Handshake(sock, 60) == -1:
                 continue
             logger.info('starting game')
-            self.PlayGame(sock)
+            self.PlayGame(EventSocket(sock))
             pass
         sock.close()
         return 0
