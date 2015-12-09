@@ -14,11 +14,10 @@ class EventSocketTest(unittest.TestCase):
         svr = EventSocket(serversock)
         client = EventSocket(clientsock)
         evt = GameEvent()
-        evt.keys.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
         svr.WriteEvent(evt)
         received_evt = client.ReadEvent()
-        self.assertTrue(received_evt.keys[0] == \
-                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        self.assertTrue(received_evt.keys == evt.keys)
         pass
     def test_read_and_write_state_update(self):
         ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)

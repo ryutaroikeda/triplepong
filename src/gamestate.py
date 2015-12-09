@@ -9,13 +9,14 @@ class GameState:
     '''This class represents the current game state.
 
     Attributes:
-    frame -- the number of frames since the start of the game.'''
+    frame     -- The number of frames since the start of the game.
+    key_flags -- The keys pressed in the current frame.'''
     ROLE_NONE = 0
     ROLE_LEFT_PADDLE = 1
     ROLE_RIGHT_PADDLE = 2
     ROLE_BALL = 3
-    SUBFORMAT = '!iiiiiiiiL'
-    FORMAT    = '!iiiiiiiiiL'
+    SUBFORMAT = '!iiiiiiiiiL'
+    FORMAT    = '!iiiiiiiiiiL'
     def __init__(self):
         ##
         ## Game configuration
@@ -42,6 +43,7 @@ class GameState:
                 GameState.ROLE_RIGHT_PADDLE, GameState.ROLE_BALL]
         # players[r] is the player of role r.
         self.players = [0, 1, 2]
+        self.key_flags = 0
         ##
         ## Game states
         ## Parts of these are sent by the server to each client
@@ -67,6 +69,7 @@ class GameState:
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
+                self.key_flags,
                 self.frame)
     def Deserialize(self, b):
         '''Deserialize a partial representation of the state.'''
@@ -74,6 +77,7 @@ class GameState:
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
+                self.key_flags,
                 self.frame,) = struct.unpack(GameState.SUBFORMAT, b)
         pass
     def ApplyUpdate(self, update):
@@ -89,6 +93,7 @@ class GameState:
         self.paddle_left.pos_y = update.paddle_left.pos_y
         self.paddle_right.pos_y = update.paddle_right.pos_y
         self.paddle_right.vel_y = update.paddle_right.vel_y
+        self.key_flags |= update.key_flags
         self.frame = update.frame
         pass
     pass

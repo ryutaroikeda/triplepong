@@ -5,6 +5,7 @@ import time
 import unittest
 sys.path.append(os.path.abspath('src'))
 from engine import GameEngine
+from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
@@ -31,10 +32,22 @@ class GameEngineTest(unittest.TestCase):
         client = EventSocket(csock)
         e = GameEngine()
         s = GameState()
-        keys = [GameEvent.EVENT_FLAP_LEFT_PADDLE]
+        keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
         e.SendKeyboardEvents(svr, s, keys)
         time.sleep(.1)
-        evts = e.GetClientEvents([client])
-        self.assertTrue(evts[0].keys[0] == GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        received_keys = e.GetClientEvents([client])
+        self.assertTrue(received_keys[0].keys == GameEvent.EVENT_FLAP_LEFT_PADDLE)
         pass
+    def test_rewind_with_state(self):
+        e = GameEngine()
+        s = GameState()
+        r = GameRecord()
+        r.SetSize(60)
+        for i in range(0, 60):
+            r.AddEntry(s)
+            e.PlayFrame(s, 0)
+            pass
+
+
+
     pass

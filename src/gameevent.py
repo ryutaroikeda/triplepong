@@ -33,22 +33,12 @@ class GameEvent:
         '''
         Return value:
         The byte string representation of the event.'''
-        flag = 0
-        for k in self.keys:
-            flag += k
-        return struct.pack(self.FORMAT, self.event_type, flag,
+        return struct.pack(self.FORMAT, self.event_type, self.keys,
                 self.frame)
 
     def Deserialize(self, b):
         '''Deserialize the byte string representation of the game event.
         
         The event_type should not be included in b.'''
-        (flag, self.frame,) = struct.unpack(self.SUBFORMAT, b)
-        if flag & self.EVENT_FLAP_LEFT_PADDLE:
-            self.keys.append(self.EVENT_FLAP_LEFT_PADDLE)
-        if flag & self.EVENT_FLAP_RIGHT_PADDLE:
-            self.keys.append(self.EVENT_FLAP_RIGHT_PADDLE)
-        if flag & self.EVENT_FLAP_BALL:
-            self.keys.append(self.EVENT_FLAP_BALL)
-        pass
+        (self.keys, self.frame,) = struct.unpack(self.SUBFORMAT, b)
     pass

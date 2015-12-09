@@ -14,6 +14,7 @@ class GameStateTest(unittest.TestCase):
         s.paddle_left.vel_y = 4
         s.paddle_right.pos_y = 2
         s.paddle_right.vel_y = 87
+        s.key_flags = 3
         s.frame = 112734590
         # Ignore the EventType header.
         b = s.Serialize()[4:]
@@ -27,6 +28,7 @@ class GameStateTest(unittest.TestCase):
         self.assertTrue(t.paddle_left.vel_y == s.paddle_left.vel_y)
         self.assertTrue(t.paddle_right.pos_y == s.paddle_right.pos_y)
         self.assertTrue(t.paddle_right.vel_y == s.paddle_right.vel_y)
+        self.assertTrue(t.key_flags == s.key_flags)
         self.assertTrue(t.frame == s.frame)
         pass
 

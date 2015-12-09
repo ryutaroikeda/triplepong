@@ -59,19 +59,23 @@ At the moment, the first solution is preferred for its simplicity.'''
 
 class GameRecord:
     '''This class records the game state and key events of each frame for up 
-    to 2L frames into the past, where 2L is the estimated number of frames to 
-    be played during a round-trip time.
+    to 2L frames into the past, where 2L is the estimated number of frames 
+    played during a round-trip time.
+
+    The .states contain game states prior to PlayFrame(). This means that the 
+    actual state is obtained by calling PlayFrame on the state together with 
+    the entry in .events.
     
     Attributes:
     size   -- The maximum number of records to keep.
     idx    -- The index to states and events to write to next.
     states -- The recorded game states.
     events -- The recorded key events.'''
+
     def __init__(self):
         self.size = 0
         self.idx = 0
         self.states = []
-        self.events = []
         pass
 
     def SetSize(self, size):
@@ -83,18 +87,16 @@ class GameRecord:
         self.size = size
         for i in range(0, size):
             self.states.append(0)
-            self.events.append(0)
             pass
         pass
 
-    def AddEntry(self, s, evts):
+    def AddEntry(self, s):
         '''Add an entry to the game record.
 
         Arguments:
         s    -- The game state.
         evts -- A list of game events.'''
         self.states[self.idx] = copy.deepcopy(s)
-        self.events[self.idx] = copy.deepcopy(evts)
         self.idx = (self.idx + 1) % self.size
         pass
         
@@ -127,7 +129,7 @@ class GameEngine(object):
         self.server = None
         pass
     def GetKeyboardEvents(self, s):
-        '''Create a list of keyboard events.
+        '''Get the flag for the currently pressed keys.
 
         The keyboard events are represented by key event codes, defined in 
         gameevent.py.
@@ -139,27 +141,27 @@ class GameEngine(object):
 
         Return value:
         A list of keyboard event codes.'''
-        evts = []
         # Events should be pumped before calling get_pressed(). These functions 
         # are wrappers for SDL functions intended to be used in this way.
         # See https://www.pygame.org/docs/ref/
         # key.html#comment_pygame_key_get_pressed
         pygame.event.pump()
         keys = pygame.key.get_pressed()
+        flag = 0
         if keys[pygame.K_SPACE]:
             # Check if we are in cool-down.
             now = time.time()
             if now - self.last_key_time >= self.key_cool_down_time:
                 self.last_key_time = now
                 if s.roles[self.player_id] == GameState.ROLE_LEFT_PADDLE:
-                    evts.append(GameEvent.EVENT_FLAP_LEFT_PADDLE)
+                    flag |= GameEvent.EVENT_FLAP_LEFT_PADDLE
                 elif s.roles[self.player_id] == GameState.ROLE_RIGHT_PADDLE:
-                    evts.append(GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+                    flag |= GameEvent.EVENT_FLAP_RIGHT_PADDLE
                 elif s.roles[self.player_id] == GameState.ROLE_BALL:
-                    evts.append(GameEvent.EVENT_FLAP_BALL)
+                    flag |= GameEvent.EVENT_FLAP_BALL
                 pass
             pass
-        return evts
+        return flag
 
     def GetServerEvent(self, svr):
         '''Get state update from the server.
@@ -204,7 +206,7 @@ class GameEngine(object):
         Arguments:
         svr  -- The server socket to send to.
         s    -- The game state.
-        keys -- A list of game event codes, defined in gameevent.py'''
+        keys -- A flag of game event codes, defined in gameevent.py'''
         if svr == None:
             return
         evt = GameEvent()
@@ -231,10 +233,10 @@ class GameEngine(object):
             pass
         pass
 
-    def ApplyEvents(self, s, evts):
+    def ApplyEvents(self, s, keys):
         '''Apply the effect of events to the game state.
 
-        evts should be a list consisting of the following values defined 
+        keys should be an OR'd flag consisting of the following values defined 
         in gameevent.py:
         EVENT_FLAP_NO_OP         -- Do nothing.
         EVENT_FLAP_LEFT_PADDLE
@@ -249,16 +251,14 @@ class GameEngine(object):
 
         PADDLE_FLAP_VEL = -12
         BALL_FLAP_VEL   = -8
-        for e in evts:
-            if e == GameEvent.EVENT_FLAP_LEFT_PADDLE:
-                s.paddle_left.vel_y = PADDLE_FLAP_VEL
-                pass
-            if e == GameEvent.EVENT_FLAP_RIGHT_PADDLE:
-                s.paddle_right.vel_y = PADDLE_FLAP_VEL
-                pass
-            if e == GameEvent.EVENT_FLAP_BALL:
-                s.ball.vel_y = BALL_FLAP_VEL
-                pass
+        if keys & GameEvent.EVENT_FLAP_LEFT_PADDLE:
+            s.paddle_left.vel_y = PADDLE_FLAP_VEL
+            pass
+        if keys & GameEvent.EVENT_FLAP_RIGHT_PADDLE:
+            s.paddle_right.vel_y = PADDLE_FLAP_VEL
+            pass
+        if keys & GameEvent.EVENT_FLAP_BALL:
+            s.ball.vel_y = BALL_FLAP_VEL
             pass
         pass
 
@@ -324,14 +324,14 @@ class GameEngine(object):
             pass
         pass
 
-    def PlayFrame(self, s, evts):
+    def PlayFrame(self, s, keys):
         '''Move the game forward by one frame.
 
         Arguments:
         s    -- The game state.
-        evts -- The game events to apply.'''
+        keys -- The flag for key events.'''
         self.ApplyGravity(s)
-        self.ApplyEvents(s, evts)
+        self.ApplyEvents(s, keys)
         self.ApplyLogic(s)
         pass
 
@@ -379,7 +379,8 @@ class GameEngine(object):
         This method is intended to be used by the server to correct its 
         authoritative state in response to key events sent by the client.
 
-        This method updates the record at frame evt.frame.
+        This method updates the event records at frame evt.frame and updates
+        all later states.
 
         Arguments:
         current_state -- The game state of the server.
@@ -400,14 +401,13 @@ class GameEngine(object):
             return None
         # Update the record
         rec.evts[(rec.idx - rewind) % rec.size].extend(evt.keys)
-        # Create a copy of the state to work on so we don't tamper with the 
-        # record any more. 
-        s = copy.deepcopy(rec.states[(rec.idx - rewind) % rec.size])
-        self.PlayFrame(s, evts)
         for i in range(0, rewind):
-            self.PlayFrame(s, rec.evts[(rec.idx - rewind + i) % rec.size])
+            idx = (rec.idx - rewind + i) % rec.size
+            s = copy.deepcopy(rec.states[idx])
+            self.PlayFrame(s, rec.evts[idx])
+            rec.states[(idx + 1) % rec.size] = s
             pass
-        return s
+        return rec.states[rec.idx]
 
     def CreateGame(self):
         '''Create the initial game state.
@@ -504,32 +504,33 @@ class GameEngine(object):
             s.frame_start = time.time()
             if s.frame_start - start_time >= timeout:
                 break
-            evts = []
+            keys = 0
             update = None
             if self.is_client:
-                evts.extend(self.GetKeyboardEvents(s))
+                keys = self.GetKeyboardEvents(s)
+                s.key_flags = keys
                 update = self.GetServerEvent(self.server)
                 if not update == None:
                     current_frame = s.frame
-                    s.ApplyUpdate(update)
+                    #s.ApplyUpdate(update)
                     #self.RewindAndReplayWithState(s, current_frame, rec)
                     pass
                 pass
             if self.is_server:
                 key_evts = self.GetClientEvents(self.clients)
                 for evt in key_evts:
-                    new_state = self.RewindAndReplayWithKey(s, evt, rec)
-                    if not new_state == None:
-                        s = new_state
-                        pass
+                    #new_state = self.RewindAndReplayWithKey(s, evt, rec)
+                    #if not new_state == None:
+                        #s = new_state
+                        #pass
                     pass
                 pass
-            self.PlayFrame(s, evts)
+            rec.AddEntry(s)
+            self.PlayFrame(s, keys)
             if self.is_client:
-                self.SendKeyboardEvents(self.server, s, evts)
+                self.SendKeyboardEvents(self.server, s, keys)
             if self.is_server:
                 self.SendStateUpdate(self.clients, s)
-            rec.AddEntry(s, evts)
             r.RenderAll(s)
             delta = time.time() - s.frame_start
             if 0 < delta and delta < s.sec_per_frame:
@@ -576,7 +577,6 @@ class GameEngine(object):
         rec.SetSize(360)
         r = Renderer()
         r.Init()
-        #e.RunGame(s, rec, r, 10)
         for i in range(0, s.rounds):
             self.PlayRound(s, rec, r)
             pass
