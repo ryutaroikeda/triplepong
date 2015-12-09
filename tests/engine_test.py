@@ -71,7 +71,7 @@ class GameEngineTest(unittest.TestCase):
         e = GameEngine()
         s = GameState()
         r = GameRecord()
-        r.SetSize(60)
+        r.SetSize(61)
         for i in range(0, 60):
             r.AddEntry(s)
             e.PlayFrame(s, 0)

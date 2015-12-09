@@ -9,6 +9,7 @@ To do:
 
 Engine:
 * Event rewind.
+* Eliminate dependency on renderer (to get rid of pygame import)
 
 Testing:
 * Make unittests pass. (Rewind with key is broken.)
@@ -18,6 +19,7 @@ Networking:
 * Test performance after engine is completed.
 
 User Interface:
+* Command line for setting up server / client.
 * Render the score.
 * Render the time (until next rotation, end of game).
 * End of game message.

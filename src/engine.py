@@ -86,7 +86,7 @@ class GameRecord:
         size -- The new size of the record.'''
         self.size = size
         for i in range(0, size):
-            self.states.append(0)
+            self.states.append(GameState())
             pass
         pass
 
@@ -399,7 +399,7 @@ class GameEngine(object):
         if rewind <= 0:
             # The client is ahead of the server. Ignore.
             return None
-        if rewind > rec.size:
+        if rewind >= rec.size:
             # The event is too old to rewind. Ignore.
             # Fix me: We could consider rewinding to the oldest available 
             # frame.
@@ -410,6 +410,7 @@ class GameEngine(object):
             idx = (rec.idx - rewind + i) % rec.size
             s = copy.deepcopy(rec.states[idx])
             self.PlayFrame(s, rec.states[idx].key_flags)
+            s.key_flags = rec.states[(idx + 1) % rec.size].key_flags
             rec.states[(idx + 1) % rec.size] = s
             pass
         return copy.deepcopy(rec.states[rec.idx])

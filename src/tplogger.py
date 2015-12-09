@@ -11,7 +11,7 @@ def getTPLogger(filename: str, level) -> logging.Logger:
     form = logging.Formatter(
             "%(asctime)s %(filename)s:%(lineno)s:%(funcName)s " +
             "%(levelname)s %(message)s")
-    handler = logging.FileHandler(filename, "a", encoding=None, delay=False)
+    handler = logging.FileHandler(filename, "w", encoding=None, delay=False)
     handler.setFormatter(form)
     logger.addHandler(handler)
     return logger
