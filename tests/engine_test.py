@@ -36,7 +36,8 @@ class GameEngineTest(unittest.TestCase):
         e.SendKeyboardEvents(svr, s, keys)
         time.sleep(.1)
         received_keys = e.GetClientEvents([client])
-        self.assertTrue(received_keys[0].keys == GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        self.assertTrue(received_keys[0].keys == \
+                GameEvent.EVENT_FLAP_LEFT_PADDLE)
         pass
     def test_rewind_with_state(self):
         e = GameEngine()
@@ -47,7 +48,13 @@ class GameEngineTest(unittest.TestCase):
             r.AddEntry(s)
             e.PlayFrame(s, 0)
             pass
-
-
+        auth = GameState()
+        auth.key_flags = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        #e.RewindAndReplayWithState(auth, s.frame, r)
+        test = GameState()
+        e.PlayFrame(test, GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        for i in range(1, 60):
+            e.PlayFrame(test, 0)
+        #self.assertTrue(e.__dict__ == auth.__dict__)
 
     pass

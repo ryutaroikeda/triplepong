@@ -32,4 +32,9 @@ class GameStateTest(unittest.TestCase):
         self.assertTrue(t.frame == s.frame)
         pass
 
+    def test_eq(self):
+        s = GameState()
+        t = GameState()
+        self.assertTrue(s == t)
+
 

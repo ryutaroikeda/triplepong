@@ -9,6 +9,12 @@ class GameObject:
         self.half_width = 0
         self.half_height = 0
         pass
+    def __eq__(self, other):
+        if other == None:
+            return False
+        return self.__dict__ == other.__dict__
+    def __ne__(self, other):
+        return not self == other
     def IsCollidingWith(self, other):
         '''Checks for a collision.
 

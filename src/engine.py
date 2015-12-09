@@ -349,6 +349,8 @@ class GameEngine(object):
         authoritative state auth_state from the server to correct the local 
         game state.
 
+        auth_state will be changed.
+
         Arguments:
         auth_state    -- The state to replay from. 
         current_frame -- The frame to replay to.

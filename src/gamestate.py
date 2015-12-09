@@ -52,6 +52,18 @@ class GameState:
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
         pass
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __eq__(self, other):
+        if other == None:
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self == other
+
     def GetSize():
         return struct.calcsize(GameState.SUBFORMAT)
     def Serialize(self):
