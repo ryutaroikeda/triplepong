@@ -8,7 +8,7 @@ from eventsocket import EventSocket
 from gameevent import GameEvent
 from gamestate import GameState
 class EventSocketTest(unittest.TestCase):
-    def test_read_and_write(self):
+    def test_read_and_write_key(self):
         serversock, clientsock = socket.socketpair(socket.AF_UNIX,
                 socket.SOCK_STREAM)
         svr = EventSocket(serversock)

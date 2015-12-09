@@ -334,6 +334,7 @@ class GameEngine(object):
         self.ApplyEvents(s, keys)
         self.ApplyLogic(s)
         s.frame += 1
+        s.key_flags = 0
         pass
 
     def RewindAndReplayWithState(self, auth_state, current_frame, rec):
@@ -377,7 +378,7 @@ class GameEngine(object):
         auth_state.key_flags = 0
         return auth_state
     
-    def RewindAndReplayWithKey(self, current_state, evt, rec):
+    def RewindAndReplayWithKey(self, current_frame, evt, rec):
         '''Rewind and replay the game based on events in the past.
 
         This method is intended to be used by the server to correct its 
@@ -394,7 +395,7 @@ class GameEngine(object):
         Return value:
         The game state resulting from the rewind and replay if the rewind 
         was successful, and None otherwise.'''
-        rewind = current_state.frame - evt.frame
+        rewind = current_frame - evt.frame
         if rewind <= 0:
             # The client is ahead of the server. Ignore.
             return None
@@ -404,14 +405,14 @@ class GameEngine(object):
             # frame.
             return None
         # Update the record
-        rec.evts[(rec.idx - rewind) % rec.size].extend(evt.keys)
+        rec.states[(rec.idx - rewind) % rec.size].key_flags |= evt.keys
         for i in range(0, rewind):
             idx = (rec.idx - rewind + i) % rec.size
             s = copy.deepcopy(rec.states[idx])
-            self.PlayFrame(s, rec.evts[idx])
+            self.PlayFrame(s, rec.states[idx].key_flags)
             rec.states[(idx + 1) % rec.size] = s
             pass
-        return rec.states[rec.idx]
+        return copy.deepcopy(rec.states[rec.idx])
 
     def CreateGame(self):
         '''Create the initial game state.
@@ -516,24 +517,29 @@ class GameEngine(object):
                 update = self.GetServerEvent(self.server)
                 if not update == None:
                     current_frame = s.frame
-                    #s.ApplyUpdate(update)
-                    #self.RewindAndReplayWithState(s, current_frame, rec)
+                    s.ApplyUpdate(update)
+                    self.RewindAndReplayWithState(s, current_frame, rec)
                     pass
                 pass
+            did_receive_client_evt = False
             if self.is_server:
                 key_evts = self.GetClientEvents(self.clients)
+                if len(key_evts) > 0:
+                    did_receive_client_evt = True
+                current_frame = s.frame
                 for evt in key_evts:
-                    #new_state = self.RewindAndReplayWithKey(s, evt, rec)
-                    #if not new_state == None:
-                        #s = new_state
-                        #pass
+                    new_state = self.RewindAndReplayWithKey(current_frame,
+                            evt, rec)
+                    if not new_state == None:
+                        s = new_state
+                        pass
                     pass
                 pass
             rec.AddEntry(s)
             self.PlayFrame(s, keys)
-            if self.is_client:
+            if self.is_client and keys != 0:
                 self.SendKeyboardEvents(self.server, s, keys)
-            if self.is_server:
+            if self.is_server and did_receive_client_evt:
                 self.SendStateUpdate(self.clients, s)
             r.RenderAll(s)
             delta = time.time() - s.frame_start

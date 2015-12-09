@@ -8,11 +8,14 @@ A pong game for three players. And flappy birds!
 To do:
 
 Engine:
+* Event rewind.
+
+Testing:
+* Make unittests pass. (Rewind with key is broken.)
+* Make travis pass. (Travis can't find pygame.)
 
 Networking:
-* Write methods to get game events from server / client (non-blocking).
-* Event serialization.
-* Initialize player roles.
+* Test performance after engine is completed.
 
 User Interface:
 * Render the score.
@@ -21,9 +24,6 @@ User Interface:
 * Menu for choosing game server.
 * Sound effects.
 * Music.
-
-Testing:
-* Make travis pass. (Travis can't find pygame.)
 
 Extensions:
 * Support UPnP.

@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from gamestate import GameState
+from gameobject import GameObject
 
 class GameStateTest(unittest.TestCase):
     def test_Serialize_and_Deserialize(self):
@@ -36,15 +37,22 @@ class GameStateTest(unittest.TestCase):
         s = GameState()
         s.ball.vel_x = 100
         s.roles[0] = GameState.ROLE_BALL
+        s.paddle_left = GameObject()
+        s.paddle_left.pos_x = 99
+        s.players = [3,4,5]
         t = GameState()
         t.ball.vel_x = 100
         t.roles[0] = GameState.ROLE_BALL
+        t.paddle_left = GameObject()
+        t.paddle_left.pos_x = 99
+        t.players = [3,4,5]
         self.assertTrue(s == t)
 
     def test_ne(self):
         s = GameState()
         s.ball.vel_x = 100
         t = GameState()
+        t.ball.vel_x = 200
         self.assertTrue(s != t)
 
 

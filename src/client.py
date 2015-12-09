@@ -117,4 +117,5 @@ class TPClient(object):
 
 if __name__ == '__main__':
     c = TPClient()
+    #c.Run(('sodium.techmeology.co.uk', 8090))
     c.Run(('127.0.0.1', 8090))

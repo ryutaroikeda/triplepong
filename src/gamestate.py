@@ -1,10 +1,12 @@
+import logging
 import os
 import struct
 import sys
 sys.path.append(os.path.abspath('src'))
 from gameobject import GameObject
 from eventtype import EventType
-
+import tplogger
+logger = tplogger.getTPLogger('gamestate.log', logging.DEBUG)
 class GameState:
     '''This class represents the current game state.
 
@@ -63,11 +65,24 @@ class GameState:
 
     def __ne__(self, other):
         return not self == other
+
     def __hash__(self):
         '''Override default hash behaviour (which is to return the object ID).
         We do this define equality.'''
         return hash(tuple(sorted(self.__dict__.items())))
 
+    def Diff(self, other):
+        a = self.__dict__
+        b = other.__dict__
+        for key in b:
+            if a[key] != b[key]:
+                logger.debug('{0}: {1} != {2}'.format(key, a[key], b[key]))
+        for key in a:
+            if a[key] != b[key]:
+                logger.debug('{0}: {1} != {2}'.format(key, a[key], b[key]))
+                pass
+            pass
+        pass
 
     def GetSize():
         return struct.calcsize(GameState.SUBFORMAT)
