@@ -34,7 +34,17 @@ class GameStateTest(unittest.TestCase):
 
     def test_eq(self):
         s = GameState()
+        s.ball.vel_x = 100
+        s.roles[0] = GameState.ROLE_BALL
         t = GameState()
+        t.ball.vel_x = 100
+        t.roles[0] = GameState.ROLE_BALL
         self.assertTrue(s == t)
+
+    def test_ne(self):
+        s = GameState()
+        s.ball.vel_x = 100
+        t = GameState()
+        self.assertTrue(s != t)
 
 

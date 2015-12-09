@@ -63,6 +63,11 @@ class GameState:
 
     def __ne__(self, other):
         return not self == other
+    def __hash__(self):
+        '''Override default hash behaviour (which is to return the object ID).
+        We do this define equality.'''
+        return hash(tuple(sorted(self.__dict__.items())))
+
 
     def GetSize():
         return struct.calcsize(GameState.SUBFORMAT)

@@ -9,6 +9,10 @@ class GameObject:
         self.half_width = 0
         self.half_height = 0
         pass
+    def __repr__(self):
+        return str(self.__dict__)
+    #def __str__(self):
+    #    return str(self.__dict__)
     def __eq__(self, other):
         if other == None:
             return False

@@ -1,3 +1,4 @@
+import logging
 import os
 import socket
 import sys
@@ -9,6 +10,8 @@ from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
+import tplogger
+logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 class GameEngineTest(unittest.TestCase):
     def setUp(self):
         pass
@@ -50,11 +53,12 @@ class GameEngineTest(unittest.TestCase):
             pass
         auth = GameState()
         auth.key_flags = GameEvent.EVENT_FLAP_LEFT_PADDLE
-        #e.RewindAndReplayWithState(auth, s.frame, r)
+        rewound_state = e.RewindAndReplayWithState(auth, s.frame, r)
+        self.assertTrue(rewound_state != None)
         test = GameState()
         e.PlayFrame(test, GameEvent.EVENT_FLAP_LEFT_PADDLE)
         for i in range(1, 60):
             e.PlayFrame(test, 0)
-        #self.assertTrue(e.__dict__ == auth.__dict__)
-
+        logger.debug("\n{0}\n{1}".format(test, rewound_state))
+        self.assertTrue(test == rewound_state)
     pass

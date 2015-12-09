@@ -11,7 +11,9 @@ class GameObjectTest(unittest.TestCase):
         pass
     def test_eq(self):
         a = GameObject()
+        a.pos_x = 100
         b = GameObject()
+        b.pos_x = 100
         self.assertTrue(a == b)
         pass
     def test_ne(self):

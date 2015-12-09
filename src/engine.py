@@ -333,6 +333,7 @@ class GameEngine(object):
         self.ApplyGravity(s)
         self.ApplyEvents(s, keys)
         self.ApplyLogic(s)
+        s.frame += 1
         pass
 
     def RewindAndReplayWithState(self, auth_state, current_frame, rec):
@@ -342,8 +343,7 @@ class GameEngine(object):
         from that frame until the current frame over auth_state. 
         The inputs for the current frame are not handled here, so any events 
         must be applied to the result of this method.
-        The inputs  are recorded in rec. Records older than auth_state.frame 
-        are  discarded  from rec.
+        The inputs  are recorded in rec. 
 
         This method is intended to be used by the client receiving an 
         authoritative state auth_state from the server to correct the local 
@@ -364,15 +364,17 @@ class GameEngine(object):
             # The server is ahead of the client. Go to auth_state directly.
             rec.idx = 0
             rec.states[0] = copy.deepcopy(auth_state)
-            rec.events[0] = []
             return auth_state
         if rewind > rec.size:
             # The state is too old for rewind. Ignore.
             return None
+        rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
+                auth_state.key_flags
         for i in range(0, rewind):
             self.PlayFrame(auth_state,
-                    rec.events[(rec.idx - (rewind - i)) % rec.size])
+                    rec.states[(rec.idx - rewind + i) % rec.size].key_flags)
             pass
+        auth_state.key_flags = 0
         return auth_state
     
     def RewindAndReplayWithKey(self, current_state, evt, rec):
