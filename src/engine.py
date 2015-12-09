@@ -5,14 +5,14 @@ import os
 import select
 import sys
 import time
-import pygame
 sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 from eventsocket import EventSocket
 from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
-from renderer import Renderer
+from nullrenderer import NullRenderer
+from nullkeyboard import NullKeyboard
 import tpsocket
 import tplogger
 logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
@@ -112,6 +112,10 @@ class GameEngine(object):
     The client and server sockets are event sockets (eventsocket.py).
 
     Attributes:
+    renderer           -- The renderer to use. The default is the NullRenderer 
+                          which renders nothing.
+    keyboard           -- The keyboard to get input from. The default is the
+                          NullKeyboard which gets nothing.
     last_key_time      -- The time of the last game event sent to the server. 
     key_cool_down_time -- The minimum time between game events. See above notes 
                           on lag compensation for more details.
@@ -119,7 +123,10 @@ class GameEngine(object):
     clients            -- The list of client sockets.
     server             -- The socket connected to the server.'''
 
+    K_SPACE = 32
     def __init__(self):
+        self.renderer = NullRenderer()
+        self.keyboard = NullKeyboard()
         self.last_key_time = 0.0
         self.key_cool_down_time = 0.200
         self.player_id = 0
@@ -141,14 +148,9 @@ class GameEngine(object):
 
         Return value:
         A list of keyboard event codes.'''
-        # Events should be pumped before calling get_pressed(). These functions 
-        # are wrappers for SDL functions intended to be used in this way.
-        # See https://www.pygame.org/docs/ref/
-        # key.html#comment_pygame_key_get_pressed
-        pygame.event.pump()
-        keys = pygame.key.get_pressed()
+        keys = self.keyboard.GetKeys()
         flag = 0
-        if keys[pygame.K_SPACE]:
+        if keys[self.K_SPACE]:
             # Check if we are in cool-down.
             now = time.time()
             if now - self.last_key_time >= self.key_cool_down_time:
@@ -495,7 +497,7 @@ class GameEngine(object):
         s.start_time = time.time()
         return s
 
-    def RunGame(self, s, rec, r, timeout):
+    def RunGame(self, s, rec, timeout):
         '''Run the game.
 
         This is the main game loop.
@@ -503,7 +505,6 @@ class GameEngine(object):
         Arguments:
         s       -- The game state to run the game from.
         rec     -- The game record for saving state and events.
-        r       -- The renderer.
         timeout -- The amount of time to run the game.'''
         start_time = time.time()
         while True:
@@ -542,7 +543,7 @@ class GameEngine(object):
                 self.SendKeyboardEvents(self.server, s, keys)
             if self.is_server and did_receive_client_evt:
                 self.SendStateUpdate(self.clients, s)
-            r.RenderAll(s)
+            self.renderer.RenderAll(s)
             delta = time.time() - s.frame_start
             if 0 < delta and delta < s.sec_per_frame:
                 time.sleep(s.sec_per_frame - delta)
@@ -550,16 +551,16 @@ class GameEngine(object):
         pass
     pass
 
-    def PlayRotation(self, s, rec, r):
+    def PlayRotation(self, s, rec):
         '''Play one rotation of the game.
 
         Argument:
         s -- The game state to start the rotation from.'''
 
         logger.debug('starting rotation')
-        self.RunGame(s, rec, r, s.rotation_length)
+        self.RunGame(s, rec, s.rotation_length)
 
-    def PlayRound(self, s, rec, r):
+    def PlayRound(self, s, rec):
         '''Play one round of the game, with each player playing every role.
 
         Argument:
@@ -567,7 +568,7 @@ class GameEngine(object):
 
         logger.debug('starting round')
         for i in range(0, s.player_size):
-            self.PlayRotation(s, rec, r)
+            self.PlayRotation(s, rec)
             # rotate roles
             tmp = s.roles[1:]
             tmp.append(s.roles[0])
@@ -586,10 +587,8 @@ class GameEngine(object):
         # enough for a decent connection, and the player wouldn't want to play 
         # on anything worse.
         rec.SetSize(360)
-        r = Renderer()
-        r.Init()
         for i in range(0, s.rounds):
-            self.PlayRound(s, rec, r)
+            self.PlayRound(s, rec)
             pass
         pass
 

@@ -9,11 +9,9 @@ To do:
 
 Engine:
 * Event rewind.
-* Eliminate dependency on renderer (to get rid of pygame import)
 
 Testing:
-* Make unittests pass. (Rewind with key is broken.)
-* Make travis pass. (Travis can't find pygame.)
+* Make travis pass. (By eliminating pygame dependency)
 
 Networking:
 * Test performance after engine is completed.

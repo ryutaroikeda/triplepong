@@ -67,7 +67,7 @@ class TPClient(object):
         logger.info('handshake completed successfully')
         return 0
 
-    def PlayGame(self, svrsock):
+    def PlayGame(self, svrsock, renderer, keyboard):
         '''Play the game hosted by the server. svrsock must be connected to the 
         server before calling this method.
 
@@ -79,9 +79,11 @@ class TPClient(object):
         e.is_client = True
         e.is_server = False
         e.player_id = self.player_id
+        e.renderer = renderer
+        e.keyboard = keyboard
         e.Play()
 
-    def Run(self, svraddr):
+    def Run(self, svraddr, renderer, keyboard):
         '''Run the game as a client.
 
         This method attempts to connect to the game server at svraddr and start 
@@ -108,7 +110,7 @@ class TPClient(object):
             if self.Handshake(sock, 60) == -1:
                 continue
             logger.info('starting game')
-            self.PlayGame(EventSocket(sock))
+            self.PlayGame(EventSocket(sock), renderer, keyboard)
             pass
         sock.close()
         return 0
@@ -117,5 +119,7 @@ class TPClient(object):
 
 if __name__ == '__main__':
     c = TPClient()
-    #c.Run(('sodium.techmeology.co.uk', 8090))
-    c.Run(('127.0.0.1', 8090))
+    from renderer import Renderer
+    r = Renderer()
+    r.Init()
+    c.Run(('127.0.0.1', 8090), r, r)

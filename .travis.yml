@@ -7,10 +7,6 @@ python:
 - "3.5-dev" # development branch
 - "nightly"
 # install dependencies
-before_install:
-- sudo apt-get update
-- sudo apt-get build-dep python-pygame
-- sudo apt-get install python-pygame
 # install:
 # run tests
 script: make test

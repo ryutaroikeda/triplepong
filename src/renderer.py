@@ -9,6 +9,9 @@ class Renderer:
 
     To use the renderer r, call r.Init(), then r.RenderAll(s), where s is a 
     game state.
+
+    For the time being, the renderer is also a keyboard. The keyboard state 
+    is available with GetKeys().
     
     Attributes:
     screen_width  -- The width of the screen.
@@ -64,6 +67,15 @@ class Renderer:
         self.RenderState(self.surface, state)
         pygame.display.flip()
         pass
+    def GetKeys(self):
+        '''Get the keyboard state.'''
+        # Events should be pumped before calling get_pressed(). These functions 
+        # are wrappers for SDL functions intended to be used in this way.
+        # See https://www.pygame.org/docs/ref/
+        # key.html#comment_pygame_key_get_pressed
+        pygame.event.pump()
+        return pygame.key.get_pressed()
+
     def Init(self):
         '''Initialize the renderer. This must be called before use.'''
 

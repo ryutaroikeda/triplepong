@@ -190,4 +190,6 @@ class TPServer(object):
 
 if __name__ == '__main__':
     s = TPServer()
-    s.Run(('127.0.0.1', 8090), 1)
+    # The empty string represents INADDR_ANY.
+    # Using socket.INADDR_ANY will give you a type error.
+    s.Run(('', 8090), 1)
