@@ -80,7 +80,9 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(r.idx == 60)
         self.assertTrue(s.frame == 60)
         auth = GameState()
-        auth.frame = 10
+        for i in range(0, 10):
+            e.PlayFrame(auth, 0)
+        self.assertTrue(auth.frame == 10)
         auth.key_flags = GameEvent.EVENT_FLAP_BALL
         rewound = e.RewindAndReplayWithState(auth, s.frame, r)
         self.assertTrue(r.states[10].key_flags == GameEvent.EVENT_FLAP_BALL)
