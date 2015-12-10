@@ -67,34 +67,41 @@ class GameEngineTest(unittest.TestCase):
         s = GameState()
         r = GameRecord()
         r.SetSize(70)
-        for i in range(0, 29):
+        for i in range(0, 30):
             r.AddEntry(s, 0)
             e.PlayFrame(s, 0)
             pass
         r.AddEntry(s, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
         e.PlayFrame(s, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
-        for i in range(0, 30):
+        for i in range(0, 29):
             r.AddEntry(s, 0)
             e.PlayFrame(s, 0)
             pass
         self.assertTrue(r.idx == 60)
+        self.assertTrue(s.frame == 60)
         auth = GameState()
         auth.frame = 10
         auth.key_flags = GameEvent.EVENT_FLAP_BALL
         rewound = e.RewindAndReplayWithState(auth, s.frame, r)
+        self.assertTrue(r.states[10].key_flags == GameEvent.EVENT_FLAP_BALL)
+        self.assertTrue(r.states[30].key_flags == \
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
         self.assertTrue(rewound != None)
         test = GameState()
-        for i in range(0, 9):
+        for i in range(0, 10):
             e.PlayFrame(test, 0)
             pass
+        self.assertTrue(test.frame == 10)
         e.PlayFrame(test, GameEvent.EVENT_FLAP_BALL)
         for i in range(0, 19):
             e.PlayFrame(test, 0)
             pass
+        self.assertTrue(test.frame == 30)
         e.PlayFrame(test, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
-        for i in range(0, 30):
+        for i in range(0, 29):
             e.PlayFrame(test, 0)
             pass
+        self.assertTrue(test.frame == 60)
         logger.debug('\n{0}\n{1}'.format(test, rewound))
         self.assertTrue(test == rewound)
     
