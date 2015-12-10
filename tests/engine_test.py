@@ -39,8 +39,7 @@ class GameEngineTest(unittest.TestCase):
         e.SendKeyboardEvents(svr, s, keys)
         time.sleep(.1)
         received_keys = e.GetClientEvents([client])
-        self.assertTrue(received_keys[0].keys == \
-                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        self.assertTrue(received_keys[0].keys == keys)
         pass
     def test_rewind_with_state_1(self):
         e = GameEngine()
@@ -48,7 +47,7 @@ class GameEngineTest(unittest.TestCase):
         r = GameRecord()
         r.SetSize(60)
         for i in range(0, 60):
-            r.AddEntry(s)
+            r.AddEntry(s, 0)
             e.PlayFrame(s, 0)
             pass
         auth = GameState()
@@ -61,11 +60,43 @@ class GameEngineTest(unittest.TestCase):
             e.PlayFrame(test, 0)
         logger.debug("\n{0}\n{1}".format(test, rewound_state))
         self.assertTrue(test == rewound_state)
+
     def test_rewind_with_state_2(self):
+        '''Test rewinding and replaying on top of recorded key events.'''
         e = GameEngine()
         s = GameState()
         r = GameRecord()
-        # to do: replay events on top of other events
+        r.SetSize(70)
+        for i in range(0, 29):
+            r.AddEntry(s, 0)
+            e.PlayFrame(s, 0)
+            pass
+        r.AddEntry(s, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        e.PlayFrame(s, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        for i in range(0, 30):
+            r.AddEntry(s, 0)
+            e.PlayFrame(s, 0)
+            pass
+        self.assertTrue(r.idx == 60)
+        auth = GameState()
+        auth.frame = 10
+        auth.key_flags = GameEvent.EVENT_FLAP_BALL
+        rewound = e.RewindAndReplayWithState(auth, s.frame, r)
+        self.assertTrue(rewound != None)
+        test = GameState()
+        for i in range(0, 9):
+            e.PlayFrame(test, 0)
+            pass
+        e.PlayFrame(test, GameEvent.EVENT_FLAP_BALL)
+        for i in range(0, 19):
+            e.PlayFrame(test, 0)
+            pass
+        e.PlayFrame(test, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        for i in range(0, 30):
+            e.PlayFrame(test, 0)
+            pass
+        logger.debug('\n{0}\n{1}'.format(test, rewound))
+        self.assertTrue(test == rewound)
     
     def test_rewind_with_key(self):
         e = GameEngine()
@@ -73,9 +104,10 @@ class GameEngineTest(unittest.TestCase):
         r = GameRecord()
         r.SetSize(61)
         for i in range(0, 60):
-            r.AddEntry(s)
+            r.AddEntry(s, 0)
             e.PlayFrame(s, 0)
             pass
+        self.assertTrue(r.available == 60)
         evt = GameEvent()
         flags = GameEvent.EVENT_FLAP_LEFT_PADDLE | GameEvent.EVENT_FLAP_BALL
         evt.frame = 0

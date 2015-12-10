@@ -11,7 +11,6 @@ Engine:
 * Event rewind.
 
 Testing:
-* Make travis pass. (By eliminating pygame dependency)
 
 Networking:
 * Test performance after engine is completed.

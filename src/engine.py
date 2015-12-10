@@ -69,12 +69,13 @@ class GameRecord:
     Attributes:
     size   -- The maximum number of records to keep.
     idx    -- The index to states and events to write to next.
-    states -- The recorded game states.
-    events -- The recorded key events.'''
+    available -- The number of frames recorded and available for rewind.
+    states -- The recorded game states.'''
 
     def __init__(self):
         self.size = 0
         self.idx = 0
+        self.available = 0
         self.states = []
         pass
 
@@ -90,16 +91,19 @@ class GameRecord:
             pass
         pass
 
-    def AddEntry(self, s):
+    def AddEntry(self, s, keys):
         '''Add an entry to the game record.
 
         Arguments:
         s    -- The game state.
-        evts -- A list of game events.'''
+        keys -- A flag of game events.'''
+        # to do: get rid of copy. dependency
         self.states[self.idx] = copy.deepcopy(s)
+        self.states[self.idx].key_flags = keys
         self.idx = (self.idx + 1) % self.size
+        if self.available < self.size:
+            self.available += 1
         pass
-        
     pass
 
 class GameEngine(object):
@@ -343,7 +347,8 @@ class GameEngine(object):
         '''Rewind and replay the game from a given state.
 
         This method rewinds the game to auth_state.frame and replays inputs 
-        from that frame until the current frame over auth_state. 
+        starting from that frame until the current frame over auth_state. 
+        auth_state will be changed.
         The inputs for the current frame are not handled here, so any events 
         must be applied to the result of this method.
         The inputs  are recorded in rec. 
@@ -351,8 +356,6 @@ class GameEngine(object):
         This method is intended to be used by the client receiving an 
         authoritative state auth_state from the server to correct the local 
         game state.
-
-        auth_state will be changed.
 
         Arguments:
         auth_state    -- The state to replay from. 
@@ -363,12 +366,13 @@ class GameEngine(object):
         The game state resulting from the rewind and replay or None if 
         no rewind is possible..'''
         rewind = current_frame - auth_state.frame
-        if rewind <= 0:
+        if rewind < 0:
             # The server is ahead of the client. Go to auth_state directly.
             rec.idx = 0
             rec.states[0] = copy.deepcopy(auth_state)
+            rec.available = 1
             return auth_state
-        if rewind > rec.size:
+        if rewind > rec.available:
             # The state is too old for rewind. Ignore.
             return None
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
@@ -401,7 +405,7 @@ class GameEngine(object):
         if rewind <= 0:
             # The client is ahead of the server. Ignore.
             return None
-        if rewind >= rec.size:
+        if rewind > rec.available:
             # The event is too old to rewind. Ignore.
             # Fix me: We could consider rewinding to the oldest available 
             # frame.
@@ -497,6 +501,44 @@ class GameEngine(object):
         s.start_time = time.time()
         return s
 
+    def RunFrameAsClient(self, s, rec):
+        update = None
+        keys = self.GetKeyboardEvents(s)
+        update = self.GetServerEvent(self.server)
+        if not update == None:
+            current_frame = s.frame
+            s.ApplyUpdate(update)
+            self.RewindAndReplayWithState(s, current_frame, rec)
+            pass
+        rec.AddEntry(s, keys)
+        self.PlayFrame(s, keys)
+        if keys != 0:
+            self.SendKeyboardEvents(self.server, s, keys)
+        self.renderer.RenderAll(s)
+        pass
+
+    def RunFrameAsServer(self, s, rec):
+        keys = 0
+        update = None
+        did_receive_client_evt = False
+        key_evts = self.GetClientEvents(self.clients)
+        if len(key_evts) > 0:
+            did_receive_client_evt = True
+        current_frame = s.frame
+        for evt in key_evts:
+            new_state = self.RewindAndReplayWithKey(current_frame,
+                    evt, rec)
+            if not new_state == None:
+                s = new_state
+                pass
+            pass
+        pass
+        rec.AddEntry(s, keys)
+        self.PlayFrame(s, keys)
+        if did_receive_client_evt:
+            self.SendStateUpdate(self.clients, s)
+        self.renderer.RenderAll(s)
+
     def RunGame(self, s, rec, timeout):
         '''Run the game.
 
@@ -511,45 +553,14 @@ class GameEngine(object):
             s.frame_start = time.time()
             if s.frame_start - start_time >= timeout:
                 break
-            keys = 0
-            update = None
             if self.is_client:
-                keys = self.GetKeyboardEvents(s)
-                s.key_flags = keys
-                update = self.GetServerEvent(self.server)
-                if not update == None:
-                    current_frame = s.frame
-                    s.ApplyUpdate(update)
-                    self.RewindAndReplayWithState(s, current_frame, rec)
-                    pass
-                pass
-            did_receive_client_evt = False
-            if self.is_server:
-                key_evts = self.GetClientEvents(self.clients)
-                if len(key_evts) > 0:
-                    did_receive_client_evt = True
-                current_frame = s.frame
-                for evt in key_evts:
-                    new_state = self.RewindAndReplayWithKey(current_frame,
-                            evt, rec)
-                    if not new_state == None:
-                        s = new_state
-                        pass
-                    pass
-                pass
-            rec.AddEntry(s)
-            self.PlayFrame(s, keys)
-            if self.is_client and keys != 0:
-                self.SendKeyboardEvents(self.server, s, keys)
-            if self.is_server and did_receive_client_evt:
-                self.SendStateUpdate(self.clients, s)
-            self.renderer.RenderAll(s)
+                self.RunFrameAsClient(s, rec)
+            elif self.is_server:
+                self.RunFrameAsServer(s, rec)
             delta = time.time() - s.frame_start
             if 0 < delta and delta < s.sec_per_frame:
                 time.sleep(s.sec_per_frame - delta)
             pass
-        pass
-    pass
 
     def PlayRotation(self, s, rec):
         '''Play one rotation of the game.
