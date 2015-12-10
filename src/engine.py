@@ -438,14 +438,9 @@ class GameEngine(object):
             rec.states[idx].Copy(t)
             self.PlayFrame(t, t.key_flags)
             t.key_flags = key_flags
-            #s = copy.deepcopy(rec.states[idx])
-            #self.PlayFrame(s, rec.states[idx].key_flags)
-            #s.key_flags = rec.states[(idx + 1) % rec.size].key_flags
-            #rec.states[(idx + 1) % rec.size] = s
             pass
         rec.states[rec.idx].Copy(s)
         return s
-        #return copy.deepcopy(rec.states[rec.idx])
 
     def RunFrameAsClient(self, s, rec):
         update = None
@@ -535,14 +530,10 @@ class GameEngine(object):
         s = GameState()
         s.Init()
         rec = GameRecord()
-        # Pick an estimate for a value greater than 2L. We won't bother 
-        # measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
-        # enough for a decent connection, and the player wouldn't want to play 
-        # on anything worse.
-        rec.SetSize(360)
+        # Pick an estimate for a value greater than 2L.
+        rec.SetSize(int(s.frames_per_sec) * 60)
         for i in range(0, s.rounds):
-            self.PlayRotation(s, rec)
-            # self.PlayRound(s, rec)
+            self.PlayRound(s, rec)
             pass
         pass
 
