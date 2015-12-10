@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import socket
@@ -12,6 +13,8 @@ from gamestate import GameState
 from gameevent import GameEvent
 import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
+sys.path.append(os.path.abspath('tests'))
+from mockkeyboard import MockKeyboard
 class GameEngineTest(unittest.TestCase):
     def setUp(self):
         pass
@@ -168,3 +171,43 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(test == rewound)
 
         pass
+
+    def test_run_game(self):
+        '''Test consistency of game state between server and client (one 
+        event).'''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*29
+        svr_e = GameEngine()
+        svr_e.clients = [client]
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(40)
+        clt_e = GameEngine()
+        clt_e.server = svr
+        clt_s = GameState()
+        clt_rec = GameRecord()
+        clt_rec.SetSize(40)
+        for i in range(0, 20):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
+            pass
+        for i in range(0, 20):
+            clt_e.RunFrameAsClient(clt_s, clt_rec)
+            pass
+        # The server should receive event (frame 10) from client and apply
+        # rewind and replay.
+        svr_e.RunFrameAsServer(svr_s, svr_rec)
+        # Compute the client's state had there been no update from the server.
+        clt_s_copy = copy.deepcopy(clt_s)
+        clt_e.PlayFrame(clt_s_copy, 0)
+        # The client should receive state update (frame 20) from the server and 
+        # apply rewind and replay.
+        clt_e.RunFrameAsClient(clt_s, clt_rec)
+        # The states should be consistent.
+        self.assertTrue(clt_s == svr_s)
+        # Since there was no other input to the server, copy should match.
+        self.assertTrue(clt_s_copy == clt_s)
+        
+

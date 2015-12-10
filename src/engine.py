@@ -605,5 +605,10 @@ class GameEngine(object):
 
 if __name__ == '__main__':
     e = GameEngine()
+    from renderer import Renderer
+    r = Renderer()
+    r.Init()
+    e.renderer = r
+    e.keyboard = r
     e.Play()
     pass
