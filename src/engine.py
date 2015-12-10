@@ -87,7 +87,9 @@ class GameRecord:
         size -- The new size of the record.'''
         self.size = size
         for i in range(0, size):
-            self.states.append(GameState())
+            s = GameState()
+            s.Init()
+            self.states.append(s)
             pass
         pass
 
@@ -98,7 +100,8 @@ class GameRecord:
         s    -- The game state.
         keys -- A flag of game events.'''
         # to do: get rid of copy. dependency
-        self.states[self.idx] = copy.deepcopy(s)
+        #self.states[self.idx] = copy.deepcopy(s)
+        s.Copy(self.states[self.idx])
         self.states[self.idx].key_flags = keys
         self.idx = (self.idx + 1) % self.size
         if self.available < self.size:
@@ -378,12 +381,14 @@ class GameEngine(object):
         if rewind < 0:
             # The server is ahead of the client. Go to auth_state directly.
             rec.idx = 0
-            rec.states[0] = copy.deepcopy(auth_state)
+            auth_state.Copy(rec.states[0])
+            #rec.states[0] = copy.deepcopy(auth_state)
             rec.available = 1
             return auth_state
         if rewind > rec.available:
             # The state is too old for rewind.
             # To do: handle this.
+            logger.debug('ignoring old state')
             return None
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
                 auth_state.key_flags
@@ -395,7 +400,7 @@ class GameEngine(object):
         auth_state.key_flags = 0
         return auth_state
     
-    def RewindAndReplayWithKey(self, current_frame, evt, rec):
+    def RewindAndReplayWithKey(self, s, evt, rec):
         '''Rewind and replay the game based on events in the past.
 
         This method is intended to be used by the server to correct its 
@@ -405,116 +410,42 @@ class GameEngine(object):
         all later states.
 
         Arguments:
-        current_state -- The game state of the server.
+        s             -- The game state of the server.
         evt           -- A game event to play.
         rec           -- A game record.
 
-        Return value:
-        The game state resulting from the rewind and replay if the rewind 
-        was successful, and None otherwise.'''
-        rewind = current_frame - evt.frame
+        '''
+        rewind = s.frame - evt.frame
         if rewind < 0:
             # The client is ahead of the server. Ignore.
-            # Fix me: For up to some reasonable time in the future, the server 
-            # should keep track of events instead of dropping them.
-            # Fix me: handle this with eventsocket.
+            # This should never happen if we are unreading events in
+            # GetClientEvents().
             logger.debug('client is ahead - ignoring')
             return None
         if rewind > rec.available:
             # The event is too old to rewind. Ignore the event.
+            # To do:
             # The client needs to know the event was ignored, so return 
             # the previous frame.
-            return copy.deepcopy(rec.states[(rec.idx - 1) % rec.size])
+            logger.debug('event too old to rewind')
+            return None
         # Update the record
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= evt.keys
         for i in range(0, rewind):
             idx = (rec.idx - rewind + i) % rec.size
-            s = copy.deepcopy(rec.states[idx])
-            self.PlayFrame(s, rec.states[idx].key_flags)
-            s.key_flags = rec.states[(idx + 1) % rec.size].key_flags
-            rec.states[(idx + 1) % rec.size] = s
+            t = rec.states[(idx + 1) % rec.size]
+            key_flags = t.key_flags
+            rec.states[idx].Copy(t)
+            self.PlayFrame(t, t.key_flags)
+            t.key_flags = key_flags
+            #s = copy.deepcopy(rec.states[idx])
+            #self.PlayFrame(s, rec.states[idx].key_flags)
+            #s.key_flags = rec.states[(idx + 1) % rec.size].key_flags
+            #rec.states[(idx + 1) % rec.size] = s
             pass
-        return copy.deepcopy(rec.states[rec.idx])
-
-    def CreateGame(self):
-        '''Create the initial game state.
-
-        To do: Add arguments to configure the game.
-
-        Return value:
-        The initial game state.'''
-        buffer_region = 50
-        ball_wall_offset_x = 8
-        ball_wall_offset_y = 40
-        paddle_offset = 60
-        paddle_half_width = 8
-        paddle_half_height = 30
-        s = GameState()
-        # The number of players.
-        s.player_size = 3
-        s.game_length = 60.0
-        # the number of rounds (i.e. full rotation of roles) per game
-        s.rounds = 1
-        s.round_length = s.game_length / s.rounds
-        s.rotation_length = s.round_length / s.player_size
-        s.frames_per_sec = 60.0
-        s.sec_per_frame = 1 / s.frames_per_sec
-        s.screen.half_width = 320
-        s.screen.half_height = 240
-        s.goal_left.pos_x = - buffer_region
-        s.goal_left.pos_y = s.screen.half_height
-        s.goal_left.half_width = buffer_region
-        s.goal_left.half_height = 100 *  s.screen.half_height
-        s.goal_right.pos_x = 2 * s.screen.half_width + buffer_region
-        s.goal_right.pos_y = s.screen.half_height
-        s.goal_right.half_width = buffer_region
-        s.goal_right.half_height = 100 * s.screen.half_height
-        s.ball_wall_top.pos_x = s.screen.half_width
-        s.ball_wall_top.pos_y = - buffer_region + ball_wall_offset_y
-        s.ball_wall_top.half_width = (s.screen.half_width - paddle_offset -
-        paddle_half_width - ball_wall_offset_x)
-        s.ball_wall_top.half_height = buffer_region
-        s.ball_wall_bottom.pos_x = s.screen.half_width
-        s.ball_wall_bottom.pos_y = (2 * s.screen.half_height +  buffer_region -
-        ball_wall_offset_y)
-        s.ball_wall_bottom.half_width = (s.screen.half_width - paddle_offset -
-        paddle_half_width - ball_wall_offset_x)
-        s.ball_wall_bottom.half_height = buffer_region
-        s.paddle_wall_top.pos_x = s.screen.half_width
-        s.paddle_wall_top.pos_y = - buffer_region
-        s.paddle_wall_top.half_width = 2 * s.screen.half_width
-        s.paddle_wall_top.half_height = buffer_region
-        s.paddle_wall_bottom.pos_x = s.screen.half_width
-        s.paddle_wall_bottom.pos_y = 2 * s.screen.half_height +  buffer_region
-        s.paddle_wall_bottom.half_width = 2 * s.screen.half_width
-        s.paddle_wall_bottom.half_height = buffer_region
-        s.ball.pos_x = s.screen.half_width
-        s.ball.pos_y = s.screen.half_height
-        s.ball.vel_x = -4
-        s.ball.vel_y = 0
-        s.ball.half_width = 2
-        s.ball.half_height = 2
-        s.paddle_left.pos_x = paddle_offset
-        s.paddle_left.pos_y = 0
-        s.paddle_left.vel_x = 0
-        s.paddle_left.vel_y = 0
-        s.paddle_left.half_width = paddle_half_width
-        s.paddle_left.half_height = paddle_half_height
-        s.paddle_right.pos_x = 2 * s.screen.half_width - paddle_offset 
-        s.paddle_right.pos_y = 0
-        s.paddle_right.vel_x = 0
-        s.paddle_right.vel_y = 0
-        s.paddle_right.half_width = paddle_half_width
-        s.paddle_right.half_height = paddle_half_height
-        # scores[p] is the score for player p.
-        s.scores = [0, 0, 0]
-        # roles[p] is the current role of player p.
-        s.roles = [GameState.ROLE_LEFT_PADDLE, GameState.ROLE_RIGHT_PADDLE,
-                GameState.ROLE_BALL]
-        # players[r] is the ID of the player with role r.
-        s.players = [0, 0, 1, 2]
-        s.start_time = time.time()
+        rec.states[rec.idx].Copy(s)
         return s
+        #return copy.deepcopy(rec.states[rec.idx])
 
     def RunFrameAsClient(self, s, rec):
         update = None
@@ -533,7 +464,6 @@ class GameEngine(object):
         pass
 
     def RunFrameAsServer(self, s, rec):
-        keys = 0
         update = None
         did_receive_client_evt = False
         key_evts = self.GetClientEvents(self.clients, s.frame)
@@ -541,15 +471,11 @@ class GameEngine(object):
             did_receive_client_evt = True
         current_frame = s.frame
         for evt in key_evts:
-            new_state = self.RewindAndReplayWithKey(current_frame,
-                    evt, rec)
-            if not new_state == None:
-                s = new_state
-                pass
+            self.RewindAndReplayWithKey(s, evt, rec)
             pass
         pass
-        rec.AddEntry(s, keys)
-        self.PlayFrame(s, keys)
+        rec.AddEntry(s, rec.states[rec.idx].key_flags)
+        self.PlayFrame(s, rec.states[rec.idx].key_flags)
         if did_receive_client_evt:
             self.SendStateUpdate(self.clients, s)
         self.renderer.RenderAll(s)
@@ -606,7 +532,8 @@ class GameEngine(object):
         pass
 
     def Play(self):
-        s = self.CreateGame()
+        s = GameState()
+        s.Init()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L. We won't bother 
         # measuring it. 360 frames -> 6 seconds at 60 FPS should be more than 
@@ -614,7 +541,8 @@ class GameEngine(object):
         # on anything worse.
         rec.SetSize(360)
         for i in range(0, s.rounds):
-            self.PlayRound(s, rec)
+            self.PlayRotation(s, rec)
+            # self.PlayRound(s, rec)
             pass
         pass
 

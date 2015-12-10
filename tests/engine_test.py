@@ -112,6 +112,7 @@ class GameEngineTest(unittest.TestCase):
     def test_rewind_with_key(self):
         e = GameEngine()
         s = GameState()
+        s.Init()
         r = GameRecord()
         r.SetSize(61)
         for i in range(0, 60):
@@ -123,9 +124,10 @@ class GameEngineTest(unittest.TestCase):
         flags = GameEvent.EVENT_FLAP_LEFT_PADDLE | GameEvent.EVENT_FLAP_BALL
         evt.frame = 0
         evt.keys = flags
-        rewound_state = e.RewindAndReplayWithKey(s.frame, evt, r)
+        rewound_state = e.RewindAndReplayWithKey(s, evt, r)
         self.assertTrue(rewound_state != None)
         test = GameState()
+        test.Init()
         e.PlayFrame(test, flags)
         for i in range(1, 60):
             e.PlayFrame(test, 0)
@@ -139,6 +141,7 @@ class GameEngineTest(unittest.TestCase):
         '''Test rewind and replay with key over record containing a key.'''
         e = GameEngine()
         s = GameState()
+        s.Init()
         r = GameRecord()
         r.SetSize(61)
         for i in range(0, 30):
@@ -154,9 +157,10 @@ class GameEngineTest(unittest.TestCase):
         evt = GameEvent()
         evt.frame = 10
         evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
-        rewound = e.RewindAndReplayWithKey(s.frame, evt, r)
+        rewound = e.RewindAndReplayWithKey(s, evt, r)
         self.assertTrue(rewound != None)
         test = GameState()
+        test.Init()
         for i in range(0, 10):
             e.PlayFrame(test, 0)
             pass
@@ -169,7 +173,6 @@ class GameEngineTest(unittest.TestCase):
             e.PlayFrame(test, 0)
             pass
         self.assertTrue(test == rewound)
-
         pass
 
     def test_run_game(self):
