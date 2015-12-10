@@ -41,7 +41,7 @@ class GameEngineTest(unittest.TestCase):
         keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
         e.SendKeyboardEvents(svr, s, keys)
         time.sleep(.1)
-        received_keys = e.GetClientEvents([client])
+        received_keys = e.GetClientEvents([client], 1)
         self.assertTrue(received_keys[0].keys == keys)
         pass
     def test_rewind_with_state_1(self):
@@ -186,6 +186,7 @@ class GameEngineTest(unittest.TestCase):
         svr_rec = GameRecord()
         svr_rec.SetSize(40)
         clt_e = GameEngine()
+        clt_e.key_cool_down_time = 0
         clt_e.server = svr
         clt_s = GameState()
         clt_rec = GameRecord()
@@ -209,5 +210,47 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(clt_s == svr_s)
         # Since there was no other input to the server, copy should match.
         self.assertTrue(clt_s_copy == clt_s)
-        
+
+    def test_run_game2(self):
+        '''Test consistency of game state between server and client (two
+        events).'''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*9 + [1] + [0]*9
+        svr_e = GameEngine()
+        svr_e.clients = [client]
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(40)
+        clt_e = GameEngine()
+        clt_e.key_cool_down_time = 0
+        clt_e.server = svr
+        clt_s = GameState()
+        clt_rec = GameRecord()
+        clt_rec.SetSize(40)
+        for i in range(0, 30):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
+            pass
+        for i in range(0, 30):
+            clt_e.RunFrameAsClient(clt_s, clt_rec)
+            pass
+        # The server should receive events from client and apply
+        # rewind and replay.
+        for i in range(0, 20):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
+        # Compute the client's state had there been no update from the server.
+        clt_s_copy = copy.deepcopy(clt_s)
+        for i in range(0, 20):
+            clt_e.PlayFrame(clt_s_copy, 0)
+        # The client should receive state update (frame 20) from the server and 
+        # apply rewind and replay.
+        for i in range(0, 20):
+            clt_e.RunFrameAsClient(clt_s, clt_rec)
+        # The states should be consistent.
+        self.assertTrue(clt_s == svr_s)
+        # Since there was no other input to the server, copy should match.
+        self.assertTrue(clt_s_copy == clt_s)
+        pass
 

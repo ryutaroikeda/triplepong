@@ -67,10 +67,10 @@ class GameRecord:
     the entry in .events.
     
     Attributes:
-    size   -- The maximum number of records to keep.
-    idx    -- The index to states and events to write to next.
+    size      -- The maximum number of records to keep.
+    idx       -- The index to states and events to write to next.
     available -- The number of frames recorded and available for rewind.
-    states -- The recorded game states.'''
+    states    -- The list of recorded game states.'''
 
     def __init__(self):
         self.size = 0
@@ -181,18 +181,27 @@ class GameEngine(object):
             return None
         return svr.ReadEvent()
 
-    def GetClientEvents(self, clients):
+    def GetClientEvents(self, clients, current_frame):
         '''Read client sockets for keyboard events.
 
         Arguments:
         clients -- A list of client sockets.
+        current_frame -- The frame number of the server. If an event happens in 
+        the future, it should be put back.
+
         Return value:
-        A list of game events.'''
+        A list of game events.
+        '''
         evts = []
         for c in clients:
             evt = c.ReadEvent()
-            if not evt == None:
-                evts.append(evt)
+            # Check if the event happens in the future.
+            if evt == None:
+                continue
+            if evt.frame > current_frame:
+                c.UnreadEvent()
+                continue
+            evts.append(evt)
             pass
         return evts
 
@@ -364,7 +373,7 @@ class GameEngine(object):
         
         Return value:
         The game state resulting from the rewind and replay or None if 
-        no rewind is possible..'''
+        no rewind is possible.'''
         rewind = current_frame - auth_state.frame
         if rewind < 0:
             # The server is ahead of the client. Go to auth_state directly.
@@ -373,7 +382,8 @@ class GameEngine(object):
             rec.available = 1
             return auth_state
         if rewind > rec.available:
-            # The state is too old for rewind. Ignore.
+            # The state is too old for rewind.
+            # To do: handle this.
             return None
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
                 auth_state.key_flags
@@ -381,6 +391,7 @@ class GameEngine(object):
             self.PlayFrame(auth_state,
                     rec.states[(rec.idx - rewind + i) % rec.size].key_flags)
             pass
+        rec.available = rewind
         auth_state.key_flags = 0
         return auth_state
     
@@ -402,14 +413,18 @@ class GameEngine(object):
         The game state resulting from the rewind and replay if the rewind 
         was successful, and None otherwise.'''
         rewind = current_frame - evt.frame
-        if rewind <= 0:
+        if rewind < 0:
             # The client is ahead of the server. Ignore.
+            # Fix me: For up to some reasonable time in the future, the server 
+            # should keep track of events instead of dropping them.
+            # Fix me: handle this with eventsocket.
+            logger.debug('client is ahead - ignoring')
             return None
         if rewind > rec.available:
-            # The event is too old to rewind. Ignore.
-            # Fix me: We could consider rewinding to the oldest available 
-            # frame.
-            return None
+            # The event is too old to rewind. Ignore the event.
+            # The client needs to know the event was ignored, so return 
+            # the previous frame.
+            return copy.deepcopy(rec.states[(rec.idx - 1) % rec.size])
         # Update the record
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= evt.keys
         for i in range(0, rewind):
@@ -521,7 +536,7 @@ class GameEngine(object):
         keys = 0
         update = None
         did_receive_client_evt = False
-        key_evts = self.GetClientEvents(self.clients)
+        key_evts = self.GetClientEvents(self.clients, s.frame)
         if len(key_evts) > 0:
             did_receive_client_evt = True
         current_frame = s.frame
