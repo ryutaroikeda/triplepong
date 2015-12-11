@@ -178,7 +178,7 @@ class GameState:
         self.paddle_left.vel_y = update.paddle_left.vel_y
         self.paddle_right.pos_y = update.paddle_right.pos_y
         self.paddle_right.vel_y = update.paddle_right.vel_y
-        self.key_flags |= update.key_flags
+        self.key_flags = update.key_flags
         self.frame = update.frame
         pass
     def Copy(self, other):
