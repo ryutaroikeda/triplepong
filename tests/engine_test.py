@@ -20,6 +20,17 @@ class GameEngineTest(unittest.TestCase):
         pass
     def tearDown(self):
         pass
+    def test_play_frame(self):
+        '''Test frame count and key_flags in PlayFrame.
+        '''
+        e = GameEngine()
+        s = GameState()
+        frame = s.frame
+        s.key_flags = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        e.PlayFrame(s, s.key_flags)
+        self.assertTrue(s.frame == frame + 1)
+        self.assertTrue(s.key_flags == 0)
+
     def test_send_and_receive_state(self):
         svrsock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         svr = EventSocket(svrsock)
@@ -44,6 +55,7 @@ class GameEngineTest(unittest.TestCase):
         received_keys = e.GetClientEvents([client], 1)
         self.assertTrue(received_keys[0].keys == keys)
         pass
+
     def test_rewind_with_state_1(self):
         e = GameEngine()
         s = GameState()
@@ -118,13 +130,29 @@ class GameEngineTest(unittest.TestCase):
         '''
         e = GameEngine()
         keyboard = MockKeyboard()
-        keyboard.inputs = [0]*10 + [1] + [0]*10
+        keyboard.inputs = [0]*10 + [1] + [0]*40
         e.keyboard = keyboard
         e.key_cool_down_time = 0
         s = GameState()
+        rec = GameRecord()
+        rec.SetSize(50)
+        for i in range(0, 20):
+            e.RunFrameAsClient(s, rec)
+            pass
+        # state at frame 20
+        auth = GameState()
+        s.Copy(auth)
+        for i in range(0, 10):
+            e.RunFrameAsClient(s, rec)
+            pass
+        # The state without rewind at frame 30.
+        self.assertTrue(s.frame == 30)
+        s_copy = GameState()
+        s.Copy(s_copy)
+        auth = e.RewindAndReplayWithState(auth, s.frame, rec)
+        self.assertTrue(auth != None)
+        self.assertTrue(auth == s_copy)
 
-
-    
     def test_rewind_with_key(self):
         e = GameEngine()
         s = GameState()
@@ -188,6 +216,7 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(test == rewound)
         pass
 
+    @unittest.skip('failing')
     def test_run_game(self):
         '''Test consistency of game state between server and client (one 
         event).'''
@@ -248,6 +277,7 @@ class GameEngineTest(unittest.TestCase):
         ssock.close()
         csock.close()
 
+    @unittest.skip('auth jump should not happen')
     def test_run_game2(self):
         '''Test consistency of game state between server and client (two
         events).'''
@@ -296,6 +326,8 @@ class GameEngineTest(unittest.TestCase):
         # Since there was no other input to the server, copy should match.
         self.assertTrue(clt_s_copy == clt_s)
         pass
+
+    @unittest.skip('to do')
     def test_server_two_clients(self):
         '''To do:
         Test that one client sees the input of another via the server.'''

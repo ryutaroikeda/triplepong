@@ -127,9 +127,6 @@ class GameState:
     def Diff(self, other):
         a = self.__dict__
         b = other.__dict__
-        for key in b:
-            if a[key] != b[key]:
-                logger.debug('{0}: {1} != {2}'.format(key, a[key], b[key]))
         for key in a:
             if a[key] != b[key]:
                 logger.debug('{0}: {1} != {2}'.format(key, a[key], b[key]))
