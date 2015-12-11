@@ -162,25 +162,7 @@ class GameState:
                 self.key_flags,
                 self.frame,) = struct.unpack(GameState.SUBFORMAT, b)
         pass
-    def ApplyUpdate(self, update):
-        '''Updates the state of the game with update, a partial game state.
 
-        The partial game state is that obtained from Serialize() and 
-        Deserialize().
-
-        Argument:
-        update -- The partial game state to apply.'''
-        self.ball.pos_x = update.ball.pos_x
-        self.ball.pos_y = update.ball.pos_y
-        self.ball.vel_x = update.ball.vel_x
-        self.ball.vel_y = update.ball.vel_y
-        self.paddle_left.pos_y = update.paddle_left.pos_y
-        self.paddle_left.vel_y = update.paddle_left.vel_y
-        self.paddle_right.pos_y = update.paddle_right.pos_y
-        self.paddle_right.vel_y = update.paddle_right.vel_y
-        self.key_flags = update.key_flags
-        self.frame = update.frame
-        pass
     def Copy(self, other):
         '''Copy this partial state without creating a new instance.
         '''

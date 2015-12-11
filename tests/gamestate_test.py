@@ -54,31 +54,6 @@ class GameStateTest(unittest.TestCase):
         t = GameState()
         t.ball.vel_x = 200
         self.assertTrue(s != t)
-
-    def test_ApplyUpdate(self):
-        s = GameState()
-        u = GameState()
-        u.ball.pos_x = 100
-        u.ball.pos_y = 200
-        u.ball.vel_x = 300
-        u.ball.vel_y = 400
-        u.paddle_left.pos_y = -100
-        u.paddle_left.vel_y = -200
-        u.paddle_right.pos_y = -300
-        u.paddle_right.vel_y = -400
-        u.frame = 30
-        u.key_flags = 300
-        s.ApplyUpdate(u)
-        self.assertTrue(s.ball.pos_x == u.ball.pos_x)
-        self.assertTrue(s.ball.pos_y == u.ball.pos_y)
-        self.assertTrue(s.ball.vel_x == u.ball.vel_x)
-        self.assertTrue(s.ball.vel_y == u.ball.vel_y)
-        self.assertTrue(s.paddle_left.pos_y == u.paddle_left.pos_y)
-        self.assertTrue(s.paddle_left.vel_y == u.paddle_left.vel_y)
-        self.assertTrue(s.paddle_right.vel_y == u.paddle_right.vel_y)
-        self.assertTrue(s.paddle_right.pos_y == u.paddle_right.pos_y)
-        self.assertTrue(s.frame == u.frame)
-        self.assertTrue(s.key_flags == u.key_flags)
         pass
 
     def test_Copy(self):

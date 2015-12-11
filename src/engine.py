@@ -168,7 +168,7 @@ class GameEngine(object):
         pass
 
     def SendKeyboardEvents(self, svr, s, keys):
-        '''Serialize a list of game event codes and send to the server.
+        '''Serialize a game event and send to the server.
 
         Arguments:
         svr  -- The server socket to send to.
@@ -330,15 +330,11 @@ class GameEngine(object):
         rewind = current_frame - auth_state.frame
         if rewind < 0:
             # The server is ahead of the client. Go to auth_state directly.
-            rec.idx = 0
-            auth_state.Copy(rec.states[0])
-            #rec.states[0] = copy.deepcopy(auth_state)
-            rec.available = 1
+            rec.available = 0
             logger.debug('jumping to auth state')
             return auth_state
         if rewind > rec.available:
             # The state is too old for rewind.
-            # To do: handle this.
             logger.debug('ignoring old state')
             return None
         rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
@@ -358,7 +354,9 @@ class GameEngine(object):
         authoritative state in response to key events sent by the client.
 
         This method updates the event records at frame evt.frame and updates
-        all later states.
+        all later states up to s.frame.
+
+        s is set to the result of the rewind.
 
         Arguments:
         s             -- The game state of the server.
@@ -396,16 +394,19 @@ class GameEngine(object):
     def RunFrameAsClient(self, s, rec):
         update = None
         keys = self.GetKeyboardEvents(s)
+        # Send local key events.
+        if keys != 0:
+            self.SendKeyboardEvents(self.server, s, keys)
         update = self.GetServerEvent(self.server)
-        if not update == None:
-            current_frame = s.frame
-            s.ApplyUpdate(update)
-            self.RewindAndReplayWithState(s, current_frame, rec)
+        if update != None:
+            # if the update is for the current frame, set the keys.
+            if update.frame == s.frame:
+                keys |= update.key_flags
+            self.RewindAndReplayWithState(update, s.frame, rec)
+            update.Copy(s)
             pass
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
-        if keys != 0:
-            self.SendKeyboardEvents(self.server, s, keys)
         self.renderer.RenderAll(s)
         pass
 

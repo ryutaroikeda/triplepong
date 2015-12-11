@@ -18,6 +18,7 @@ class EventSocket:
     byte_buffer    -- The bytes read so far.
     buffered_event -- Put back an event after reading it. Use UnreadEvent().
     should_read_buffer -- Used by UnreadEvent() and ReadEvent().
+    events_read    -- The number of events read.
     '''
 
     def __init__(self, sock):
@@ -28,6 +29,7 @@ class EventSocket:
         self.byte_buffer = b''
         self.buffered_event = None
         self.should_read_buffer = False
+        self.events_read = 0
         pass
 
     def ReadEvent(self):
@@ -74,6 +76,7 @@ class EventSocket:
                 evt.Deserialize(self.byte_buffer)
                 self.event_type = 0
             self.buffered_event = evt
+            self.events_read += 1
             return evt
         self.buffered_event = None
         return None
@@ -82,6 +85,11 @@ class EventSocket:
         self.should_read_buffer = True
 
     def WriteEvent(self, evt):
+        '''Write the event.
+        If evt is None, this method does nothing.
+        '''
+        if evt == None:
+            return
         b = evt.Serialize()
         self.sock.sendall(b)
         pass

@@ -8,12 +8,14 @@ A pong game for three players. And flappy birds!
 To do:
 
 Engine:
-* Event rewind.
+* Event rewind and game loop.
 
 Testing:
+* Unit tests for engine.
 
 Networking:
 * Test performance after engine is completed.
+* Fix server or client timing out and raising error during handshake.
 
 User Interface:
 * Command line for setting up server / client.

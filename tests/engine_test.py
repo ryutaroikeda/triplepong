@@ -21,6 +21,12 @@ class GameEngineTest(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def test_init(self):
+        e = GameEngine()
+        self.assertTrue(e.is_client == False)
+        self.assertTrue(e.is_server == False)
+        pass
+
     def test_GetKeyboardEvents(self):
         '''Test keyboard input is converted to game events.
         '''
@@ -216,17 +222,55 @@ class GameEngineTest(unittest.TestCase):
         auth = e.RewindAndReplayWithState(auth, s.frame, rec)
         self.assertTrue(auth != None)
         self.assertTrue(auth == s_copy)
+        pass
+
+    def test_RewindAndReplayWithState_4(self):
+        '''Test future jump and current frame.
+        '''
+        e = GameEngine()
+        s = GameState()
+        s.frame = 0
+        s.ball.pos_x = 100
+        # Make a copy of s.
+        t = GameState()
+        s.Copy(t)
+        rec = GameRecord()
+        rec.SetSize(1)
+        # Rewind to the current frame.
+        rewound = e.RewindAndReplayWithState(s, 0, rec)
+        self.assertTrue(rewound == t)
+        # Jump to a future state.
+        s.frame = 1
+        s.Copy(t)
+        rewound = e.RewindAndReplayWithState(s, 0, rec)
+        self.assertTrue(rewound == t)
+        pass
+
+    def test_RewindAndReplayWithState_5(self):
+        '''Rewind beyond the available records.
+        '''
+        e = GameEngine()
+        s = GameState()
+        s.frame = 0
+        rec = GameRecord()
+        rec.SetSize(1)
+        rewound = e.RewindAndReplayWithState(s, 1, rec)
+        self.assertTrue(rewound == None)
+        pass
 
     def test_RewindAndReplayWithKey_1(self):
+        '''Test rewind with one event.
+        '''
         e = GameEngine()
         s = GameState()
         r = GameRecord()
-        r.SetSize(61)
-        for i in range(0, 60):
+        frames_to_test = 30
+        r.SetSize(frames_to_test + 1)
+        for i in range(0, frames_to_test):
             r.AddEntry(s, 0)
             e.PlayFrame(s, 0)
             pass
-        self.assertTrue(r.available == 60)
+        self.assertTrue(r.available == frames_to_test)
         evt = GameEvent()
         flags = GameEvent.EVENT_FLAP_LEFT_PADDLE | GameEvent.EVENT_FLAP_BALL
         evt.frame = 0
@@ -235,12 +279,11 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(rewound_state != None)
         test = GameState()
         e.PlayFrame(test, flags)
-        for i in range(1, 60):
+        for i in range(1, frames_to_test):
             e.PlayFrame(test, 0)
             pass
         if test != rewound_state:
-            logger.debug("\n{0}\n{1}".format(test, rewound_state))
-        test.Diff(rewound_state)
+            test.Diff(rewound_state)
         self.assertTrue(r.states[0].key_flags == flags)
         self.assertTrue(test == rewound_state)
 
@@ -278,6 +321,252 @@ class GameEngineTest(unittest.TestCase):
             e.PlayFrame(test, 0)
             pass
         self.assertTrue(test == rewound)
+        pass
+
+    def test_RewindAndReplayWithKey_3(self):
+        e = GameEngine()
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(1)
+        evt = GameEvent()
+        evt.frame = 0
+        evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        rewound = e.RewindAndReplayWithKey(s, evt, rec)
+        # evt.frame is the current frame.
+        self.assertTrue(rewound != None)
+        s.frame = 1
+        rewound = e.RewindAndReplayWithKey(s, evt, rec)
+        # No available record.
+        self.assertTrue(rewound == None)
+        evt.frame = 2
+        rewound = e.RewindAndReplayWithKey(s, evt, rec)
+        # Event happened in the future
+        self.assertTrue(rewound == None)
+        pass
+
+    def test_RunFrameAsServer(self):
+        '''Test the consistency of the game state with RunFrameAsServer.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.is_server = True
+        e.clients = [client]
+        rec = GameRecord()
+        rec.SetSize(30)
+        s = GameState()
+        evt = GameEvent()
+        evt.frame = 10
+        evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        for i in range(0, 20):
+            e.RunFrameAsServer(s, rec)
+            pass
+        # The client writes an event to the server.
+        svr.WriteEvent(evt)
+        e.RunFrameAsServer(s, rec)
+        e.is_server = False
+        e.is_client = True
+        test = GameState()
+        for i in range(0, 10):
+            e.PlayFrame(test, 0)
+            pass
+        e.PlayFrame(test, GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        for i in range(0, 10):
+            e.PlayFrame(test, 0)
+            pass
+        self.assertTrue(test == s)
+        pass
+
+    def template_RunFrameAsClient(self, max_frame, max_buffer, state_evts):
+        '''
+        Arguments:
+        state_evts -- A list of state events to receive, one for each frame.
+        Use None for no event.
+        max_frame  -- The number of frames to run the test for.
+        max_buffer -- The size of the recording.
+
+        Return value:
+        The final game state.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.keyboard = MockKeyboard()
+        e.is_client = True
+        e.server = svr
+        rec = GameRecord()
+        rec.SetSize(max_buffer)
+        s = GameState()
+        for i in range(0, max_frame):
+            client.WriteEvent(state_evts[i])
+            e.RunFrameAsClient(s, rec)
+            pass
+        return s
+
+    def test_RunFrameAsClient_1(self):
+        '''Test the consistency of the game state with RunFrameAsClient.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.is_client = True
+        e.server = svr
+        rec = GameRecord()
+        rec.SetSize(30)
+        s = GameState()
+        t = GameState()
+        for i in range(0, 10):
+            e.PlayFrame(t, 0)
+        t.key_flags = GameEvent.EVENT_FLAP_RIGHT_PADDLE
+        for i in range(0, 20):
+            e.RunFrameAsClient(s, rec)
+            pass
+        # The server sends a state update.
+        client.WriteEvent(t)
+        e.RunFrameAsClient(s, rec)
+        test = GameState()
+        for i in range(0, 10):
+            e.PlayFrame(test, 0)
+        e.PlayFrame(test, GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        for i in range(0, 10):
+            e.PlayFrame(test, 0)
+            pass
+        test.Diff(s)
+        self.assertTrue(test == s)
+        pass
+
+    def test_RunFrameAsClient_2(self):
+        '''Test template method.
+        '''
+        max_frames = 60
+        max_buffer = 30
+        updates = [None]*max_frames
+        e = GameEngine()
+        s = GameState()
+        for i in range(0, max_frames):
+            e.PlayFrame(s, 0)
+            pass
+        result = self.template_RunFrameAsClient(max_frames, max_buffer, 
+                updates)
+        s.Diff(result)
+        self.assertTrue(s == result)
+        pass
+
+    def test_RunFrameAsClient_3(self):
+        '''Test state update.
+        '''
+        max_frames = 60
+        max_buffer = 30
+        updates = [None]*max_frames
+        e = GameEngine()
+        s = GameState()
+        for i in range(0, 20):
+            e.PlayFrame(s, 0)
+            pass
+        update_frame = s.frame + 10
+        updates[update_frame] = GameState()
+        s.Copy(updates[update_frame])
+        updates[update_frame].key_flags = GameEvent.EVENT_FLAP_BALL
+        e.PlayFrame(s, GameEvent.EVENT_FLAP_BALL)
+        for i in range(0, 39):
+            e.PlayFrame(s, 0)
+            pass
+        result = self.template_RunFrameAsClient(max_frames, max_buffer, 
+                updates)
+        result.Diff(s)
+        self.assertTrue(result == s)
+        pass
+
+    def test_RunFrameAsClient_4(self):
+        '''Test state update on the current frame.
+        '''
+        max_frames = 60
+        max_buffer = 30
+        updates = [None]*max_frames
+        e = GameEngine()
+        s = GameState()
+        for i in range(0, 20):
+            e.PlayFrame(s, 0)
+            pass
+        update_frame = s.frame 
+        updates[update_frame] = GameState()
+        s.Copy(updates[update_frame])
+        updates[update_frame].key_flags = GameEvent.EVENT_FLAP_BALL
+        e.PlayFrame(s, GameEvent.EVENT_FLAP_BALL)
+        for i in range(0, 39):
+            e.PlayFrame(s, 0)
+            pass
+        result = self.template_RunFrameAsClient(max_frames, max_buffer, 
+                updates)
+        result.Diff(s)
+        self.assertTrue(result == s)
+        pass
+
+    @unittest.skip('failing')
+    def test_RunFrameAsServerAndClient(self):
+        '''Test the consistency of game state with RunFrameAsServer.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*20
+        svr_e = GameEngine()
+        svr_e.is_server = True
+        svr_e.clients = [client]
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(40)
+        clt_e = GameEngine()
+        clt_e.is_client = True
+        clt_e.server = svr
+        clt_e.keyboard = keyboard
+        clt_s = GameState()
+        clt_rec = GameRecord()
+        clt_rec.SetSize(40)
+        for i in range(0, 20):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
+            pass
+        for i in range(0, 21):
+            clt_e.RunFrameAsClient(clt_s, clt_rec)
+            pass
+        # Send update to client
+        for i in range(0, 2):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
+            pass
+        # Receive update from server
+        clt_e.RunFrameAsClient(clt_s, clt_rec)
+        self.assertTrue(svr_s == clt_s)
+        # Check we have all inputs at the correct frames.
+        for i in range(0, 22):
+            self.assertTrue(clt_rec.states[i].key_flags == keyboard.inputs[i])
+            pass
+        # Check server received event.
+        self.assertTrue(svr.events_read == 1)
+        # There are no other events, so svr_s should be the same as running
+        # 22 frames without the server
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*20
+        test_e = GameEngine()
+        test_e.is_client = True
+        test_e.keyboard = keyboard
+        test_s = GameState()
+        test_rec = GameRecord()
+        test_rec.SetSize(40)
+        for i in range(0, 22):
+            test_e.RunFrameAsClient(test_s, test_rec)
+            pass
+        for i in range(0, 22):
+            test_rec.states[i].Diff(clt_rec.states[i])
+            self.assertTrue(test_rec.states[i] == clt_rec.states[i],
+                    'incorrect frame {0}'.format(i))
+            pass
+        if test_s != svr_s:
+            test_s.Diff(svr_s)
+        self.assertTrue(test_s == svr_s)
         pass
 
     @unittest.skip('failing')
@@ -327,6 +616,13 @@ class GameEngineTest(unittest.TestCase):
         # apply rewind and replay.
         clt_e.RunFrameAsClient(clt_s, clt_rec)
         self.assertTrue(clt_s.frame == 22)
+        # Check that the records match.
+        for i in range(0, 22):
+            if clt_rec.states[i] != clt_rec_copy.states[i]:
+                clt_rec.states[i].Diff(clt_rec_copy.states[i])
+            self.assertTrue(clt_rec.states[i] == clt_rec_copy.states[i],
+                    'mismatch at frame {0}'.format(i))
+            pass
         # The states should be consistent.
         if clt_s != svr_s:
             logger.debug('\n{0}\n{1}'.format(clt_s, svr_s))
