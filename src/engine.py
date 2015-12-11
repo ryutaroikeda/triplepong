@@ -88,7 +88,6 @@ class GameRecord:
         self.size = size
         for i in range(0, size):
             s = GameState()
-            s.Init()
             self.states.append(s)
             pass
         pass
@@ -376,7 +375,8 @@ class GameEngine(object):
         
         Return value:
         The game state resulting from the rewind and replay or None if 
-        no rewind is possible.'''
+        no rewind is possible.
+        '''
         rewind = current_frame - auth_state.frame
         if rewind < 0:
             # The server is ahead of the client. Go to auth_state directly.
@@ -384,6 +384,7 @@ class GameEngine(object):
             auth_state.Copy(rec.states[0])
             #rec.states[0] = copy.deepcopy(auth_state)
             rec.available = 1
+            logger.debug('jumping to auth state')
             return auth_state
         if rewind > rec.available:
             # The state is too old for rewind.
@@ -459,12 +460,10 @@ class GameEngine(object):
         pass
 
     def RunFrameAsServer(self, s, rec):
-        update = None
         did_receive_client_evt = False
         key_evts = self.GetClientEvents(self.clients, s.frame)
         if len(key_evts) > 0:
             did_receive_client_evt = True
-        current_frame = s.frame
         for evt in key_evts:
             self.RewindAndReplayWithKey(s, evt, rec)
             pass
@@ -528,7 +527,7 @@ class GameEngine(object):
 
     def Play(self):
         s = GameState()
-        s.Init()
+        s.start_time = time.time()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
         rec.SetSize(int(s.frames_per_sec) * 60)

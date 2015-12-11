@@ -22,7 +22,7 @@ class MockKeyboard:
 
     def GetKeys(self):
         self.frame += 1
-        if self.frame <= len(inputs) and self.inputs[self.frame - 1] == 1:
+        if self.frame <= len(self.inputs) and self.inputs[self.frame - 1] == 1:
             return self._GetSpace()
         return self._GetNull()
         

@@ -61,7 +61,8 @@ class GameEngineTest(unittest.TestCase):
         e.PlayFrame(test, GameEvent.EVENT_FLAP_LEFT_PADDLE)
         for i in range(1, 60):
             e.PlayFrame(test, 0)
-        logger.debug("\n{0}\n{1}".format(test, rewound_state))
+        if test != rewound_state:
+            logger.debug("\n{0}\n{1}".format(test, rewound_state))
         self.assertTrue(test == rewound_state)
 
     def test_rewind_with_state_2(self):
@@ -106,13 +107,27 @@ class GameEngineTest(unittest.TestCase):
             e.PlayFrame(test, 0)
             pass
         self.assertTrue(test.frame == 60)
-        logger.debug('\n{0}\n{1}'.format(test, rewound))
+        if test != rewound:
+            logger.debug('\n{0}\n{1}'.format(test, rewound))
         self.assertTrue(test == rewound)
+        pass
+
+    def test_rewind_with_state3(self):
+        '''Test that rewind with no new information is consistent with normal
+        play.
+        '''
+        e = GameEngine()
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*10
+        e.keyboard = keyboard
+        e.key_cool_down_time = 0
+        s = GameState()
+
+
     
     def test_rewind_with_key(self):
         e = GameEngine()
         s = GameState()
-        s.Init()
         r = GameRecord()
         r.SetSize(61)
         for i in range(0, 60):
@@ -127,12 +142,12 @@ class GameEngineTest(unittest.TestCase):
         rewound_state = e.RewindAndReplayWithKey(s, evt, r)
         self.assertTrue(rewound_state != None)
         test = GameState()
-        test.Init()
         e.PlayFrame(test, flags)
         for i in range(1, 60):
             e.PlayFrame(test, 0)
             pass
-        logger.debug("\n{0}\n{1}".format(test, rewound_state))
+        if test != rewound_state:
+            logger.debug("\n{0}\n{1}".format(test, rewound_state))
         test.Diff(rewound_state)
         self.assertTrue(r.states[0].key_flags == flags)
         self.assertTrue(test == rewound_state)
@@ -141,7 +156,6 @@ class GameEngineTest(unittest.TestCase):
         '''Test rewind and replay with key over record containing a key.'''
         e = GameEngine()
         s = GameState()
-        s.Init()
         r = GameRecord()
         r.SetSize(61)
         for i in range(0, 30):
@@ -160,7 +174,6 @@ class GameEngineTest(unittest.TestCase):
         rewound = e.RewindAndReplayWithKey(s, evt, r)
         self.assertTrue(rewound != None)
         test = GameState()
-        test.Init()
         for i in range(0, 10):
             e.PlayFrame(test, 0)
             pass
@@ -184,12 +197,15 @@ class GameEngineTest(unittest.TestCase):
         keyboard = MockKeyboard()
         keyboard.inputs = [0]*10 + [1] + [0]*29
         svr_e = GameEngine()
+        svr_e.is_server = True
         svr_e.clients = [client]
         svr_s = GameState()
         svr_rec = GameRecord()
         svr_rec.SetSize(40)
         clt_e = GameEngine()
+        clt_e.is_client = True
         clt_e.key_cool_down_time = 0
+        clt_e.keyboard = keyboard
         clt_e.server = svr
         clt_s = GameState()
         clt_rec = GameRecord()
@@ -197,22 +213,40 @@ class GameEngineTest(unittest.TestCase):
         for i in range(0, 20):
             svr_e.RunFrameAsServer(svr_s, svr_rec)
             pass
-        for i in range(0, 20):
+        for i in range(0, 21):
             clt_e.RunFrameAsClient(clt_s, clt_rec)
             pass
+        self.assertTrue(clt_s.frame == 21)
         # The server should receive event (frame 10) from client and apply
         # rewind and replay.
-        svr_e.RunFrameAsServer(svr_s, svr_rec)
+        for i in range(0, 2):
+            svr_e.RunFrameAsServer(svr_s, svr_rec)
         # Compute the client's state had there been no update from the server.
         clt_s_copy = copy.deepcopy(clt_s)
-        clt_e.PlayFrame(clt_s_copy, 0)
+        clt_rec_copy = copy.deepcopy(clt_rec)
+        # Run without the server
+        clt_e.server = None
+        clt_e.RunFrameAsClient(clt_s_copy, clt_rec_copy)
+        self.assertTrue(clt_s_copy.frame == 22)
+        # Get the server back
+        clt_e.server = svr
         # The client should receive state update (frame 20) from the server and 
         # apply rewind and replay.
         clt_e.RunFrameAsClient(clt_s, clt_rec)
+        self.assertTrue(clt_s.frame == 22)
         # The states should be consistent.
+        if clt_s != svr_s:
+            logger.debug('\n{0}\n{1}'.format(clt_s, svr_s))
+            clt_s.Diff(svr_s)
         self.assertTrue(clt_s == svr_s)
         # Since there was no other input to the server, copy should match.
+        # If they don't, the client would see a hitch.
+        if clt_s != clt_s_copy:
+            logger.debug('\n{0}\n{1}'.format(clt_s, clt_s_copy))
+            clt_s.Diff(clt_s_copy)
         self.assertTrue(clt_s_copy == clt_s)
+        ssock.close()
+        csock.close()
 
     def test_run_game2(self):
         '''Test consistency of game state between server and client (two
@@ -223,16 +257,19 @@ class GameEngineTest(unittest.TestCase):
         keyboard = MockKeyboard()
         keyboard.inputs = [0]*10 + [1] + [0]*9 + [1] + [0]*9
         svr_e = GameEngine()
+        svr_e.is_server = True
         svr_e.clients = [client]
         svr_s = GameState()
         svr_rec = GameRecord()
-        svr_rec.SetSize(40)
+        svr_rec.SetSize(60)
         clt_e = GameEngine()
+        clt_e.is_client = True
         clt_e.key_cool_down_time = 0
         clt_e.server = svr
+        clt_e.keyboard = keyboard
         clt_s = GameState()
         clt_rec = GameRecord()
-        clt_rec.SetSize(40)
+        clt_rec.SetSize(60)
         for i in range(0, 30):
             svr_e.RunFrameAsServer(svr_s, svr_rec)
             pass
@@ -245,15 +282,40 @@ class GameEngineTest(unittest.TestCase):
             svr_e.RunFrameAsServer(svr_s, svr_rec)
         # Compute the client's state had there been no update from the server.
         clt_s_copy = copy.deepcopy(clt_s)
+        clt_s_copy.server = None
         for i in range(0, 20):
             clt_e.PlayFrame(clt_s_copy, 0)
         # The client should receive state update (frame 20) from the server and 
         # apply rewind and replay.
         for i in range(0, 20):
             clt_e.RunFrameAsClient(clt_s, clt_rec)
+        if clt_s != svr_s:
+            logger.debug('\n{0}\n{1}'.format(clt_s, svr_s))
         # The states should be consistent.
         self.assertTrue(clt_s == svr_s)
         # Since there was no other input to the server, copy should match.
         self.assertTrue(clt_s_copy == clt_s)
         pass
+    def test_server_two_clients(self):
+        '''To do:
+        Test that one client sees the input of another via the server.'''
+        ssock1, csock1 = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        ssock2, csock2 = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr1 = EventSocket(ssock1)
+        client1 = EventSocket(csock1)
+        svr2 = EventSocket(ssock2)
+        client2 = EventSocket(csock2)
+        svr_e = GameEngine()
+        svr_e.clients = [client1, client2]
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(60)
+        keyboard = MockKeyboard()
+        keyboard.inputs = [0]*10 + [1] + [0]*9 + [1] + [0]*9
+        clt1_e = GameEngine()
+        clt1_e.server = svr1
+        clt1_e.key_cool_down_time = 0
+        clt1_e.keyboard = keyboard
+        
+
 

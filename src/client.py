@@ -122,4 +122,4 @@ if __name__ == '__main__':
     from renderer import Renderer
     r = Renderer()
     r.Init()
-    c.Run(('127.0.0.1', 8090), r, r)
+    c.Run(('', 8090), r, r)
