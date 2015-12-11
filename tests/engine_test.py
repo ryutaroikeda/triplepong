@@ -20,16 +20,51 @@ class GameEngineTest(unittest.TestCase):
         pass
     def tearDown(self):
         pass
-    def test_play_frame(self):
-        '''Test frame count and key_flags in PlayFrame.
+
+    def test_GetKeyboardEvents(self):
+        '''Test keyboard input is converted to game events.
         '''
         e = GameEngine()
+        e.key_cool_down_time = 0
         s = GameState()
-        frame = s.frame
-        s.key_flags = GameEvent.EVENT_FLAP_LEFT_PADDLE
-        e.PlayFrame(s, s.key_flags)
-        self.assertTrue(s.frame == frame + 1)
-        self.assertTrue(s.key_flags == 0)
+        k = MockKeyboard()
+        k.inputs = [0, 1]*3
+        e.keyboard = k
+        player_ids = [0, 1, 2]
+        expected_keys = [[GameEvent.EVENT_NO_OP,
+                GameEvent.EVENT_FLAP_LEFT_PADDLE],
+                [GameEvent.EVENT_NO_OP,
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE],
+                [GameEvent.EVENT_NO_OP,
+                GameEvent.EVENT_FLAP_BALL]]
+        for i in range(0, 3):
+            e.player_id = player_ids[i]
+            for j in range(0, 2):
+                key_flag = e.GetKeyboardEvents(s)
+                self.assertTrue(key_flag == expected_keys[i][j])
+                pass
+            pass
+        pass
+
+    def test_GetServerEvent(self):
+        '''Test server event when server is None.
+        '''
+        e = GameEngine()
+        evt = e.GetServerEvent(None)
+        self.assertTrue(evt == None)
+        pass
+
+    def test_GetClientEvents(self):
+        '''Test empty clients case.
+        To do: test unread.
+        '''
+        e = GameEngine()
+        current_frame = 0
+        clients = []
+        evts = e.GetClientEvents(clients, current_frame)
+        self.assertTrue(evts == [])
+        pass
+
 
     def test_send_and_receive_state(self):
         svrsock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -39,10 +74,10 @@ class GameEngineTest(unittest.TestCase):
         s = GameState()
         s.ball.pos_x = 100
         e.SendStateUpdate([client], s)
-        time.sleep(.1)
         t = e.GetServerEvent(svr)
         self.assertTrue(t.ball.pos_x == s.ball.pos_x)
         pass
+
     def test_send_and_receive_key(self):
         ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         svr = EventSocket(ssock)
@@ -51,9 +86,20 @@ class GameEngineTest(unittest.TestCase):
         s = GameState()
         keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
         e.SendKeyboardEvents(svr, s, keys)
-        time.sleep(.1)
         received_keys = e.GetClientEvents([client], 1)
         self.assertTrue(received_keys[0].keys == keys)
+        pass
+
+    def test_PlayFrame(self):
+        '''Test frame count and key_flags in PlayFrame.
+        '''
+        e = GameEngine()
+        s = GameState()
+        frame = s.frame
+        s.key_flags = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        e.PlayFrame(s, s.key_flags)
+        self.assertTrue(s.frame == frame + 1)
+        self.assertTrue(s.key_flags == 0)
         pass
 
     def test_rewind_with_state_1(self):
@@ -216,7 +262,6 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(test == rewound)
         pass
 
-    @unittest.skip('failing')
     def test_run_game(self):
         '''Test consistency of game state between server and client (one 
         event).'''

@@ -86,7 +86,7 @@ class GameEngine(object):
         self.last_key_time = 0.0
         self.key_cool_down_time = 0.200
         self.player_id = 0
-        self.is_client = True
+        self.is_client = False
         self.is_server = False
         self.clients = []
         self.server = None
@@ -488,6 +488,8 @@ class GameEngine(object):
 
 if __name__ == '__main__':
     e = GameEngine()
+    e.is_client = True
+    e.is_server = False
     from renderer import Renderer
     r = Renderer()
     r.Init()
