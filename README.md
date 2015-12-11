@@ -7,6 +7,9 @@ A pong game for three players. And flappy birds!
 
 To do:
 
+Issues:
+* Sudden state reset.
+
 Engine:
 * Event rewind and game loop.
 

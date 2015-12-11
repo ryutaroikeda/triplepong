@@ -111,7 +111,7 @@ class TPClient(object):
                 continue
             logger.info('starting game')
             self.PlayGame(EventSocket(sock), renderer, keyboard)
-            pass
+            break
         sock.close()
         return 0
         pass

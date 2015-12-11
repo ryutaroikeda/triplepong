@@ -258,69 +258,50 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(rewound == None)
         pass
 
-    def test_RewindAndReplayWithKey_1(self):
-        '''Test rewind with one event.
+    def template_RewindAndReplayWithKey(self, key_rec, evt):
+        '''
+        Arguments:
+        key_rec -- The key flags for each frame in the record, up to the 
+                   arrival of evt.
+        evt     -- The event to rewind for.
+        
         '''
         e = GameEngine()
         s = GameState()
-        r = GameRecord()
-        frames_to_test = 30
-        r.SetSize(frames_to_test + 1)
-        for i in range(0, frames_to_test):
-            r.AddEntry(s, 0)
-            e.PlayFrame(s, 0)
+        rec = GameRecord()
+        rec.SetSize(len(key_rec))
+        for i in range(0, len(key_rec)):
+            rec.AddEntry(s, key_rec[i])
+            e.PlayFrame(s, key_rec[i])
             pass
-        self.assertTrue(r.available == frames_to_test)
-        evt = GameEvent()
-        flags = GameEvent.EVENT_FLAP_LEFT_PADDLE | GameEvent.EVENT_FLAP_BALL
-        evt.frame = 0
-        evt.keys = flags
-        rewound_state = e.RewindAndReplayWithKey(s, evt, r)
-        self.assertTrue(rewound_state != None)
+        rewound = e.RewindAndReplayWithKey(s, evt, rec)
+        key_rec[evt.frame] |= evt.keys
         test = GameState()
-        e.PlayFrame(test, flags)
-        for i in range(1, frames_to_test):
-            e.PlayFrame(test, 0)
+        for i in range(0, len(key_rec)):
+            e.PlayFrame(test, key_rec[i])
             pass
-        if test != rewound_state:
-            test.Diff(rewound_state)
-        self.assertTrue(r.states[0].key_flags == flags)
-        self.assertTrue(test == rewound_state)
+        test.Diff(rewound)
+        self.assertTrue(test == rewound)
+        pass
+
+    def test_RewindAndReplayWithKey_1(self):
+        '''Test template.
+        '''
+        key_rec = [0]*100
+        evt = GameEvent()
+        evt.frame = 0
+        evt.keys = 0
+        self.template_RewindAndReplayWithKey(key_rec, evt)
+        pass
 
     def test_RewindAndReplayWithKey_2(self):
-        '''Test rewind and replay with key over record containing a key.'''
-        e = GameEngine()
-        s = GameState()
-        r = GameRecord()
-        r.SetSize(61)
-        for i in range(0, 30):
-            r.AddEntry(s, 0)
-            e.PlayFrame(s, 0)
-            pass
-        r.AddEntry(s, GameEvent.EVENT_FLAP_BALL)
-        e.PlayFrame(s, GameEvent.EVENT_FLAP_BALL)
-        for i in range(0, 29):
-            r.AddEntry(s, 0)
-            e.PlayFrame(s, 0)
-            pass
+        '''Test one event with template.
+        '''
+        key_rec = [0]*20
         evt = GameEvent()
         evt.frame = 10
         evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
-        rewound = e.RewindAndReplayWithKey(s, evt, r)
-        self.assertTrue(rewound != None)
-        test = GameState()
-        for i in range(0, 10):
-            e.PlayFrame(test, 0)
-            pass
-        e.PlayFrame(test, GameEvent.EVENT_FLAP_LEFT_PADDLE)
-        for i in range(0, 19):
-            e.PlayFrame(test, 0)
-            pass
-        e.PlayFrame(test, GameEvent.EVENT_FLAP_BALL)
-        for i in range(0, 29):
-            e.PlayFrame(test, 0)
-            pass
-        self.assertTrue(test == rewound)
+        self.template_RewindAndReplayWithKey(key_rec, evt)
         pass
 
     def test_RewindAndReplayWithKey_3(self):
@@ -342,6 +323,34 @@ class GameEngineTest(unittest.TestCase):
         rewound = e.RewindAndReplayWithKey(s, evt, rec)
         # Event happened in the future
         self.assertTrue(rewound == None)
+        pass
+
+    def test_RewindAndReplayWithKey_4(self):
+        '''Test rewind over history of keys.
+        '''
+        key_rec = [1, 0, 2, 0, 4, 0]*20
+        evt = GameEvent()
+        evt.frame = 61
+        evt.keys  = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        self.template_RewindAndReplayWithKey(key_rec, evt)
+        pass
+
+    def test_RewindAndReplayWithKey_5(self):
+        '''Test rewind on top of a record.
+        '''
+        key_rec = [1, 0]*30
+        evt = GameEvent()
+        evt.frame = 30
+        evt.keys = GameEvent.EVENT_FLAP_RIGHT_PADDLE
+        self.template_RewindAndReplayWithKey(key_rec, evt)
+        pass
+
+    def test_RewindAndReplayWithKey_6(self):
+        key_rec = [0]*30
+        evt = GameEvent()
+        evt.frame = 20
+        evt.keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
+        self.template_RewindAndReplayWithKey(key_rec, evt)
         pass
 
     def test_RunFrameAsServer(self):
@@ -404,6 +413,7 @@ class GameEngineTest(unittest.TestCase):
             e.RunFrameAsClient(s, rec)
             pass
         return s
+
 
     def test_RunFrameAsClient_1(self):
         '''Test the consistency of the game state with RunFrameAsClient.
@@ -505,7 +515,78 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(result == s)
         pass
 
+    def template_RunFrameAsServer(self, max_buffer, key_evts):
+        '''A test template for RunFrameAsServer.
+        This validates the input (check for key_evts entry that cannot be 
+        rewound with the buffer size provided.)
+        Arguments:
+        max_buffer -- The size of the buffer.
+        key_evts   -- The list of key events to be received on each frame.
+                      Use None to indicate no event.
+        
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.is_server = True
+        e.clients = [client]
+        rec = GameRecord()
+        rec.SetSize(max_buffer)
+        s = GameState()
+        # Validate the input.
+        for i in range(0, len(key_evts)):
+            if key_evts[i] == None:
+                continue
+            assert(i - key_evts[i].frame <= max_buffer)
+            pass
+        for i in range(0, len(key_evts)):
+            svr.WriteEvent(key_evts[i])
+            e.RunFrameAsServer(s, rec)
+            pass
+        raw_evts = [0]*len(key_evts)
+        for i in range(0, len(key_evts)):
+            if key_evts[i] == None:
+                continue
+            raw_evts[key_evts[i].frame] = key_evts[i].keys
+            pass
+        test = GameState()
+        for i in range(0, len(key_evts)):
+            e.PlayFrame(test, raw_evts[i])
+            pass
+        test.Diff(s)
+        self.assertTrue(test == s)
+
+    def test_RunFrameAsServer_1(self):
+        '''Test the template.
+        '''
+        key_evts = [None]*100
+        self.template_RunFrameAsServer(50, key_evts)
+        pass
+
+    def test_RunFrameAsServer_2(self):
+        '''Test one event at frame 10 from client arriving at server at frame 
+        20.
+        '''
+        key_evts = [None]*50
+        key_evts[20] = GameEvent()
+        key_evts[20].frame = 10
+        key_evts[20].keys = GameEvent.EVENT_FLAP_RIGHT_PADDLE
+        self.template_RunFrameAsServer(50, key_evts)
+        pass
+
     @unittest.skip('failing')
+    def test_RunFrameAsServer_3(self):
+        '''Test one event at frame 10 from client arriving at server at frame 
+        20 with less buffer than the test length.
+        '''
+        key_evts = [None]*50
+        key_evts[20] = GameEvent()
+        key_evts[20].frame = 10
+        key_evts[20].keys = GameEvent.EVENT_FLAP_RIGHT_PADDLE
+        self.template_RunFrameAsServer(20, key_evts)
+        pass
+
     def test_RunFrameAsServerAndClient(self):
         '''Test the consistency of game state with RunFrameAsServer.
         '''
@@ -569,7 +650,6 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(test_s == svr_s)
         pass
 
-    @unittest.skip('failing')
     def test_run_game(self):
         '''Test consistency of game state between server and client (one 
         event).'''
@@ -637,7 +717,7 @@ class GameEngineTest(unittest.TestCase):
         ssock.close()
         csock.close()
 
-    @unittest.skip('auth jump should not happen')
+    @unittest.skip('failing')
     def test_run_game2(self):
         '''Test consistency of game state between server and client (two
         events).'''

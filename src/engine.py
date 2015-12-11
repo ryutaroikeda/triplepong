@@ -151,6 +151,7 @@ class GameEngine(object):
             if evt == None:
                 continue
             if evt.frame > current_frame:
+                logger.debug('unreading future event')
                 c.UnreadEvent()
                 continue
             evts.append(evt)
@@ -389,9 +390,21 @@ class GameEngine(object):
             t.key_flags = key_flags
             pass
         rec.states[rec.idx].Copy(s)
+        s.key_flags = 0
         return s
 
     def RunFrameAsClient(self, s, rec):
+        '''The main loop of the client.
+
+        The client checks for updates from the server. If there isn't an update 
+        available, the client plays a frame with the keys obtained from the 
+        keyboard.
+
+        If there is an update, it applies the rewind-replay. If the update 
+        is for the current frame, the key_flags are added to those from the 
+        keyboard. Then the frame is played.
+
+        '''
         update = None
         keys = self.GetKeyboardEvents(s)
         # Send local key events.
@@ -402,8 +415,10 @@ class GameEngine(object):
             # if the update is for the current frame, set the keys.
             if update.frame == s.frame:
                 keys |= update.key_flags
-            self.RewindAndReplayWithState(update, s.frame, rec)
-            update.Copy(s)
+            update = self.RewindAndReplayWithState(update, s.frame, rec)
+            # if update is None, we should ignore it. Otherwise, update.
+            if update != None:
+                update.Copy(s)
             pass
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
@@ -411,19 +426,35 @@ class GameEngine(object):
         pass
 
     def RunFrameAsServer(self, s, rec):
+        '''The main loop of the server.
+
+        The server first checks for events from the clients. If there isn't an 
+        event available, the server plays a frame.
+        
+        If there is an event, it applies the rewind-replay for correction.
+        The corrected state, along with any key events in the current frame,
+        are sent to each client. Finally, the current frame is played.
+
+        '''
         did_receive_client_evt = False
+        keys = 0
         key_evts = self.GetClientEvents(self.clients, s.frame)
         if len(key_evts) > 0:
             did_receive_client_evt = True
+        # fix me: amend the record, then rewind and replay once.
         for evt in key_evts:
+            if evt.frame == s.frame:
+                keys |= evt.keys
             self.RewindAndReplayWithKey(s, evt, rec)
             pass
         pass
-        rec.AddEntry(s, rec.states[rec.idx].key_flags)
-        self.PlayFrame(s, rec.states[rec.idx].key_flags)
         if did_receive_client_evt:
+            s.key_flags = keys
             self.SendStateUpdate(self.clients, s)
+        rec.AddEntry(s, keys)
+        self.PlayFrame(s, rec.states[rec.idx].key_flags)
         self.renderer.RenderAll(s)
+        pass
 
     def RunGame(self, s, rec, timeout):
         '''Run the game.
@@ -481,7 +512,7 @@ class GameEngine(object):
         s.start_time = time.time()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
-        rec.SetSize(int(s.frames_per_sec) * 60)
+        rec.SetSize(int(s.frames_per_sec) * 100)
         for i in range(0, s.rounds):
             self.PlayRound(s, rec)
             pass
