@@ -440,19 +440,31 @@ class GameEngine(object):
         keys = 0
         did_receive_client_evt = False
         key_evts = self.GetClientEvents(self.clients, s.frame)
-        if len(key_evts) > 0:
-            did_receive_client_evt = True
-        # fix me: amend the record, then rewind and replay once.
+        #if len(key_evts) > 0:
+            #did_receive_client_evt = True
         # Amend the game record.
+        applied_evts = []
         for evt in key_evts:
             if evt.frame == s.frame:
                keys |= evt.keys
-            self.RewindAndReplayWithKey(s, evt, rec)
+            # Update the record with the new event, if applicable.
+            if rec.ApplyEvent(s.frame, evt) == 0:
+                applied_evts.append(evt)
+            #self.RewindAndReplayWithKey(s, evt, rec)
             pass
-        pass
-        if did_receive_client_evt:
+        if len(applied_evts) > 0:
+            # Sort the events by frame.
+            sorted(applied_evts, key=lambda x: x.frame, reverse=False)
+            # Call rewind using the earliest applicable event.
+            evt = key_evts[0]
+            self.RewindAndReplayWithKey(s, evt, rec)
+            # Send state to clients.
             s.key_flags = keys
             self.SendStateUpdate(self.clients, s)
+        pass
+        #if did_receive_client_evt:
+            #s.key_flags = keys
+            #self.SendStateUpdate(self.clients, s)
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
         self.renderer.RenderAll(s)
