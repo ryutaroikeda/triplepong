@@ -369,14 +369,14 @@ class GameEngine(object):
         if rewind < 0:
             # The client is ahead of the server. Ignore.
             # This should never happen if we are unreading events in
-            # GetClientEvents().
+            # the method GetClientEvents().
             logger.debug('client is ahead - ignoring')
             return None
         if rewind > rec.available:
             # The event is too old to rewind. Ignore the event.
-            # To do:
+            # fix me:
             # The client needs to know the event was ignored, so return 
-            # the previous frame.
+            # the previous frame?
             logger.debug('event too old to rewind')
             return None
         # Update the record

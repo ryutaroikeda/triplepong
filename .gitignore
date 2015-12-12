@@ -1,3 +1,7 @@
 *~
 *.log
-.trash
+*.pyc
+*/__py_chache__/
+*.swp
+*.mypy
+tmp/*
