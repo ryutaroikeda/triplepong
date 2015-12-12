@@ -443,6 +443,7 @@ class GameEngine(object):
         if len(key_evts) > 0:
             did_receive_client_evt = True
         # fix me: amend the record, then rewind and replay once.
+        # Amend the game record.
         for evt in key_evts:
             if evt.frame == s.frame:
                keys |= evt.keys

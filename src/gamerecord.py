@@ -49,4 +49,22 @@ class GameRecord:
         if self.available < self.size:
             self.available += 1
         pass
+    def ApplyEvent(self, frame, evt):
+        '''Update the record with a key event.
+        frame -- The current frame.
+        evt   -- A GameEvent.
+
+        Return value:
+        0 on success. -1 if the evt cannot be applied.
+        '''
+        rewind = frame - evt.frame
+        if rewind < 0:
+            # The event is for a later frame. Ignore.
+            return -1
+        if rewind > self.available:
+            # The event is too old. Ignore.
+            return -1
+        idx = (self.idx - rewind) % self.size
+        self.states[idx].key_flags |= evt.keys
+        return 0
     pass
