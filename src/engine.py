@@ -302,7 +302,6 @@ class GameEngine(object):
         self.ApplyEvents(s, keys)
         self.ApplyLogic(s)
         s.frame += 1
-        s.key_flags = 0
         pass
 
     def RewindAndReplayWithState(self, auth_state, current_frame, rec):
@@ -390,6 +389,7 @@ class GameEngine(object):
             t.key_flags = key_flags
             pass
         rec.states[rec.idx].Copy(s)
+        # reset key_flags (some tests rely on this feature).
         s.key_flags = 0
         return s
 
@@ -436,15 +436,16 @@ class GameEngine(object):
         are sent to each client. Finally, the current frame is played.
 
         '''
-        did_receive_client_evt = False
+        s.key_flags = 0
         keys = 0
+        did_receive_client_evt = False
         key_evts = self.GetClientEvents(self.clients, s.frame)
         if len(key_evts) > 0:
             did_receive_client_evt = True
         # fix me: amend the record, then rewind and replay once.
         for evt in key_evts:
             if evt.frame == s.frame:
-                keys |= evt.keys
+               keys |= evt.keys
             self.RewindAndReplayWithKey(s, evt, rec)
             pass
         pass
@@ -452,7 +453,7 @@ class GameEngine(object):
             s.key_flags = keys
             self.SendStateUpdate(self.clients, s)
         rec.AddEntry(s, keys)
-        self.PlayFrame(s, rec.states[rec.idx].key_flags)
+        self.PlayFrame(s, keys)
         self.renderer.RenderAll(s)
         pass
 
