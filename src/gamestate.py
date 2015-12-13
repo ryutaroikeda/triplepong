@@ -4,7 +4,6 @@ import struct
 import sys
 sys.path.append(os.path.abspath('src'))
 from gameobject import GameObject
-from gameconfig import GameConfig
 from eventtype import EventType
 import tplogger
 logger = tplogger.getTPLogger('gamestate.log', logging.DEBUG)
