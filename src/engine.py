@@ -469,6 +469,21 @@ class GameEngine(object):
         self.renderer.RenderAll(s)
         pass
 
+    def GetTargetFrame(self, now, start_time, start_frame, end_frame, 
+            frame_rate):
+        '''Compute the frame we should be on.
+        This method is intended to be used in RunGame().
+        Arguments:
+        now -- The current time.
+        start_time -- The time at the start of the run.
+        start_frame -- The frame at the start of the run.
+        end_frame   -- The frame at the end of the run.
+        '''
+        target = int(((now - start_time) * frame_rate) + start_frame)
+        if target > end_frame:
+            target = end_frame
+        return target
+
     def RunGame(self, s, rec, max_frame, frame_rate):
         '''Run the game.
 
@@ -488,10 +503,8 @@ class GameEngine(object):
             if s.frame >= end_frame:
                 break
             # Compute the target current frame.
-            target_frame = int(((time.time() - start_time) * frame_rate)) + \
-                    start_frame
-            if target_frame > end_frame:
-                target_frame = end_frame
+            target_frame = self.GetTargetFrame(time.time(), start_time,
+                    start_frame, end_frame, frame_rate)
             # Loop here until we catch up.
             while s.frame < target_frame:
                 if self.is_client:

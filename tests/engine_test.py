@@ -661,6 +661,26 @@ class GameEngineTest(unittest.TestCase):
         key_evts[30].keys = GameEvent.EVENT_FLAP_RIGHT_PADDLE
         self.template_RunFrameAsServer(20, key_evts)
         pass
+    
+    def test_GetTargetFrame_1(self):
+        e = GameEngine()
+        self.assertTrue(e.GetTargetFrame(0, 0, 0, 0, 0) == 0)
+
+    def test_GameTargetFrame_2(self):
+        e = GameEngine()
+        self.assertTrue(e.GetTargetFrame(16, 0, 0, 10, 1/4) == 4)
+
+    def test_GameTargetFrame_3(self):
+        e = GameEngine()
+        self.assertTrue(e.GetTargetFrame(16, 0, 0, 2, 4) == 2)
+
+    def test_GameTargetFrame_4(self):
+        e = GameEngine()
+        self.assertTrue(e.GetTargetFrame(16, 4, 0, 10, 1/4) == 3)
+
+    def test_GameTargetFrame_5(self):
+        e = GameEngine()
+        self.assertTrue(e.GetTargetFrame(18.5, 6.5, 20, 100, 5) == 80)
 
     def template_RunGame(self, is_client, is_server, max_frame, max_buffer):
         assert(not(is_client and is_server))
