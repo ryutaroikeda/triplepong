@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-def getTPLogger(filename: str, level) -> logging.Logger:
+def getTPLogger(filename, level):
     logger = logging.getLogger(filename)
     if logger.hasHandlers():
         # this logger was already initialized

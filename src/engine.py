@@ -438,10 +438,7 @@ class GameEngine(object):
         '''
         s.key_flags = 0
         keys = 0
-        did_receive_client_evt = False
         key_evts = self.GetClientEvents(self.clients, s.frame)
-        #if len(key_evts) > 0:
-            #did_receive_client_evt = True
         # Amend the game record.
         applied_evts = []
         for evt in key_evts:
@@ -450,7 +447,6 @@ class GameEngine(object):
             # Update the record with the new event, if applicable.
             if rec.ApplyEvent(s.frame, evt) == 0:
                 applied_evts.append(evt)
-            #self.RewindAndReplayWithKey(s, evt, rec)
             pass
         if len(applied_evts) > 0:
             # Sort the events by frame.
@@ -462,12 +458,42 @@ class GameEngine(object):
             s.key_flags = keys
             self.SendStateUpdate(self.clients, s)
         pass
-        #if did_receive_client_evt:
-            #s.key_flags = keys
-            #self.SendStateUpdate(self.clients, s)
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
         self.renderer.RenderAll(s)
+        pass
+
+    def RunGameAsClient(self, s, rec, timeout):
+        '''Run the game as a client.
+        '''
+        start_time = time.time()
+        while True:
+            frame_start = time.time()
+            if frame_start - start_time >= timeout:
+                break
+            self.RunFrameAsClient(s, rec)
+            delta = time.time() - frame_start
+            if 0 < delta and delta < s.sec_per_frame:
+                time.sleep(s.sec_per_frame - delta)
+                pass
+
+    def RunGameAsServer(self, s, rec, timeout):
+        '''Run the game as the server.
+        '''
+        start_time = time.time()
+        frame_offset = 0
+        while True:
+            frame_start = time.time()
+            if frame_start - start_time >= timeout:
+                # to do: Send end of game message to clients.
+                break
+            # Compute the expected frame.
+            frame = int(((frame_start - start_time) * s.frames_per_sec) + \
+                    frame_offset)
+            # loop here until we catch up.
+            while s.frame < frame:
+                self.RunFrameAsServer(s, rec)
+                pass
         pass
 
     def RunGame(self, s, rec, timeout):
@@ -479,19 +505,12 @@ class GameEngine(object):
         s       -- The game state to run the game from.
         rec     -- The game record for saving state and events.
         timeout -- The amount of time to run the game.'''
-        start_time = time.time()
-        while True:
-            s.frame_start = time.time()
-            if s.frame_start - start_time >= timeout:
-                break
-            if self.is_client:
-                self.RunFrameAsClient(s, rec)
-            elif self.is_server:
-                self.RunFrameAsServer(s, rec)
-            delta = time.time() - s.frame_start
-            if 0 < delta and delta < s.sec_per_frame:
-                time.sleep(s.sec_per_frame - delta)
+        if self.is_client:
+            self.RunGameAsClient(s, rec, timeout)
+        elif self.is_server:
+            self.RunGameAsServer(s, rec, timeout)
             pass
+        pass
 
     def PlayRotation(self, s, rec):
         '''Play one rotation of the game.
