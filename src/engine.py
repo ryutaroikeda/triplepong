@@ -483,11 +483,13 @@ class GameEngine(object):
         start_time = time.time()
         start_frame = s.frame
         end_frame = start_frame + max_frame
+        logger.debug('playing {0} frames'.format(max_frame))
         while True:
             if s.frame >= end_frame:
                 break
             # Compute the target current frame.
-            target_frame = int(((time.time() - start_time) * frame_rate))
+            target_frame = int(((time.time() - start_time) * frame_rate)) + \
+                    start_frame
             if target_frame > end_frame:
                 target_frame = end_frame
             # Loop here until we catch up.
@@ -501,6 +503,7 @@ class GameEngine(object):
                     rec.AddEntry(s, 0)
                     self.PlayFrame(s, 0)
                 pass
+            pass
         pass
 
     def RotateRoles(self, s):
@@ -533,13 +536,16 @@ class GameEngine(object):
 
     def Play(self):
         s = GameState()
+        player_size = s.player_size
+        rotation_length = s.rotation_length
+        frame_rate = s.frames_per_sec 
+        rounds = s.rounds
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
-        rec.SetSize(int(s.frames_per_sec) * 5)
-        rotation_length = s.rotation_length
-        for i in range(0, s.rounds):
-            self.PlayRound(s, rec, s.player_size, rotation_length, 
-                    s.frames_per_sec)
+        rec.SetSize(int(frame_rate) * 5)
+        for i in range(0, rounds):
+            self.PlayRound(s, rec, player_size, rotation_length, 
+                    frame_rate)
             pass
         # To do: The server sends an end of game message to each client.
 
