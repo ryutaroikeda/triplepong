@@ -269,9 +269,6 @@ class GameEngine(object):
             pass
         if keys & GameEvent.EVENT_FLAP_BALL:
             s.ball.vel_y = BALL_FLAP_VEL
-            # Secret extra boost. 
-            if s.ball.vel_y == 0:
-                s.ball.vel_y = 2 * BALL_FLAP_VEL
             pass
         pass
 
