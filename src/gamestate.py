@@ -34,6 +34,8 @@ class GameState:
         paddle_offset = 60
         paddle_half_width = 8
         paddle_half_height = 30
+        ball_vel = 4
+        ball_half_size = 4
         self.event_type = EventType.STATE_UPDATE
         # objects
         self.screen = GameObject()
@@ -87,10 +89,10 @@ class GameState:
         self.paddle_wall_bottom.half_height = buffer_region
         self.ball.pos_x = self.screen.half_width
         self.ball.pos_y = self.screen.half_height
-        self.ball.vel_x = -4
+        self.ball.vel_x = -ball_vel
         self.ball.vel_y = 0
-        self.ball.half_width = 2
-        self.ball.half_height = 2
+        self.ball.half_width = ball_half_size
+        self.ball.half_height = ball_half_size
         self.paddle_left.pos_x = paddle_offset
         self.paddle_left.pos_y = 0
         self.paddle_left.vel_x = 0
