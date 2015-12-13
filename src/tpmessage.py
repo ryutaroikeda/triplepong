@@ -19,9 +19,9 @@ class TPMessage(object):
     def getsize(self):
         return struct.calcsize(self.FORMAT)
 
-    def pack(self) -> bytes:
+    def pack(self): 
         return struct.pack(self.FORMAT, self.method, self.player_id)
-    def unpack(self, b: bytes) -> None:
+    def unpack(self, b):
         (self.method, self.player_id) = struct.unpack(self.FORMAT, b)
         pass
     pass

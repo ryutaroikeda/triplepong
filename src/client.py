@@ -118,8 +118,14 @@ class TPClient(object):
     pass
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='The Triplepong client.')
+    parser.add_argument('--ip', type=str, default='127.0.0.1',
+            help='The IP address of the server.')
+    parser.add_argument('--port', type=int, default=8090, help='The port.')
+    args = parser.parse_args()
     c = TPClient()
     from renderer import Renderer
     r = Renderer()
     r.Init()
-    c.Run(('', 8090), r, r)
+    c.Run((args.ip, args.port), r, r)

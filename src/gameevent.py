@@ -27,7 +27,7 @@ class GameEvent:
         self.keys = []
         self.frame = 0
         pass
-    def GetSize():
+    def GetSize(self):
         return struct.calcsize(GameEvent.SUBFORMAT)
     def Serialize(self):
         '''

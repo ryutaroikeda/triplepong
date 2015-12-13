@@ -4,9 +4,10 @@ import logging
 
 def getTPLogger(filename, level):
     logger = logging.getLogger(filename)
-    if logger.hasHandlers():
+    # Remove for 2.7 compatibility
+    #if logger.hasHandlers():
         # this logger was already initialized
-        return logger
+        #return logger
     logger.setLevel(level)
     form = logging.Formatter(
             "%(asctime)s %(filename)s:%(lineno)s:%(funcName)s " +

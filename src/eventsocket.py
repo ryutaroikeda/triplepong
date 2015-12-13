@@ -53,15 +53,17 @@ class EventSocket:
             self.buffered_event = None
             return None
         if self.event_type == 0:
-            b = self.sock.recv(EventType.GetSize())
             evt_type = EventType()
+            b = self.sock.recv(evt_type.GetSize())
             evt_type.Deserialize(b)
             self.event_type = evt_type.event_type
             self.byte_buffer = b''
             if self.event_type == EventType.STATE_UPDATE:
-                self.read_max = GameState.GetSize()
+                tmp = GameState()
+                self.read_max = tmp.GetSize()
             elif self.event_type == EventType.KEYBOARD:
-                self.read_max = GameEvent.GetSize()
+                tmp = GameEvent()
+                self.read_max = tmp.GetSize()
             pass
         buf = self.sock.recv(self.read_max - len(self.byte_buffer))
         self.byte_buffer += buf

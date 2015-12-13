@@ -139,7 +139,7 @@ class GameState:
             pass
         pass
 
-    def GetSize():
+    def GetSize(self):
         return struct.calcsize(GameState.SUBFORMAT)
     def Serialize(self):
         '''Serialize a partial representation of the state.

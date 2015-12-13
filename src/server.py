@@ -189,7 +189,16 @@ class TPServer(object):
     pass
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='The triplepong game server.')
+    parser.add_argument('--ip', type=str, default='', 
+            help='The IP address to run the server on.')
+    parser.add_argument('--port', type=int, default='8090',
+            help='The port number.')
+    parser.add_argument('--players', type=int, default='3',
+            help='The number of players.')
+    args = parser.parse_args()
     s = TPServer()
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run(('', 8090), 2)
+    s.Run((args.ip, args.port), args.players)

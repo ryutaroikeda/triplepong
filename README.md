@@ -7,30 +7,23 @@ A pong game for three players. And flappy birds!
 
 To do:
 
-Issues:
-* Sudden state reset.
-
-Engine:
-* Event rewind and game loop.
-
-Testing:
-* Unit tests for engine.
-
 Networking:
-* Test performance after engine is completed.
+* Profiling 
 * Fix server or client timing out and raising error during handshake.
+* Score synchronization.
+* End of game message.
 
 User Interface:
 * Command line for setting up server / client.
 * Render the score.
 * Render the time (until next rotation, end of game).
-* End of game message.
 * Menu for choosing game server.
 * Sound effects.
 * Music.
 
 Extensions:
 * Support UPnP.
+* Try UDP
 * AI player.
 * Official website. 
 * Smart-phone app.
