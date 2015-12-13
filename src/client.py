@@ -81,7 +81,8 @@ class TPClient(object):
         e.player_id = self.player_id
         e.renderer = renderer
         e.keyboard = keyboard
-        e.Play()
+        s = GameState()
+        e.Play(s)
 
     def Run(self, svraddr, renderer, keyboard):
         '''Run the game as a client.

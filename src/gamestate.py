@@ -34,6 +34,7 @@ class GameState:
         paddle_offset = 60
         paddle_half_width = 8
         paddle_half_height = 30
+        self.event_type = EventType.STATE_UPDATE
         # objects
         self.screen = GameObject()
         self.goal_left = GameObject()

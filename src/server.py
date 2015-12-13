@@ -161,7 +161,10 @@ class TPServer(object):
         e.is_server = True
         e.is_client = False
         e.clients = clients
-        e.Play()
+        s = GameState()
+        e.Play(s)
+        # send end of game message
+
 
     def Run(self, addr, clientNum):
         '''Run the game server.

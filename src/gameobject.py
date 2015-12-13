@@ -44,6 +44,14 @@ class GameObject:
                 return False
             pass
         return True
+    def GetTopRight(self, font_size):
+        '''Get the position of the top right of the object.
+        This method is intended to be used by the renderer to render the score
+        next to objects.
+        '''
+        return (self.pos_x + self.half_width,
+                self.pos_y - self.half_height - font_size)
+
     def AlignRight(self, other):
         '''Move other so that the right of self is touching the left of other.
 

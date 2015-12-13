@@ -123,6 +123,7 @@ class GameEngine(object):
 
     def GetServerEvent(self, svr):
         '''Get state update from the server.
+        Also handle end of game events.
 
         Argument:
         svr -- The socket connected to the server.
@@ -132,9 +133,11 @@ class GameEngine(object):
         if svr == None:
             return None
         evt = svr.ReadEvent()
-        if evt != None:
+        if evt == None:
+            return None
+        if evt.event_type == EventType.STATE_UPDATE:
             logger.debug('received update {0}'.format(evt.frame))
-        return evt
+            return evt
 
     def GetClientEvents(self, clients, current_frame):
         '''Read client sockets for keyboard events.
@@ -188,6 +191,20 @@ class GameEngine(object):
         evt.frame = s.frame
         svr.WriteEvent(evt)
 
+    def SendEndGameEvent(self, clients, s):
+        '''Send the end of game event to each client.
+        Arguments:
+        clients -- The list of client EventSocket.
+        s       -- The game state.
+        '''
+        evt = EndOfGameEvent()
+        evt.score_0 = s.scores[0]
+        evt.score_1 = s.scores[1]
+        evt.score_2 = s.scores[2]
+        for c in clients:
+            c.WriteEvent(evt)
+            pass
+
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
 
@@ -233,6 +250,9 @@ class GameEngine(object):
             pass
         if keys & GameEvent.EVENT_FLAP_BALL:
             s.ball.vel_y = BALL_FLAP_VEL
+            # Secret extra boost. 
+            if s.ball.vel_y == 0:
+                s.ball.vel_y = 2 * BALL_FLAP_VEL
             pass
         pass
 
@@ -545,10 +565,14 @@ class GameEngine(object):
         for i in range(0, rotations):
             logger.debug('starting rotation')
             self.RunGame(s, rec, rotation_length, frame_rate)
-            self.RotateRoles(s)
+            if i < rotations - 1:
+                self.RotateRoles(s)
 
-    def Play(self):
-        s = GameState()
+    def Play(self, s):
+        '''
+        Argument:
+        s -- The game state.
+        '''
         player_size = s.player_size
         rotation_length = s.rotation_length
         frame_rate = s.frames_per_sec 
@@ -571,5 +595,6 @@ if __name__ == '__main__':
     r.Init()
     e.renderer = r
     e.keyboard = r
-    e.Play()
+    s = GameState()
+    e.Play(s)
     pass

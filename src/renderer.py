@@ -21,6 +21,8 @@ class Renderer:
         self.screen_width = 640
         self.screen_height = 480
         self.surface = None
+        self.font = None
+        self.font_size = 24
         pass
     def GetRect(self, obj):
         '''Returns a tuple (x, y, w, h) representing a rect from the given 
@@ -33,11 +35,24 @@ class Renderer:
         pygame.draw.rect(surface, (0, 0, 0),
                 (0, 0, self.screen_width, self.screen_height))
         pass
+    
     def RenderScore(self, surface, state):
         '''Render the score of all players.
+        
+        The score should be rendered near the top right of each player.
+        '''
+        for i in range(0, len(state.scores)):
+            if state.roles[i] == GameState.ROLE_LEFT_PADDLE:
+                pos = state.paddle_left.GetTopRight(self.font_size)
+            elif state.roles[i] == GameState.ROLE_RIGHT_PADDLE:
+                pos = state.paddle_right.GetTopRight(self.font_size)
+            elif state.roles[i] == GameState.ROLE_BALL:
+                pos = state.ball.GetTopRight(self.font_size)
+            score = self.font.render('{0}'.format(state.scores[i]), 1,
+                    (255, 255, 255))
+            surface.blit(score, pos)
+            pass
 
-        To do:'''
-        pass
     def RenderState(self, surface, state):
         '''Render the game state.
 
@@ -82,6 +97,7 @@ class Renderer:
         pygame.init()
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()
+        self.font = pygame.font.Font(None, self.font_size)
         pass
     def Run(self):
         '''To do: Use this to run the renderer as a separate process.
