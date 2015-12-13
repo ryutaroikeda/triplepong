@@ -9,6 +9,7 @@ import time
 sys.path.append(os.path.abspath('src'))
 from eventsocket import EventSocket
 from engine import GameEngine
+from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
@@ -163,8 +164,6 @@ class TPServer(object):
         e.clients = clients
         s = GameState()
         e.Play(s)
-        # send end of game message
-
 
     def Run(self, addr, clientNum):
         '''Run the game server.

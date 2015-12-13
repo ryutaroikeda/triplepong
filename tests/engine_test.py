@@ -11,6 +11,7 @@ from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
+from endgameevent import EndGameEvent
 import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
@@ -56,7 +57,8 @@ class GameEngineTest(unittest.TestCase):
         '''Test server event when server is None.
         '''
         e = GameEngine()
-        evt = e.GetServerEvent(None)
+        s = GameState()
+        evt = e.GetServerEvent(None, s)
         self.assertTrue(evt == None)
         pass
 
@@ -84,21 +86,44 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(evts[0].frame == evt.frame)
         self.assertTrue(evts[0].keys == evt.keys)
         pass
+    
+    def test_HandleEndGameEvent(self):
+        e = GameEngine()
+        s = GameState()
+        evt = EndGameEvent()
+        evt.score_0 = 1
+        evt.score_1 = 534
+        evt.score_2 = -32
+        e.HandleEndGameEvent(s, evt)
+        self.assertTrue(s.is_ended == True)
+        self.assertTrue(s.scores[0] == evt.score_0)
+        self.assertTrue(s.scores[1] == evt.score_1)
+        self.assertTrue(s.scores[2] == evt.score_2)
 
+    def template_SendAndGetEvent(self, s, evt, send, get):
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        send(e, s, svr, client, evt)
+        received = get(e, s, svr, client)
+        self.assertTrue(evt == received)
+
+    def template_SendAndGetState(self, s, evt):
+        def send(e, s, svr, client, evt):
+            e.SendStateUpdate([client], evt)
+        def get(e, s, svr, client):
+            return e.GetServerEvent(svr, s)
+        # Caution: SendStateUpdate only sends the partial game state.
+        self.template_SendAndGetEvent(s, evt, send, get)
 
     def test_send_and_receive_state(self):
         '''Test SendStateUpdate and GetServerEvent.
         '''
-        svrsock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
-        svr = EventSocket(svrsock)
-        client = EventSocket(csock)
         e = GameEngine()
         s = GameState()
         s.ball.pos_x = 100
-        e.SendStateUpdate([client], s)
-        t = e.GetServerEvent(svr)
-        self.assertTrue(t.ball.pos_x == s.ball.pos_x)
-        pass
+        self.template_SendAndGetState(s, s)
 
     def test_send_and_receive_key(self):
         '''Test SendKeyboardEvents and GetClientEvents
@@ -112,7 +137,20 @@ class GameEngineTest(unittest.TestCase):
         e.SendKeyboardEvents(svr, s, keys)
         received_keys = e.GetClientEvents([client], 1)
         self.assertTrue(received_keys[0].keys == keys)
-        pass
+
+    def test_send_and_receive_end_game(self):
+        '''Test SendEndGameEvent.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        s = GameState()
+        s.scores[0] = 3
+        e.SendEndGameEvent([client], s)
+        t = GameState()
+        e.GetServerEvent(svr, t)
+        self.assertTrue(t.scores[0] == s.scores[0])
 
     def test_PlayFrame(self):
         '''Test frame count and key_flags in PlayFrame.
@@ -1040,4 +1078,11 @@ class GameEngineTest(unittest.TestCase):
 
     def test_PlayRoundAsServer_6(self):
         self.template_PlayRound(False, True, 3, 152)
+
+    def test_EndGame(self):
+        e = GameEngine()
+        s = GameState()
+        e.EndGame(s)
+        self.assertTrue(s.is_ended == True)
+        self.assertTrue(s.should_render_score == True)
 

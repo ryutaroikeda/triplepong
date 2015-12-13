@@ -48,10 +48,10 @@ class GameState:
         self.paddle_right = GameObject()
         # The number of players.
         self.player_size = 3
-        self.game_length = 60.0
+        self.game_length = 120.0
         self.frames_per_sec = 60.0
         self.sec_per_frame = 1 / self.frames_per_sec
-        self.rounds = 1
+        self.rounds = 2
         self.rotation_length = ((self.game_length / self.rounds) * \
                 self.frames_per_sec) // self.player_size
         self.round_length = self.rotation_length * self.player_size
@@ -112,6 +112,8 @@ class GameState:
         self.players = [0, 0, 1, 2]
         self.frame = 0
         self.key_flags = 0
+        self.should_render_score = False
+        self.is_ended = False
         pass
 
     def __str__(self):
@@ -142,6 +144,7 @@ class GameState:
 
     def GetSize(self):
         return struct.calcsize(GameState.SUBFORMAT)
+
     def Serialize(self):
         '''Serialize a partial representation of the state.
 

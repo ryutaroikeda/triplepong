@@ -11,6 +11,7 @@ from eventsocket import EventSocket
 from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
+from endgameevent import EndGameEvent
 from gamerecord import GameRecord
 from nullrenderer import NullRenderer
 from nullkeyboard import NullKeyboard
@@ -121,15 +122,28 @@ class GameEngine(object):
             pass
         return flag
 
-    def GetServerEvent(self, svr):
+    def EndGame(self, s):
+        s.should_render_score = True
+        s.is_ended = True
+
+    def HandleEndGameEvent(self, s, evt):
+        s.scores[0] = evt.score_0
+        s.scores[1] = evt.score_1
+        s.scores[2] = evt.score_2
+        self.EndGame(s)
+
+    def GetServerEvent(self, svr, s):
         '''Get state update from the server.
         Also handle end of game events.
 
         Argument:
         svr -- The socket connected to the server.
+        s   -- The game state.
+
         Return value:
         The game state sent by the server, or None if no update was 
-        available.'''
+        available.
+        '''
         if svr == None:
             return None
         evt = svr.ReadEvent()
@@ -138,6 +152,10 @@ class GameEngine(object):
         if evt.event_type == EventType.STATE_UPDATE:
             logger.debug('received update {0}'.format(evt.frame))
             return evt
+        elif evt.event_type == EventType.END_GAME:
+            logger.debug('received end of game')
+            self.HandleEndGameEvent(s, evt)
+            return None
 
     def GetClientEvents(self, clients, current_frame):
         '''Read client sockets for keyboard events.
@@ -197,13 +215,14 @@ class GameEngine(object):
         clients -- The list of client EventSocket.
         s       -- The game state.
         '''
-        evt = EndOfGameEvent()
+        evt = EndGameEvent()
         evt.score_0 = s.scores[0]
         evt.score_1 = s.scores[1]
         evt.score_2 = s.scores[2]
         for c in clients:
             c.WriteEvent(evt)
             pass
+        self.EndGame(s)
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
@@ -306,7 +325,8 @@ class GameEngine(object):
                     s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = -4
             s.ball.vel_y = 0
-            s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
+            if not s.is_ended:
+                s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
             pass
         if s.ball.IsCollidingWith(s.goal_right):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
@@ -314,7 +334,8 @@ class GameEngine(object):
                     s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = 4
             s.ball.vel_y = 0
-            s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
+            if not s.is_ended:
+                s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
             pass
         pass
 
@@ -436,7 +457,7 @@ class GameEngine(object):
         # Send local key events.
         if keys != 0:
             self.SendKeyboardEvents(self.server, s, keys)
-        update = self.GetServerEvent(self.server)
+        update = self.GetServerEvent(self.server, s)
         if update != None:
             # if the update is for the current frame, set the keys.
             if update.frame == s.frame:
@@ -584,7 +605,11 @@ class GameEngine(object):
             self.PlayRound(s, rec, player_size, rotation_length, 
                     frame_rate)
             pass
-        # To do: The server sends an end of game message to each client.
+        if self.is_server:
+            self.SendEndGameEvent(self.clients, s)
+        # Keep the game running for a bit, to show the final score.   
+        self.RunGame(s, rec, frame_rate * 60, frame_rate)
+        # to do: server should send a 'close_session' event.
 
 if __name__ == '__main__':
     e = GameEngine()
