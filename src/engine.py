@@ -146,7 +146,11 @@ class GameEngine(object):
         '''
         if svr == None:
             return None
-        evt = svr.ReadEvent()
+        evt = None
+        try:
+            evt = svr.ReadEvent()
+        except:
+            self.server = None
         if evt == None:
             return None
         if evt.event_type == EventType.STATE_UPDATE:
@@ -169,8 +173,12 @@ class GameEngine(object):
         A list of game events.
         '''
         evts = []
-        for c in clients:
-            evt = c.ReadEvent()
+        for c in list(clients):
+            evt = None
+            try:
+                evt = c.ReadEvent()
+            except:
+                clients.remove(c)
             # Check if the event happens in the future.
             if evt == None:
                 continue
@@ -190,8 +198,11 @@ class GameEngine(object):
         clients -- The clients to send to.
         s      -- The game state to send.'''
         logger.debug('sending state update {0}'.format(s.frame))
-        for c in clients:
-            c.WriteEvent(s)
+        for c in list(clients):
+            try:
+                c.WriteEvent(s)
+            except:
+                clients.remove(c)
         pass
 
     def SendKeyboardEvents(self, svr, s, keys):
@@ -207,7 +218,10 @@ class GameEngine(object):
         evt = GameEvent()
         evt.keys = keys
         evt.frame = s.frame
-        svr.WriteEvent(evt)
+        try:
+            svr.WriteEvent(evt)
+        except:
+            self.server = None
 
     def SendEndGameEvent(self, clients, s):
         '''Send the end of game event to each client.
@@ -605,8 +619,7 @@ class GameEngine(object):
         if self.is_server:
             self.SendEndGameEvent(self.clients, s)
         # Keep the game running for a bit, to show the final score.   
-        self.RunGame(s, rec, frame_rate * 60, frame_rate)
-        # to do: server should send a 'close_session' event.
+        self.RunGame(s, rec, frame_rate * 30, frame_rate)
 
 if __name__ == '__main__':
     e = GameEngine()

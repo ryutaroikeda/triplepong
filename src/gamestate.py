@@ -50,7 +50,7 @@ class GameState:
         self.paddle_right = GameObject()
         # The number of players.
         self.player_size = 3
-        self.game_length = 120.0
+        self.game_length = 20.0
         self.frames_per_sec = 60.0
         self.sec_per_frame = 1 / self.frames_per_sec
         self.rounds = 2
