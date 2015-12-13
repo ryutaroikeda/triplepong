@@ -12,7 +12,13 @@ class GameState:
 
     Attributes:
     frame     -- The number of frames since the start of the game.
-    key_flags -- The keys pressed in the current frame.'''
+    key_flags -- The keys pressed in the current frame.
+    game_length -- The maximum duration of the game. 
+    rounds    -- The number of rounds to play. A round consists of three 
+                 rotations.
+    round_length -- The duration of a round in frames.
+    rotation_length -- The duration of a rotation in frames.
+    '''
     ROLE_NONE = 0
     ROLE_LEFT_PADDLE = 1
     ROLE_RIGHT_PADDLE = 2
@@ -42,12 +48,12 @@ class GameState:
         # The number of players.
         self.player_size = 3
         self.game_length = 60.0
-        # the number of rounds (i.e. full rotation of roles) per game
-        self.rounds = 1
-        self.round_length = self.game_length / self.rounds
-        self.rotation_length = self.round_length / self.player_size
         self.frames_per_sec = 60.0
         self.sec_per_frame = 1 / self.frames_per_sec
+        self.rounds = 1
+        self.round_length = (((self.game_length / self.rounds) * \
+                self.frames_per_sec) // self.player_size) * self.player_size
+        self.rotation_length = self.round_length // self.player_size
         self.screen.half_width = 320
         self.screen.half_height = 240
         self.goal_left.pos_x = - buffer_region

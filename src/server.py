@@ -192,4 +192,4 @@ if __name__ == '__main__':
     s = TPServer()
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run(('', 8090), 2)
+    s.Run(('', 8090), 1)

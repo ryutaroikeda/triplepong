@@ -872,6 +872,28 @@ class GameEngineTest(unittest.TestCase):
         clt1_e.server = svr1
         clt1_e.key_cool_down_time = 0
         clt1_e.keyboard = keyboard
-        
+
+    def test_RotateRoles_1(self):
+        e = GameEngine()
+        s = GameState()
+        s.player_size = 1
+        s.roles = [GameState.ROLE_LEFT_PADDLE]
+        s.players = [-1, 0]
+        e.RotateRoles(s)
+        self.assertTrue(s.roles == [GameState.ROLE_LEFT_PADDLE])
+        self.assertTrue(s.players == [-1, 0])
+
+    def test_RotateRoles_2(self):
+        e = GameEngine()
+        s = GameState()
+        s.player_size = 2
+        s.roles = [GameState.ROLE_LEFT_PADDLE, GameState.ROLE_RIGHT_PADDLE]
+        s.players = [-1]*(s.player_size + 1)
+        s.players[GameState.ROLE_LEFT_PADDLE] = 0
+        s.players[GameState.ROLE_RIGHT_PADDLE] = 1
+        e.RotateRoles(s)
+        self.assertTrue(s.roles == [GameState.ROLE_RIGHT_PADDLE, 
+            GameState.ROLE_LEFT_PADDLE])
+        self.assertTrue(s.players == [-1, 1, 0])
 
 

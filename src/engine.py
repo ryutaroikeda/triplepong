@@ -131,7 +131,10 @@ class GameEngine(object):
         available.'''
         if svr == None:
             return None
-        return svr.ReadEvent()
+        evt = svr.ReadEvent()
+        if evt != None:
+            logger.debug('received update {0}'.format(evt.frame))
+        return evt
 
     def GetClientEvents(self, clients, current_frame):
         '''Read client sockets for keyboard events.
@@ -155,6 +158,7 @@ class GameEngine(object):
                 c.UnreadEvent()
                 continue
             evts.append(evt)
+            logger.debug('received key event {0}'.format(evt.frame))
             pass
         return evts
 
@@ -164,6 +168,7 @@ class GameEngine(object):
         Arguments:
         clients -- The clients to send to.
         s      -- The game state to send.'''
+        logger.debug('sending state update {0}'.format(s.frame))
         for c in clients:
             c.WriteEvent(s)
         pass
@@ -177,6 +182,7 @@ class GameEngine(object):
         keys -- A flag of game event codes, defined in gameevent.py'''
         if svr == None:
             return
+        logger.debug('sending key event {0}'.format(s.frame))
         evt = GameEvent()
         evt.keys = keys
         evt.frame = s.frame
@@ -463,40 +469,7 @@ class GameEngine(object):
         self.renderer.RenderAll(s)
         pass
 
-    def RunGameAsClient(self, s, rec, timeout):
-        '''Run the game as a client.
-        '''
-        start_time = time.time()
-        while True:
-            frame_start = time.time()
-            if frame_start - start_time >= timeout:
-                break
-            self.RunFrameAsClient(s, rec)
-            delta = time.time() - frame_start
-            if 0 < delta and delta < s.sec_per_frame:
-                time.sleep(s.sec_per_frame - delta)
-                pass
-
-    def RunGameAsServer(self, s, rec, timeout):
-        '''Run the game as the server.
-        '''
-        start_time = time.time()
-        frame_offset = 0
-        while True:
-            frame_start = time.time()
-            if frame_start - start_time >= timeout:
-                # to do: Send end of game message to clients.
-                break
-            # Compute the expected frame.
-            frame = int(((frame_start - start_time) * s.frames_per_sec) + \
-                    frame_offset)
-            # loop here until we catch up.
-            while s.frame < frame:
-                self.RunFrameAsServer(s, rec)
-                pass
-        pass
-
-    def RunGame(self, s, rec, timeout):
+    def RunGame(self, s, rec, max_frame):
         '''Run the game.
 
         This is the main game loop.
@@ -504,12 +477,23 @@ class GameEngine(object):
         Arguments:
         s       -- The game state to run the game from.
         rec     -- The game record for saving state and events.
-        timeout -- The amount of time to run the game.'''
-        if self.is_client:
-            self.RunGameAsClient(s, rec, timeout)
-        elif self.is_server:
-            self.RunGameAsServer(s, rec, timeout)
-            pass
+        max_frame -- The number of frames to run the game for.
+        '''
+        start_time = time.time()
+        start_frame = s.frame
+        while True:
+            if s.frame - start_frame >= max_frame:
+                break
+            frame_start = time.time()
+            # Compute the expected frame.
+            frame = int(((frame_start - start_time) * s.frames_per_sec))
+            # loop here until we catch up.
+            while s.frame < frame:
+                if self.is_client:
+                    self.RunFrameAsClient(s, rec)
+                else:
+                    self.RunFrameAsServer(s, rec)
+                pass
         pass
 
     def PlayRotation(self, s, rec):
@@ -521,6 +505,17 @@ class GameEngine(object):
         logger.debug('starting rotation')
         self.RunGame(s, rec, s.rotation_length)
 
+    def RotateRoles(self, s):
+        '''Rotate the roles of the players.
+        Argument:
+        s -- The game state.
+        '''
+        tmp = s.roles[1:]
+        tmp.append(s.roles[0])
+        s.roles = tmp
+        for player_id in range(0, s.player_size):
+            s.players[s.roles[player_id]] = player_id
+
     def PlayRound(self, s, rec):
         '''Play one round of the game, with each player playing every role.
 
@@ -530,26 +525,18 @@ class GameEngine(object):
         logger.debug('starting round')
         for i in range(0, s.player_size):
             self.PlayRotation(s, rec)
-            # rotate roles
-            tmp = s.roles[1:]
-            tmp.append(s.roles[0])
-            s.roles = tmp
-            for pid in range(0, s.player_size):
-                s.players[ s.roles[pid] ] = pid
-                pass
-            pass
-        pass
+            self.RotateRoles(s)
 
     def Play(self):
         s = GameState()
         s.start_time = time.time()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
-        rec.SetSize(int(s.frames_per_sec) * 100)
+        rec.SetSize(int(s.frames_per_sec) * 5)
         for i in range(0, s.rounds):
             self.PlayRound(s, rec)
             pass
-        pass
+        # To do: The server sends an end of game message to each client.
 
 if __name__ == '__main__':
     e = GameEngine()
