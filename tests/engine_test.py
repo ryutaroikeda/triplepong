@@ -662,13 +662,53 @@ class GameEngineTest(unittest.TestCase):
         self.template_RunFrameAsServer(20, key_evts)
         pass
 
-    def template_RunServerAndClient(self, max_buffer, keyboard):
-        '''Test the server and client running together.
+    def template_RunGame(self, is_client, is_server, max_frame, max_buffer):
+        assert(not(is_client and is_server))
+        e = GameEngine()
+        e.is_client = is_client
+        e.is_server = is_server
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(1)
+        frame_rate = 10000000
+        e.RunGame(s, rec, max_frame, frame_rate)
+        self.assertTrue(s.frame == max_frame)
+
+    def test_RunGame_1(self):
+        self.template_RunGame(False, False, 0, 1)
+
+    def test_RunGame_2(self):
+        self.template_RunGame(False, False, 40, 1)
+
+    def test_RunGameAsClient_1(self):
+        self.template_RunGame(True, False, 0, 1)
+
+    def test_RunGameAsClient_2(self):
+        self.template_RunGame(True, False, 100, 1)
+
+    def test_RunGameAsServer_1(self):
+        self.template_RunGame(False, True, 0, 1)
+
+    def test_RunGameAsServer_2(self):
+        self.template_RunGame(False, True, 134, 1)
+
+    def template_RunGameWithServerAndClient(self, max_frame, max_buffer, 
+            keyboard):
+        '''Test the server and one client running together.
         Arguments:
         max_buffer -- The size of the buffer.
         keyboard -- The keyboard inputs for the client.
         '''
-        raise NotImplementedError
+        frame_rate = 100000000
+        clt_e = GameEngine()
+        clt_s = GameState()
+        clt_rec = GameRecord()
+        clt_rec.SetSize(max_buffer)
+        svr_e = GameEngine()
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(max_buffer)
+        raise NotImplementedError       
 
     def test_RunFrameAsServerAndClient(self):
         '''Test the consistency of game state with RunFrameAsServer.
@@ -873,26 +913,6 @@ class GameEngineTest(unittest.TestCase):
         clt1_e.key_cool_down_time = 0
         clt1_e.keyboard = keyboard
 
-    def test_RunGame_1(self):
-        e = GameEngine()
-        s = GameState()
-        frame_rate = 0
-        max_frame = 0
-        rec = GameRecord()
-        rec.SetSize(1)
-        e.RunGame(s, rec, max_frame, frame_rate)
-        self.assertTrue(s.frame == max_frame)
-
-    def test_RunGame_2(self):
-        e = GameEngine()
-        s = GameState()
-        frame_rate = 1000000000
-        max_frame = 500
-        rec = GameRecord()
-        rec.SetSize(1)
-        e.RunGame(s, rec, max_frame, frame_rate)
-        self.assertTrue(s.frame == max_frame)
-
     def test_RotateRoles_1(self):
         e = GameEngine()
         s = GameState()
@@ -935,8 +955,11 @@ class GameEngineTest(unittest.TestCase):
         players[GameState.ROLE_BALL] = 1
         self.assertTrue(s.players == players)
 
-    def template_PlayRound(self, rots, rot_len):
+    def template_PlayRound(self, is_client, is_server, rots, rot_len):
+        assert(not(is_client and is_server))
         e = GameEngine()
+        e.is_client = is_client
+        e.is_server = is_server
         s = GameState()
         rec = GameRecord()
         rec.SetSize(1)
@@ -945,19 +968,56 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(s.frame == rot_len * rots)
 
     def test_PlayRound_1(self):
-        self.template_PlayRound(0, 0)
+        self.template_PlayRound(False, False, 0, 0)
 
     def test_PlayRound_2(self):
-        self.template_PlayRound(1, 1)
+        self.template_PlayRound(False, False, 1, 1)
 
     def test_PlayRound_3(self):
-        self.template_PlayRound(1, 200) 
+        self.template_PlayRound(False, False, 1, 200) 
 
     def test_PlayRound_4(self):
-        self.template_PlayRound(2, 0)
+        self.template_PlayRound(False, False, 2, 0)
 
     def test_PlayRound_5(self):
-        self.template_PlayRound(2, 1)
+        self.template_PlayRound(False, False, 2, 1)
 
     def test_PlayRound_6(self):
-        self.template_PlayRound(3, 752)
+        self.template_PlayRound(False, False, 3, 152)
+
+    def test_PlayRoundAsClient_1(self):
+        self.template_PlayRound(True, False, 0, 0)
+
+    def test_PlayRoundAsClient_2(self):
+        self.template_PlayRound(True, False, 1, 1)
+
+    def test_PlayRoundAsClient_3(self):
+        self.template_PlayRound(True, False, 1, 200) 
+
+    def test_PlayRoundAsClient_4(self):
+        self.template_PlayRound(True, False, 2, 0)
+
+    def test_PlayRoundAsClient_5(self):
+        self.template_PlayRound(True, False, 2, 1)
+
+    def test_PlayRoundAsClient_6(self):
+        self.template_PlayRound(True, False, 3, 152)
+
+    def test_PlayRoundAsServer_1(self):
+        self.template_PlayRound(False, True, 0, 0)
+
+    def test_PlayRoundAsServer_2(self):
+        self.template_PlayRound(False, True, 1, 1)
+
+    def test_PlayRoundAsServer_3(self):
+        self.template_PlayRound(False, True, 1, 200) 
+
+    def test_PlayRoundAsServer_4(self):
+        self.template_PlayRound(False, True, 2, 0)
+
+    def test_PlayRoundAsServer_5(self):
+        self.template_PlayRound(False, True, 2, 1)
+
+    def test_PlayRoundAsServer_6(self):
+        self.template_PlayRound(False, True, 3, 152)
+

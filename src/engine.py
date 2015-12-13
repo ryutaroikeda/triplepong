@@ -484,14 +484,14 @@ class GameEngine(object):
         start_frame = s.frame
         end_frame = start_frame + max_frame
         while True:
-            if (s.frame - start_frame) >= max_frame:
+            if s.frame >= end_frame:
                 break
-            # Compute the expected frame.
-            frame = int(((time.time() - start_time) * frame_rate))
-            if frame > end_frame:
-                frame = end_frame
+            # Compute the target current frame.
+            target_frame = int(((time.time() - start_time) * frame_rate))
+            if target_frame > end_frame:
+                target_frame = end_frame
             # Loop here until we catch up.
-            while s.frame < frame:
+            while s.frame < target_frame:
                 if self.is_client:
                     self.RunFrameAsClient(s, rec)
                 elif self.is_server:
@@ -511,7 +511,7 @@ class GameEngine(object):
         tmp = s.roles[1:]
         tmp.append(s.roles[0])
         s.roles = tmp
-        for player_id in range(0, s.player_size):
+        for player_id in range(0, len(s.roles)):
             s.players[s.roles[player_id]] = player_id
 
     def PlayRound(self, s, rec, rotations, rotation_length, frame_rate):
