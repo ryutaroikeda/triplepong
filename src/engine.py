@@ -469,7 +469,7 @@ class GameEngine(object):
         self.renderer.RenderAll(s)
         pass
 
-    def RunGame(self, s, rec, max_frame):
+    def RunGame(self, s, rec, max_frame, frame_rate):
         '''Run the game.
 
         This is the main game loop.
@@ -478,32 +478,29 @@ class GameEngine(object):
         s       -- The game state to run the game from.
         rec     -- The game record for saving state and events.
         max_frame -- The number of frames to run the game for.
+        frame_rate -- The number of frames to play per second.
         '''
         start_time = time.time()
         start_frame = s.frame
         while True:
-            if s.frame - start_frame >= max_frame:
+            if (s.frame - start_frame) >= max_frame:
                 break
-            frame_start = time.time()
             # Compute the expected frame.
-            frame = int(((frame_start - start_time) * s.frames_per_sec))
+            frame = int(((time.time() - start_time) * frame_rate))
+            if frame > max_frame:
+                frame = max_frame
             # loop here until we catch up.
             while s.frame < frame:
                 if self.is_client:
                     self.RunFrameAsClient(s, rec)
-                else:
+                elif self.is_server:
                     self.RunFrameAsServer(s, rec)
+                else:
+                    # This feature is used for testing.
+                    rec.AddEntry(s, 0)
+                    self.PlayFrame(s, 0)
                 pass
         pass
-
-    def PlayRotation(self, s, rec):
-        '''Play one rotation of the game.
-
-        Argument:
-        s -- The game state to start the rotation from.'''
-
-        logger.debug('starting rotation')
-        self.RunGame(s, rec, s.rotation_length)
 
     def RotateRoles(self, s):
         '''Rotate the roles of the players.
@@ -516,25 +513,32 @@ class GameEngine(object):
         for player_id in range(0, s.player_size):
             s.players[s.roles[player_id]] = player_id
 
-    def PlayRound(self, s, rec):
+    def PlayRound(self, s, rec, rotations, rotation_length, frame_rate):
         '''Play one round of the game, with each player playing every role.
 
         Argument:
-        s -- The game state to start the round from.'''
+        s -- The game state to start the round from.
+        rotations -- The number of rotations in the round.
+        rec -- The game record to record the game on.
+        rotation_length -- The number of frames to play for each rotation.
+        frame_rate -- The number of frames to play per second.
+        '''
 
         logger.debug('starting round')
-        for i in range(0, s.player_size):
-            self.PlayRotation(s, rec)
+        for i in range(0, rotations):
+            logger.debug('starting rotation')
+            self.RunGame(s, rec, rotation_length, frame_rate)
             self.RotateRoles(s)
 
     def Play(self):
         s = GameState()
-        s.start_time = time.time()
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
         rec.SetSize(int(s.frames_per_sec) * 5)
+        rotation_length = s.rotation_length
         for i in range(0, s.rounds):
-            self.PlayRound(s, rec)
+            self.PlayRound(s, rec, s.player_size, rotation_length, 
+                    s.frames_per_sec)
             pass
         # To do: The server sends an end of game message to each client.
 

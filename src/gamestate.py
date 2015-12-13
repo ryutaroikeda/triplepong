@@ -4,6 +4,7 @@ import struct
 import sys
 sys.path.append(os.path.abspath('src'))
 from gameobject import GameObject
+from gameconfig import GameConfig
 from eventtype import EventType
 import tplogger
 logger = tplogger.getTPLogger('gamestate.log', logging.DEBUG)
@@ -51,9 +52,9 @@ class GameState:
         self.frames_per_sec = 60.0
         self.sec_per_frame = 1 / self.frames_per_sec
         self.rounds = 1
-        self.round_length = (((self.game_length / self.rounds) * \
-                self.frames_per_sec) // self.player_size) * self.player_size
-        self.rotation_length = self.round_length // self.player_size
+        self.rotation_length = ((self.game_length / self.rounds) * \
+                self.frames_per_sec) // self.player_size
+        self.round_length = self.rotation_length * self.player_size
         self.screen.half_width = 320
         self.screen.half_height = 240
         self.goal_left.pos_x = - buffer_region
@@ -109,7 +110,6 @@ class GameState:
                 GameState.ROLE_BALL]
         # players[r] is the ID of the player with role r.
         self.players = [0, 0, 1, 2]
-        self.start_time = 0
         self.frame = 0
         self.key_flags = 0
         pass
@@ -184,4 +184,3 @@ class GameState:
         other.frame = self.frame
         pass
 
-    pass

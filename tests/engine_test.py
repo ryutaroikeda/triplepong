@@ -873,6 +873,26 @@ class GameEngineTest(unittest.TestCase):
         clt1_e.key_cool_down_time = 0
         clt1_e.keyboard = keyboard
 
+    def test_RunGame_1(self):
+        e = GameEngine()
+        s = GameState()
+        frame_rate = 0
+        max_frame = 0
+        rec = GameRecord()
+        rec.SetSize(1)
+        e.RunGame(s, rec, max_frame, frame_rate)
+        self.assertTrue(s.frame == max_frame)
+
+    def test_RunGame_2(self):
+        e = GameEngine()
+        s = GameState()
+        frame_rate = 1000000000
+        max_frame = 500
+        rec = GameRecord()
+        rec.SetSize(1)
+        e.RunGame(s, rec, max_frame, frame_rate)
+        self.assertTrue(s.frame == max_frame)
+
     def test_RotateRoles_1(self):
         e = GameEngine()
         s = GameState()
@@ -896,4 +916,35 @@ class GameEngineTest(unittest.TestCase):
             GameState.ROLE_LEFT_PADDLE])
         self.assertTrue(s.players == [-1, 1, 0])
 
+    def test_RotateRoles_3(self):
+        e = GameEngine()
+        s = GameState()
+        s.roles = [GameState.ROLE_RIGHT_PADDLE, GameState.ROLE_LEFT_PADDLE,
+                GameState.ROLE_BALL]
+        s.player_size = len(s.roles)
+        s.players = [-1]*(len(s.roles)+ 1)
+        s.players[GameState.ROLE_LEFT_PADDLE] = 1
+        s.players[GameState.ROLE_RIGHT_PADDLE] = 0
+        s.players[GameState.ROLE_BALL] = 2
+        e.RotateRoles(s)
+        self.assertTrue(s.roles == [GameState.ROLE_LEFT_PADDLE,
+            GameState.ROLE_BALL, GameState.ROLE_RIGHT_PADDLE])
+        players = [-1]*(len(s.roles)+1)
+        players[GameState.ROLE_LEFT_PADDLE] = 0
+        players[GameState.ROLE_RIGHT_PADDLE] = 2
+        players[GameState.ROLE_BALL] = 1
+        self.assertTrue(s.players == players)
 
+    def template_PlayRound(self, rounds, rot_len, frame_rate):
+        e = GameEngine()
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(1)
+        e.PlayRound(s, rec, rounds, rot_len, frame_rate)
+        self.assertTrue(s.frame == rot_len * rounds)
+
+    def test_PlayRound_1(self):
+        self.template_PlayRound(0, 0, 0)
+
+    def test_PlayRound_2(self):
+        self.template_PlayRound(1, 1, 3)
