@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 from gamestate import GameState
 from gameevent import GameEvent
+from endgameevent import EndGameEvent
 
 class EventSocket:
     '''This class provides methods to read and write events through socket 
@@ -19,6 +20,7 @@ class EventSocket:
     buffered_event -- Put back an event after reading it. Use UnreadEvent().
     should_read_buffer -- Used by UnreadEvent() and ReadEvent().
     events_read    -- The number of events read.
+    evt            -- The event object being read.
     '''
 
     def __init__(self, sock):
@@ -30,6 +32,7 @@ class EventSocket:
         self.buffered_event = None
         self.should_read_buffer = False
         self.events_read = 0
+        self.evt = None
         pass
 
     def ReadEvent(self):
@@ -59,27 +62,21 @@ class EventSocket:
             self.event_type = evt_type.event_type
             self.byte_buffer = b''
             if self.event_type == EventType.STATE_UPDATE:
-                tmp = GameState()
-                self.read_max = tmp.GetSize()
+                self.evt = GameState()
             elif self.event_type == EventType.KEYBOARD:
-                tmp = GameEvent()
-                self.read_max = tmp.GetSize()
+                self.evt = GameEvent()
+            elif self.event_type == EventType.END_GAME:
+                self.evt = EndGameEvent()
+            self.read_max = self.evt.GetSize()
             pass
         buf = self.sock.recv(self.read_max - len(self.byte_buffer))
         self.byte_buffer += buf
         if len(self.byte_buffer) >= self.read_max:
-            evt = None
-            if self.event_type == EventType.STATE_UPDATE:
-                evt = GameState()
-                evt.Deserialize(self.byte_buffer)
-                self.event_type = 0
-            elif self.event_type == EventType.KEYBOARD:
-                evt = GameEvent()
-                evt.Deserialize(self.byte_buffer)
-                self.event_type = 0
-            self.buffered_event = evt
+            self.evt.Deserialize(self.byte_buffer)
+            self.event_type = 0
+            self.buffered_event = self.evt
             self.events_read += 1
-            return evt
+            return self.evt
         self.buffered_event = None
         return None
 

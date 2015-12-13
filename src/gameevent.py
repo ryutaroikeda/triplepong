@@ -27,6 +27,12 @@ class GameEvent:
         self.keys = []
         self.frame = 0
         pass
+
+    def __eq__(self, other):
+        if other == None:
+            return False
+        return self.__dict__ == other.__dict__
+
     def GetSize(self):
         return struct.calcsize(GameEvent.SUBFORMAT)
     def Serialize(self):

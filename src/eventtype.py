@@ -3,7 +3,7 @@ class EventType:
     NONE = 0
     KEYBOARD = 1
     STATE_UPDATE = 2
-    META = 3
+    END_GAME = 3
     FORMAT = '!i'
     def __init__(self):
         self.event_type = EventType.NONE
