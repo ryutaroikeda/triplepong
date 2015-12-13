@@ -935,16 +935,29 @@ class GameEngineTest(unittest.TestCase):
         players[GameState.ROLE_BALL] = 1
         self.assertTrue(s.players == players)
 
-    def template_PlayRound(self, rounds, rot_len, frame_rate):
+    def template_PlayRound(self, rots, rot_len):
         e = GameEngine()
         s = GameState()
         rec = GameRecord()
         rec.SetSize(1)
-        e.PlayRound(s, rec, rounds, rot_len, frame_rate)
-        self.assertTrue(s.frame == rot_len * rounds)
+        frame_rate = 10000000
+        e.PlayRound(s, rec, rots, rot_len, frame_rate)
+        self.assertTrue(s.frame == rot_len * rots)
 
     def test_PlayRound_1(self):
-        self.template_PlayRound(0, 0, 0)
+        self.template_PlayRound(0, 0)
 
     def test_PlayRound_2(self):
-        self.template_PlayRound(1, 1, 3)
+        self.template_PlayRound(1, 1)
+
+    def test_PlayRound_3(self):
+        self.template_PlayRound(1, 200) 
+
+    def test_PlayRound_4(self):
+        self.template_PlayRound(2, 0)
+
+    def test_PlayRound_5(self):
+        self.template_PlayRound(2, 1)
+
+    def test_PlayRound_6(self):
+        self.template_PlayRound(3, 752)

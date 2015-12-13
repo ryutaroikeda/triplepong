@@ -482,14 +482,15 @@ class GameEngine(object):
         '''
         start_time = time.time()
         start_frame = s.frame
+        end_frame = start_frame + max_frame
         while True:
             if (s.frame - start_frame) >= max_frame:
                 break
             # Compute the expected frame.
             frame = int(((time.time() - start_time) * frame_rate))
-            if frame > max_frame:
-                frame = max_frame
-            # loop here until we catch up.
+            if frame > end_frame:
+                frame = end_frame
+            # Loop here until we catch up.
             while s.frame < frame:
                 if self.is_client:
                     self.RunFrameAsClient(s, rec)
