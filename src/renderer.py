@@ -41,8 +41,8 @@ class Renderer:
         
         The score should be rendered near the top right of each player.
         '''
-        if not state.should_render_score:
-            return
+        #if not state.should_render_score:
+        #    return
         for i in range(0, len(state.scores)):
             if state.roles[i] == GameState.ROLE_LEFT_PADDLE:
                 pos = state.paddle_left.GetTopRight(self.font_size)
