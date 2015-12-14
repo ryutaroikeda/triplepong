@@ -150,6 +150,8 @@ class GameEngine(object):
         try:
             evt = svr.ReadEvent()
         except:
+            logger.info('closing connection to server')
+            self.server.Close()
             self.server = None
         if evt == None:
             return None
@@ -178,6 +180,9 @@ class GameEngine(object):
             try:
                 evt = c.ReadEvent()
             except:
+                logger.info('closing connection to client {0}'.format( \
+                        c.GetPeerName()))
+                c.Close()
                 clients.remove(c)
             # Check if the event happens in the future.
             if evt == None:
@@ -202,6 +207,9 @@ class GameEngine(object):
             try:
                 c.WriteEvent(s)
             except:
+                logger.info('closing connection to client {0}'.format( \
+                        c.GetPeerName()))
+                c.Close()
                 clients.remove(c)
         pass
 
@@ -221,6 +229,8 @@ class GameEngine(object):
         try:
             svr.WriteEvent(evt)
         except:
+            logger.info('closing connection to server')
+            self.server.Close()
             self.server = None
 
     def SendEndGameEvent(self, clients, s):

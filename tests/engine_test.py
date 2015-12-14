@@ -16,6 +16,7 @@ import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
 from mockkeyboard import MockKeyboard
+from mockeventsocket import MockEventSocket
 class GameEngineTest(unittest.TestCase):
     def setUp(self):
         pass
@@ -53,7 +54,19 @@ class GameEngineTest(unittest.TestCase):
             pass
         pass
 
-    def test_GetServerEvent(self):
+    def test_GetServerEvent_1(self):
+        '''Test graceful exit with a dead connection.
+        '''
+        e = GameEngine()
+        svr = MockEventSocket()
+        e.is_client = True
+        e.server = svr
+        s = GameState()
+        evt = e.GetServerEvent(svr, s)
+        self.assertTrue(evt == None)
+        self.assertTrue(e.server == None)
+
+    def test_GetServerEvent_2(self):
         '''Test server event when server is None.
         '''
         e = GameEngine()
@@ -62,7 +75,18 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(evt == None)
         pass
 
-    def test_GetClientEvents(self):
+    def test_GetClientEvents_1(self):
+        '''Test graceful exit with a dead connection.
+        '''
+        e = GameEngine()
+        client = MockEventSocket()
+        e.is_server = True
+        e.clients = [client]
+        evts = e.GetClientEvents(e.clients, 1000)
+        self.assertTrue(evts == [])
+        self.assertTrue(e.clients == [])
+
+    def test_GetClientEvents_2(self):
         '''Test getting events from clients.
         '''
         e = GameEngine()
@@ -99,6 +123,17 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(s.scores[0] == evt.score_0)
         self.assertTrue(s.scores[1] == evt.score_1)
         self.assertTrue(s.scores[2] == evt.score_2)
+
+    def test_SendStateUpdate_1(self):
+        '''Test graceful exit from dead connection.
+        '''
+        e = GameEngine()
+        e.is_server = True
+        client = MockEventSocket()
+        e.clients = [client]
+        s = GameState()
+        e.SendStateUpdate(e.clients, s)
+        self.assertTrue(e.clients == [])
 
     def template_SendAndGetEvent(self, s, evt, send, get):
         ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)

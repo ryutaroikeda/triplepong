@@ -10,7 +10,6 @@ To do:
 Networking:
 * Profiling 
 * Fix server or client timing out and raising error during handshake.
-* End of game message.
 
 User Interface:
 * Sound effects.
