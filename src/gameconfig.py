@@ -37,6 +37,9 @@ class GameConfig:
     def __ne__(self, other):
         return not self == other
 
+    def GetSize(self):
+        return struct.calcsize(self.SUBFORMAT)
+
     def Serialize(self):
         return struct.pack(self.FORMAT, self.event_type,
                 self.player_size, self.game_length, self.frames_per_sec,

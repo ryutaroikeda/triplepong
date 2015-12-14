@@ -165,6 +165,9 @@ class TPServer(object):
         e.clients = clients
         s = GameState()
         conf.Apply(s)
+        logger.info('sending game config')
+        for c in clients:
+            c.WriteEvent(conf)
         e.Play(s)
 
     def Run(self, addr, conf):
@@ -197,14 +200,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='The triplepong game server.')
     parser.add_argument('--ip', type=str, default='', 
             help='The IP address to run the server on.')
-    parser.add_argument('--port', type=int, default='8090',
+    parser.add_argument('--port', type=int, default=8090,
             help='The port number.')
-    parser.add_argument('--players', type=int, default='3',
+    parser.add_argument('--players', type=int, default=3,
             help='The number of players.')
+    parser.add_argument('--time', type=int, default=120,
+            help='The duration of the game in seconds.')
+    parser.add_argument('--speed', type=int, default=4,
+            help='The speed of the ball.')
+    parser.add_argument('--rounds', type=int, default=2,
+            help='The number of rounds.')
     args = parser.parse_args()
     s = TPServer()
     conf = GameConfig()
     conf.player_size = args.players
+    conf.game_length = args.time
+    conf.ball_vel = args.speed
+    conf.rounds = args.rounds
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
     s.Run((args.ip, args.port), conf)

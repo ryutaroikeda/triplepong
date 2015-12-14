@@ -72,6 +72,8 @@ class TPClient(object):
         '''Play the game hosted by the server. svrsock must be connected to the 
         server before calling this method.
 
+        Receive the game configuration before running the game.
+
         Argument:
         svrsock -- A socket connected to the server.'''
 
@@ -83,6 +85,13 @@ class TPClient(object):
         e.renderer = renderer
         e.keyboard = keyboard
         s = GameState()
+        conf = None
+        logger.info('waiting for game config')
+        while conf == None:
+            conf = svrsock.ReadEvent()
+        logger.info('received game config')
+        conf.Apply(s)
+        logger.info('starting game')
         e.Play(s)
 
     def Run(self, svraddr, renderer, keyboard):
@@ -111,7 +120,6 @@ class TPClient(object):
             logger.info('initiating handshake')
             if self.Handshake(sock, 60) == -1:
                 continue
-            logger.info('starting game')
             self.PlayGame(EventSocket(sock), renderer, keyboard)
             break
         sock.close()

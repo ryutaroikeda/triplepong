@@ -7,6 +7,7 @@ from eventtype import EventType
 from gamestate import GameState
 from gameevent import GameEvent
 from endgameevent import EndGameEvent
+from gameconfig import GameConfig
 
 class EventSocket:
     '''This class provides methods to read and write events through socket 
@@ -68,6 +69,8 @@ class EventSocket:
                 self.evt = GameEvent()
             elif self.event_type == EventType.END_GAME:
                 self.evt = EndGameEvent()
+            elif self.event_type == EventType.CONFIGURE:
+                self.evt = GameConfig()
             self.read_max = self.evt.GetSize()
             pass
         buf = self.sock.recv(self.read_max - len(self.byte_buffer))

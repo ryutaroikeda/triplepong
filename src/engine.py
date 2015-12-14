@@ -161,7 +161,7 @@ class GameEngine(object):
         elif evt.event_type == EventType.END_GAME:
             logger.debug('received end of game')
             self.HandleEndGameEvent(s, evt)
-            return None
+            return self.GetServerEvent(svr, s)
 
     def GetClientEvents(self, clients, current_frame):
         '''Read client sockets for keyboard events.
@@ -347,6 +347,7 @@ class GameEngine(object):
             s.ball.vel_x = -4
             s.ball.vel_y = 0
             if not s.is_ended:
+                s.scores[s.players[GameState.ROLE_BALL]] += 1
                 s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
             pass
         if s.ball.IsCollidingWith(s.goal_right):
@@ -356,6 +357,7 @@ class GameEngine(object):
             s.ball.vel_x = 4
             s.ball.vel_y = 0
             if not s.is_ended:
+                s.scores[s.players[GameState.ROLE_BALL]] += 1
                 s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
             pass
         pass
