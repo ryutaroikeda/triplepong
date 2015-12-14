@@ -610,6 +610,7 @@ class GameEngine(object):
         for i in range(0, rotations):
             logger.debug('starting rotation')
             self.RunGame(s, rec, rotation_length, frame_rate)
+            self.RotateRoles(s)
 
     def Play(self, s):
         '''
