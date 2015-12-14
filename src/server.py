@@ -210,6 +210,8 @@ if __name__ == '__main__':
             help='The speed of the ball.')
     parser.add_argument('--rounds', type=int, default=2,
             help='The number of rounds.')
+    parser.add_argument('--fps', type=int, default=60,
+            help='The frame rate in seconds')
     args = parser.parse_args()
     s = TPServer()
     conf = GameConfig()
@@ -217,6 +219,7 @@ if __name__ == '__main__':
     conf.game_length = args.time
     conf.ball_vel = args.speed
     conf.rounds = args.rounds
+    conf.frames_per_sec = args.fps
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
     s.Run((args.ip, args.port), conf)
