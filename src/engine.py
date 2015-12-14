@@ -492,6 +492,7 @@ class GameEngine(object):
             pass
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
+        s.player_id = self.player_id
         self.renderer.RenderAll(s)
         pass
 

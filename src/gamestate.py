@@ -116,6 +116,7 @@ class GameState:
         self.key_flags = 0
         self.should_render_score = False
         self.is_ended = False
+        self.player_id = 0
         pass
 
     def __str__(self):

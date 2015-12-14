@@ -72,6 +72,12 @@ class Renderer:
         pygame.draw.rect(surface, (255, 255, 255), ball)
         pygame.draw.rect(surface, (255, 255, 255), ball_wall_top)
         pygame.draw.rect(surface, (255, 255, 255), ball_wall_bottom)
+        if state.roles[state.player_id] == GameState.ROLE_LEFT_PADDLE:
+            pygame.draw.rect(surface, (122, 122, 122), paddle_left)
+        if state.roles[state.player_id] == GameState.ROLE_RIGHT_PADDLE:
+            pygame.draw.rect(surface, (122, 122, 122), paddle_right)
+        if state.roles[state.player_id] == GameState.ROLE_BALL:
+            pygame.draw.rect(surface, (122, 122, 122), ball)
         pass
     def RenderAll(self, state):
         '''Render the screen.
