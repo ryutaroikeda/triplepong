@@ -61,6 +61,7 @@ class EventSocket:
             evt_type.Deserialize(b)
             self.event_type = evt_type.event_type
             self.byte_buffer = b''
+            self.evt = None
             if self.event_type == EventType.STATE_UPDATE:
                 self.evt = GameState()
             elif self.event_type == EventType.KEYBOARD:
@@ -93,3 +94,8 @@ class EventSocket:
         self.sock.sendall(b)
         pass
 
+    def Close(self):
+        self.sock.close()
+
+    def GetPeerName(self):
+        return self.sock.getpeername()
