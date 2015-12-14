@@ -9,6 +9,7 @@ import time
 sys.path.append(os.path.abspath('src'))
 from eventsocket import EventSocket
 from engine import GameEngine
+from gameconfig import GameConfig
 from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
@@ -153,7 +154,7 @@ class TPServer(object):
         logger.info('handshake successful')
         return 0
 
-    def PlayGame(self, clients):
+    def PlayGame(self, clients, conf):
         '''Runs the game for clients.
 
         Argument:
@@ -163,29 +164,30 @@ class TPServer(object):
         e.is_client = False
         e.clients = clients
         s = GameState()
+        conf.Apply(s)
         e.Play(s)
 
-    def Run(self, addr, clientNum):
+    def Run(self, addr, conf):
         '''Run the game server.
 
         Arguments:
         addr      -- The address of the server (ip, port).
-        clientNum -- The number of clients in the game.'''
+        conf      -- The game configuration.
+        '''
 
         logger.info('starting server at {0}'.format(addr))
-        # fix me: use UDP?
         serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)
         serversock.listen(10)
         while True:
-            clients = self.AcceptN(serversock, clientNum)
+            clients = self.AcceptN(serversock, conf.player_size)
             self.Handshake(clients)
-            if clients.__len__() < clientNum:
+            if clients.__len__() < conf.player_size:
                 logger.error('handshake failed, retrying')
                 continue
             evtsock_clients = [EventSocket(c) for c in clients]
-            self.PlayGame(evtsock_clients)
+            self.PlayGame(evtsock_clients, conf)
             break
         serversock.close()
     pass
@@ -201,6 +203,8 @@ if __name__ == '__main__':
             help='The number of players.')
     args = parser.parse_args()
     s = TPServer()
+    conf = GameConfig()
+    conf.player_size = args.players
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run((args.ip, args.port), args.players)
+    s.Run((args.ip, args.port), conf)

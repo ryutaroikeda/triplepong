@@ -4,6 +4,7 @@ class EventType:
     KEYBOARD = 1
     STATE_UPDATE = 2
     END_GAME = 3
+    CONFIGURE = 4
     FORMAT = '!i'
     def __init__(self):
         self.event_type = EventType.NONE

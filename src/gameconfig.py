@@ -1,21 +1,58 @@
+import os
+import struct
+import sys
+sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
+
 class GameConfig:
-    player_size = 3
-    game_length = 120.0
-    frames_per_sec = 60.0
-    screen_width = 640
-    screen_height = 480
-    buffer_region = 50
-    ball_wall_offset_x = 8
-    ball_wall_offset_y = 40
-    paddle_offset = 60
-    paddle_width = 16
-    paddle_height = 60
-    ball_vel = 4
-    ball_size = 8
-    rounds = 2
-    rotation_length = ((game_length / rounds) * frames_per_sec) // \
-            player_size
-    round_length = rotation_length * player_size
+
+    FORMAT=   '!iiiiiiiiiiiiiii'
+    SUBFORMAT='!iiiiiiiiiiiiii'
+
+    def __init__(self):
+        self.player_size =3
+        self.game_length = 120
+        self.frames_per_sec = 60
+        self.screen_width = 640
+        self.screen_height = 480
+        self.buffer_region = 50
+        self.ball_wall_offset_x = 8
+        self.ball_wall_offset_y = 40
+        self.paddle_offset = 60
+        self.paddle_width = 16
+        self.paddle_height = 60
+        self.ball_vel = 4
+        self.ball_size = 8
+        self.rounds = 2
+        self.event_type = EventType.CONFIGURE
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+    def __eq__(self, other):
+        if other == None:
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self == other
+
+    def Serialize(self):
+        return struct.pack(self.FORMAT, self.event_type,
+                self.player_size, self.game_length, self.frames_per_sec,
+                self.screen_width, self.screen_height, self.buffer_region,
+                self.ball_wall_offset_x, self.ball_wall_offset_y,
+                self.paddle_offset, self.paddle_width, self.paddle_height,
+                self.ball_vel, self.ball_size, self.rounds)
+
+    def Deserialize(self, b):
+        (self.player_size, self.game_length, self.frames_per_sec,
+                self.screen_width, self.screen_height, self.buffer_region,
+                self.ball_wall_offset_x, self.ball_wall_offset_y,
+                self.paddle_offset, self.paddle_width, self.paddle_height,
+                self.ball_vel, self.ball_size, self.rounds,) = \
+                        struct.unpack(self.SUBFORMAT, b)
+        pass
 
     def Apply(self, s):
         '''Apply the configuration to a game state.
@@ -32,7 +69,7 @@ class GameConfig:
         ball_half_size = self.ball_size // 2
         s.player_size = self.player_size
         s.game_length = self.game_length
-        s.frames_per_sec = self.frame_rate
+        s.frames_per_sec = self.frames_per_sec
         s.rounds = self.rounds
         s.rotation_length = ((s.game_length / s.rounds) * \
                 s.frames_per_sec) // s.player_size
@@ -85,8 +122,3 @@ class GameConfig:
         s.paddle_right.vel_y = 0
         s.paddle_right.half_width = paddle_half_width
         s.paddle_right.half_height = paddle_half_height
-    def Serialize(self):
-        pass
-    def Deserialize(self):
-        pass
-
