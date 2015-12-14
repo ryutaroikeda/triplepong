@@ -23,6 +23,11 @@ class Renderer:
         self.surface = None
         self.font = None
         self.font_size = 24
+        self.crown_font = None
+        self.crown_font_size = 64
+        self.background_color = (0xFF, 0xA9, 0x07)
+        self.default_color = (0xFF, 0xCF, 0x74)
+        self.your_color = (0xFF, 0xF1, 0xD7)
         pass
     def GetRect(self, obj):
         '''Returns a tuple (x, y, w, h) representing a rect from the given 
@@ -32,7 +37,7 @@ class Renderer:
     def RenderBackground(self, surface):
         '''Fills the background with one color.'''
 
-        pygame.draw.rect(surface, (0, 0, 0),
+        pygame.draw.rect(surface, self.background_color,
                 (0, 0, self.screen_width, self.screen_height))
         pass
     
@@ -41,8 +46,8 @@ class Renderer:
         
         The score should be rendered near the top right of each player.
         '''
-        #if not state.should_render_score:
-        #    return
+        if not state.should_render_score:
+            return
         for i in range(0, len(state.scores)):
             if state.roles[i] == GameState.ROLE_LEFT_PADDLE:
                 pos = state.paddle_left.GetTopRight(self.font_size)
@@ -54,6 +59,29 @@ class Renderer:
                     (255, 255, 255))
             surface.blit(score, pos)
             pass
+
+    def RenderCrown(self, surface, state):
+        '''Render a crown on top of the paddle with the higher score.
+        '''
+        king = None
+        left_score = state.scores[state.players[GameState.ROLE_LEFT_PADDLE]] 
+        right_score = state.scores[state.players[GameState.ROLE_RIGHT_PADDLE]]
+        is_you = False
+        if left_score > right_score:
+            king = state.paddle_left
+            if state.player_id == state.players[GameState.ROLE_LEFT_PADDLE]:
+                is_you = True
+        elif left_score < right_score:
+            king = state.paddle_right
+            if state.player_id == state.players[GameState.ROLE_RIGHT_PADDLE]:
+                is_you = True
+        if king != None:
+            color = self.default_color
+            if is_you:
+                color = self.your_color
+            pos = king.GetTop(self.crown_font_size)
+            crown = self.crown_font.render('+', 1, color)
+            surface.blit(crown, pos)
 
     def RenderState(self, surface, state):
         '''Render the game state.
@@ -67,18 +95,21 @@ class Renderer:
         ball = self.GetRect(state.ball)
         ball_wall_top = self.GetRect(state.ball_wall_top)
         ball_wall_bottom = self.GetRect(state.ball_wall_bottom)
-        pygame.draw.rect(surface, (255, 255, 255), paddle_left)
-        pygame.draw.rect(surface, (255, 255, 255), paddle_right)
-        pygame.draw.rect(surface, (255, 255, 255), ball)
-        pygame.draw.rect(surface, (255, 255, 255), ball_wall_top)
-        pygame.draw.rect(surface, (255, 255, 255), ball_wall_bottom)
+        default_color = self.default_color
+        pygame.draw.rect(surface, default_color, paddle_left)
+        pygame.draw.rect(surface, default_color, paddle_right)
+        pygame.draw.rect(surface, default_color, ball)
+        pygame.draw.rect(surface, default_color, ball_wall_top)
+        pygame.draw.rect(surface, default_color, ball_wall_bottom)
+        your_color = self.your_color
         if state.roles[state.player_id] == GameState.ROLE_LEFT_PADDLE:
-            pygame.draw.rect(surface, (122, 122, 122), paddle_left)
+            pygame.draw.rect(surface, your_color, paddle_left)
         if state.roles[state.player_id] == GameState.ROLE_RIGHT_PADDLE:
-            pygame.draw.rect(surface, (122, 122, 122), paddle_right)
+            pygame.draw.rect(surface, your_color, paddle_right)
         if state.roles[state.player_id] == GameState.ROLE_BALL:
-            pygame.draw.rect(surface, (122, 122, 122), ball)
+            pygame.draw.rect(surface, your_color, ball)
         pass
+
     def RenderAll(self, state):
         '''Render the screen.
         
@@ -87,6 +118,7 @@ class Renderer:
 
         self.RenderBackground(self.surface)
         self.RenderScore(self.surface, state)
+        self.RenderCrown(self.surface, state)
         self.RenderState(self.surface, state)
         pygame.display.flip()
         pass
@@ -106,6 +138,7 @@ class Renderer:
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()
         self.font = pygame.font.Font(None, self.font_size)
+        self.crown_font = pygame.font.Font(None, self.crown_font_size)
         pass
     def Run(self):
         '''To do: Use this to run the renderer as a separate process.

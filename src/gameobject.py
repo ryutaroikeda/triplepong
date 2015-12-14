@@ -52,6 +52,14 @@ class GameObject:
         return (self.pos_x + self.half_width,
                 self.pos_y - self.half_height - font_size)
 
+    def GetTop(self, font_size):
+        '''Get the position of the top of the object.
+        This method is intended to be used by the renderer to render the 
+        crown. The crown indicates the paddle with the higher score.
+        '''
+        return (self.pos_x - (font_size//5),
+                self.pos_y - self.half_height - font_size)
+
     def AlignRight(self, other):
         '''Move other so that the right of self is touching the left of other.
 

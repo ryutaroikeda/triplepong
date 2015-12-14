@@ -22,7 +22,7 @@ class GameConfig:
         self.paddle_width = 16
         self.paddle_height = 60
         self.ball_vel = 4
-        self.ball_size = 8
+        self.ball_size = 16
         self.rounds = 2
         self.event_type = EventType.CONFIGURE
 

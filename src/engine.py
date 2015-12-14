@@ -8,6 +8,7 @@ import time
 sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 from eventsocket import EventSocket
+from gameconfig import GameConfig
 from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
@@ -617,7 +618,7 @@ class GameEngine(object):
         Argument:
         s -- The game state.
         '''
-        player_size = s.player_size
+        #player_size = s.player_size
         rotation_length = s.rotation_length
         frame_rate = s.frames_per_sec 
         rounds = s.rounds
@@ -625,7 +626,7 @@ class GameEngine(object):
         # Pick an estimate for a value greater than 2L.
         rec.SetSize(int(frame_rate) * 5)
         for i in range(0, rounds):
-            self.PlayRound(s, rec, player_size, rotation_length, 
+            self.PlayRound(s, rec, 3, rotation_length, 
                     frame_rate)
             pass
         if self.is_server:
@@ -637,11 +638,13 @@ if __name__ == '__main__':
     e = GameEngine()
     e.is_client = True
     e.is_server = False
+    s = GameState()
+    conf = GameConfig()
+    conf.Apply(s)
     from renderer import Renderer
     r = Renderer()
     r.Init()
     e.renderer = r
     e.keyboard = r
-    s = GameState()
     e.Play(s)
     pass
