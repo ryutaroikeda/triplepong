@@ -4,6 +4,7 @@ Triple pong
 A pong game for three players. And flappy birds!
 
 [![Build Status](https://travis-ci.org/ryutaroikeda/triplepong.svg?branch=master)](https://travis-ci.org/ryutaroikeda/triplepong)
+[![Coveralls](https://img.shields.io/coveralls/jekyll/jekyll.svg)](https://coveralls.io/github/ryutaroikeda/triplepong)
 
 To do:
 
