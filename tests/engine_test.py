@@ -6,12 +6,14 @@ import sys
 import time
 import unittest
 sys.path.append(os.path.abspath('src'))
+from endgameevent import EndGameEvent
 from engine import GameEngine
 from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
-from endgameevent import EndGameEvent
+from player import Player
+from role import Role
 import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
@@ -29,6 +31,66 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(e.is_server == False)
         pass
 
+    def test_InitRolesAndPlayers_1(self):
+        e = GameEngine()
+        e.InitRolesAndPlayers()
+        for i in range(0, len(e.roles)):
+            self.assertTrue(e.roles[i].role == Role.ROLES[i+1])
+            self.assertTrue(e.roles[i].player.role == e.roles[i].role)
+
+    def test_RoleToEvent(self):
+        e = GameEngine()
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_LEFT_PADDLE) == \
+                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_RIGHT_PADDLE) == \
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_BALL) == \
+                GameEvent.EVENT_FLAP_BALL)
+
+    def template_GetKeyboardEventFromPlayer(self, key_cool_down_time,
+            last, frame, do_press_key, role, player_key, evt):
+        e = GameEngine()
+        e.key_cool_down_time = key_cool_down_time
+        keys = (0,)*323
+        if do_press_key:
+            keys = (0,)*player_key + (1,) + (0,)*(323-1-player_key)
+        p = Player()
+        r = Role()
+        r.role = role
+        p.role = r
+        p.key = player_key
+        p.last_key_frame = last
+        self.assertTrue(e.GetKeyboardEventFromPlayer(p, keys, frame) == evt)
+        if evt != GameEvent.EVENT_NO_OP:
+            self.assertTrue(p.last_key_frame == frame)
+
+    def test_GetKeyboardEventFromPlayer_1(self):
+        '''Test no key.
+        '''
+        self.template_GetKeyboardEventFromPlayer(0, 0, 0, False,
+                GameState.ROLE_LEFT_PADDLE, 0, GameEvent.EVENT_NO_OP)
+
+    def test_GetKeyboardEventFromPlayer_2(self):
+        '''Test good key.
+        '''
+        self.template_GetKeyboardEventFromPlayer(0, 0, 0, True,
+                GameState.ROLE_LEFT_PADDLE, 0,
+                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+
+    def test_GetKeyboardEventFromPlayer_3(self):
+        '''Test cool down time.
+        '''
+        self.template_GetKeyboardEventFromPlayer(1, 0, 0, True,
+                GameState.ROLE_LEFT_PADDLE, 0,
+                GameEvent.EVENT_NO_OP)
+
+    def test_GetKeyboardEventFromPlayer_4(self):
+        '''Test cool down on good frame.
+        '''
+        self.template_GetKeyboardEventFromPlayer(1, 0, 1, True,
+                GameState.ROLE_LEFT_PADDLE, 32,
+                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        
     def test_GetKeyboardEvents(self):
         '''Test keyboard input is converted to game events.
         '''
@@ -53,6 +115,42 @@ class GameEngineTest(unittest.TestCase):
                 pass
             pass
         pass
+
+    def template_RotatePlayerRoles(self, roles_num):
+        '''Argument:
+        roles_num -- The number of roles to test.
+        '''
+        assert(roles_num >= 0)
+        assert(roles_num <= 3)
+        roles = []
+        for i in range(0, roles_num):
+            r = Role()
+            p = Player()
+            r.player = p
+            r.role = Role.ROLES[i + 1]
+            roles.append(r)
+        players = []
+        for i in range(1, len(roles)):
+            players.append(roles[i].player)
+        if roles_num > 0:
+            players.append(roles[0].player)
+        e = GameEngine()
+        e.RotatePlayerRoles(roles)
+        for i in range(0, len(roles)):
+            self.assertTrue(roles[i].player == players[i])
+            self.assertTrue(roles[i].player.role == roles[i].role)
+
+    def test_RotatePlayerRoles_1(self):
+        self.template_RotatePlayerRoles(0)
+
+    def test_RotatePlayerRoles_2(self):
+        self.template_RotatePlayerRoles(1)
+
+    def test_RotatePlayerRoles_3(self):
+        self.template_RotatePlayerRoles(2)
+
+    def test_RotatePlayerRoles_4(self):
+        self.template_RotatePlayerRoles(3)
 
     def test_GetServerEvent_1(self):
         '''Test graceful exit with a dead connection.
@@ -103,6 +201,8 @@ class GameEngineTest(unittest.TestCase):
         # The event is at frame 10 and we are on frame 5, so it should be 
         # unread.
         evts = e.GetClientEvents([client], 5)
+        ssock.close()
+        csock.close()
         self.assertTrue(evts == [])
         # We are past frame 10, so we should get the event.
         evts = e.GetClientEvents([client], 15)
@@ -142,6 +242,8 @@ class GameEngineTest(unittest.TestCase):
         e = GameEngine()
         send(e, s, svr, client, evt)
         received = get(e, s, svr, client)
+        ssock.close()
+        csock.close()
         self.assertTrue(evt == received)
 
     def template_SendAndGetState(self, s, evt):
@@ -171,6 +273,8 @@ class GameEngineTest(unittest.TestCase):
         keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
         e.SendKeyboardEvents(svr, s, keys)
         received_keys = e.GetClientEvents([client], 1)
+        ssock.close()
+        csock.close()
         self.assertTrue(received_keys[0].keys == keys)
 
     def test_send_and_receive_end_game(self):
@@ -185,6 +289,8 @@ class GameEngineTest(unittest.TestCase):
         e.SendEndGameEvent([client], s)
         t = GameState()
         e.GetServerEvent(svr, t)
+        ssock.close()
+        csock.close()
         self.assertTrue(t.scores[0] == s.scores[0])
 
     def test_PlayFrame(self):
@@ -355,6 +461,8 @@ class GameEngineTest(unittest.TestCase):
             client.WriteEvent(state_evts[i])
             e.RunFrameAsClient(s, rec)
             pass
+        ssock.close()
+        csock.close()
         return s
 
 
@@ -380,6 +488,8 @@ class GameEngineTest(unittest.TestCase):
         # The server sends a state update.
         client.WriteEvent(t)
         e.RunFrameAsClient(s, rec)
+        ssock.close()
+        csock.close()
         test = GameState()
         for i in range(0, 10):
             e.PlayFrame(test, 0)
@@ -621,6 +731,8 @@ class GameEngineTest(unittest.TestCase):
         # The client writes an event to the server.
         svr.WriteEvent(evt)
         e.RunFrameAsServer(s, rec)
+        ssock.close()
+        csock.close()
         e.is_server = False
         e.is_client = True
         test = GameState()
@@ -669,6 +781,8 @@ class GameEngineTest(unittest.TestCase):
             svr.WriteEvent(key_evts[i])
             e.RunFrameAsServer(s, rec)
             pass
+        ssock.close()
+        csock.close()
         # Check we got all the events.
         self.assertTrue(client.events_read == count)
         raw_evts = [0]*max_frame
@@ -847,6 +961,8 @@ class GameEngineTest(unittest.TestCase):
         # 22 frames without the server
         keyboard = MockKeyboard()
         keyboard.inputs = [0]*10 + [1] + [0]*20
+        ssock.close()
+        csock.close()
         test_e = GameEngine()
         test_e.is_client = True
         test_e.keyboard = keyboard

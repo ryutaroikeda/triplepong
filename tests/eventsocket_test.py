@@ -21,6 +21,8 @@ class EventSocketTest(unittest.TestCase):
             received_evt = client.ReadEvent()
             if not received_evt == None:
                 break
+        ssock.close()
+        csock.close()
         self.assertTrue(received_evt == evt)
 
     def test_GameEvent(self):
@@ -55,6 +57,8 @@ class EventSocketTest(unittest.TestCase):
             self.received_evt = client.ReadEvent()
             if not self.received_evt == None:
                 break
+        ssock.close()
+        csock.close()
         self.assertTrue(self.received_evt.ball.pos_x == evt.ball.pos_x)
     pass
 

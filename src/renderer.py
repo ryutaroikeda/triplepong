@@ -25,6 +25,7 @@ class Renderer:
         self.font_size = 24
         self.crown_font = None
         self.crown_font_size = 64
+        self.font_color = (0xFF, 0xFF, 0xFF)
         self.background_color = (0xFF, 0xA9, 0x07)
         self.default_color = (0xFF, 0xCF, 0x74)
         self.your_color = (0xFF, 0xF1, 0xD7)
@@ -56,7 +57,7 @@ class Renderer:
             elif state.roles[i] == GameState.ROLE_BALL:
                 pos = state.ball.GetTopRight(self.font_size)
             score = self.font.render('{0}'.format(state.scores[i]), 1,
-                    (255, 255, 255))
+                    self.font_color)
             surface.blit(score, pos)
             pass
 
@@ -132,8 +133,8 @@ class Renderer:
         return pygame.key.get_pressed()
 
     def Init(self):
-        '''Initialize the renderer. This must be called before use.'''
-
+        '''Initialize the renderer. This must be called before use.
+        '''
         pygame.init()
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()
@@ -142,8 +143,8 @@ class Renderer:
         pass
     def Run(self):
         '''To do: Use this to run the renderer as a separate process.
-        This is not important now.'''
-
+        This is not important now.
+        '''
         pygame.init()
         pygame.display.set_mode((640, 480))
         #

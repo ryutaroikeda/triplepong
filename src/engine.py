@@ -8,12 +8,14 @@ import time
 sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 from eventsocket import EventSocket
+from endgameevent import EndGameEvent
 from gameconfig import GameConfig
 from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
-from endgameevent import EndGameEvent
 from gamerecord import GameRecord
+from player import Player
+from role import Role
 from nullrenderer import NullRenderer
 from nullkeyboard import NullKeyboard
 import tpsocket
@@ -75,24 +77,60 @@ class GameEngine(object):
     keyboard           -- The keyboard to get input from. The default is the
                           NullKeyboard which gets nothing.
     last_key_time      -- The time of the last game event sent to the server. 
-    key_cool_down_time -- The minimum time between game events. See above notes 
-                          on lag compensation for more details.
+    key_cool_down_time -- The minimum frame between game events per player.
+                          See above notes on lag compensation for details.
     player_id          -- The player ID of the client.
     clients            -- The list of client sockets.
-    server             -- The socket connected to the server.'''
+    server             -- The socket connected to the server.
+    player_data        -- Data for each player.
+    '''
 
     K_SPACE = 32
     def __init__(self):
         self.renderer = NullRenderer()
         self.keyboard = NullKeyboard()
         self.last_key_time = 0.0
-        self.key_cool_down_time = 0.200
+        self.key_cool_down_time = 10
         self.player_id = 0
         self.is_client = False
         self.is_server = False
         self.clients = []
         self.server = None
+        self.players = []
+        self.roles = []
         pass
+
+    def InitRolesAndPlayers(self):
+        '''Initialize the role and player objects.
+        Argument:
+        roles -- Should be an empty list.
+        '''
+        for i in range(1, len(Role.ROLES)):
+            r = Role()
+            r.role = Role.ROLES[i]
+            r.player = Player()
+            r.player.role = r.role
+            self.roles.append(r)
+        for i in range(0, len(self.roles)):
+            self.players.append(self.roles[i].player)
+
+    def RoleToEvent(self, role):
+        if role == GameState.ROLE_LEFT_PADDLE:
+            return GameEvent.EVENT_FLAP_LEFT_PADDLE
+        elif role == GameState.ROLE_RIGHT_PADDLE:
+            return GameEvent.EVENT_FLAP_RIGHT_PADDLE
+        elif role == GameState.ROLE_BALL:
+            return GameEvent.EVENT_FLAP_BALL
+        return GameEvent.EVENT_NO_OP
+
+    def GetKeyboardEventFromPlayer(self, p, keys, frame):
+        if frame - p.last_key_frame < self.key_cool_down_time:
+            return GameEvent.EVENT_NO_OP
+        if keys[p.key] == 1:
+            p.last_key_frame = frame
+            return self.RoleToEvent(p.role.role)
+        return GameEvent.EVENT_NO_OP
+
     def GetKeyboardEvents(self, s):
         '''Get the flag for the currently pressed keys.
 
@@ -105,14 +143,20 @@ class GameEngine(object):
         s -- The game state.
 
         Return value:
-        A list of keyboard event codes.'''
+        A list of keyboard event codes.
+        '''
         keys = self.keyboard.GetKeys()
         flag = 0
+        #for i in range(0, 3):
+        #    p = self.players[i]
+        #    if not p.is_active:
+        #        continue
+        #    flag |= self.GetKeyboardEventFromPlayer(p, keys, s.frame)
+
         if keys[self.K_SPACE]:
             # Check if we are in cool-down.
-            now = time.time()
-            if now - self.last_key_time >= self.key_cool_down_time:
-                self.last_key_time = now
+            if s.frame - self.last_key_time >= self.key_cool_down_time:
+                self.last_key_time = s.frame
                 if s.roles[self.player_id] == GameState.ROLE_LEFT_PADDLE:
                     flag |= GameEvent.EVENT_FLAP_LEFT_PADDLE
                 elif s.roles[self.player_id] == GameState.ROLE_RIGHT_PADDLE:
@@ -125,6 +169,7 @@ class GameEngine(object):
 
     def EndGame(self, s):
         s.should_render_score = True
+        s.should_render_crown = False
         s.is_ended = True
 
     def HandleEndGameEvent(self, s, evt):
@@ -247,7 +292,6 @@ class GameEngine(object):
         for c in clients:
             c.WriteEvent(evt)
             pass
-        self.EndGame(s)
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
@@ -345,7 +389,7 @@ class GameEngine(object):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
                     s.ball_wall_bottom.pos_y ) // 2
-            s.ball.vel_x = -4
+            s.ball.vel_x = - s.ball.vel_x
             s.ball.vel_y = 0
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
@@ -355,7 +399,7 @@ class GameEngine(object):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
                     s.ball_wall_bottom.pos_y ) // 2
-            s.ball.vel_x = 4
+            s.ball.vel_x = - s.ball.vel_x
             s.ball.vel_y = 0
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
@@ -586,7 +630,8 @@ class GameEngine(object):
         pass
 
     def RotateRoles(self, s):
-        '''Rotate the roles of the players.
+        '''DEPRECATED
+        Rotate the roles of the players.
         Argument:
         s -- The game state.
         '''
@@ -595,6 +640,21 @@ class GameEngine(object):
         s.roles = tmp
         for player_id in range(0, len(s.roles)):
             s.players[s.roles[player_id]] = player_id
+
+    def RotatePlayerRoles(self, roles):
+        '''Rotate the roles of the players.
+        Argument:
+        roles -- A list of Role objects.
+        '''
+        size = len(roles)
+        if size <= 0:
+            return
+        first_player = roles[0].player
+        for i in range(0, size):
+            roles[i].player = roles[(i + 1) % size].player
+        roles[size - 1].player = first_player
+        for i in range(0, size):
+            roles[i].player.role = roles[i].role
 
     def PlayRound(self, s, rec, rotations, rotation_length, frame_rate):
         '''Play one round of the game, with each player playing every role.
@@ -625,12 +685,17 @@ class GameEngine(object):
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
         rec.SetSize(int(frame_rate) * 5)
+        # space, p and q
+        key_binding = [32, 80, 81]
+        # to do: initialize players and roles
+
         for i in range(0, rounds):
             self.PlayRound(s, rec, 3, rotation_length, 
                     frame_rate)
             pass
         if self.is_server:
             self.SendEndGameEvent(self.clients, s)
+        self.EndGame(s)
         # Keep the game running for a bit, to show the final score.   
         self.RunGame(s, rec, frame_rate * 30, frame_rate)
 

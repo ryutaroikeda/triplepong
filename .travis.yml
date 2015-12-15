@@ -7,6 +7,11 @@ python:
 - "3.5-dev" # development branch
 - "nightly"
 # install dependencies
-# install:
+install:
+- pip install coveralls
 # run tests
-script: make test
+script: 
+- make coverage
+after_success: 
+- coveralls
+
