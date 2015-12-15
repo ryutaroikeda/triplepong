@@ -14,6 +14,7 @@ from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
+import upnp
 logger = tplogger.getTPLogger('server.log', logging.DEBUG)
 class TPServer(object):
     '''Implements the game server.'''
@@ -170,11 +171,12 @@ class TPServer(object):
             c.WriteEvent(conf)
         e.Play(s)
 
-    def Run(self, addr, conf):
+    def Run(self, addr, upnp, conf):
         '''Run the game server.
 
         Arguments:
         addr      -- The address of the server (ip, port).
+        upnp      -- True if and only if UPnP port forwarding should be used
         conf      -- The game configuration.
         '''
 
@@ -183,6 +185,16 @@ class TPServer(object):
         serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)
         serversock.listen(10)
+        if upnp:
+            with upnp.UpnpPortMap(addr[1], 'TCP') as u:
+                print ('External address: %s:%u' %
+                    (u.GetExternalIp(), u.GetExternalPort()))
+                self.EventLoop(conf, serversock)
+        else:
+            self.EventLoop(conf, serversock)
+        serversock.close()
+
+    def EventLoop(self, conf, serversock):
         while True:
             clients = self.AcceptN(serversock, conf.player_size)
             self.Handshake(clients)
@@ -192,8 +204,6 @@ class TPServer(object):
             evtsock_clients = [EventSocket(c) for c in clients]
             self.PlayGame(evtsock_clients, conf)
             break
-        serversock.close()
-    pass
 
 if __name__ == '__main__':
     import argparse
@@ -202,6 +212,8 @@ if __name__ == '__main__':
             help='The IP address to run the server on.')
     parser.add_argument('--port', type=int, default=8090,
             help='The port number.')
+    parser.add_argument('--upnp', action='store_true', default=False,
+            help='Forward a port using UPnP')
     parser.add_argument('--players', type=int, default=3,
             help='The number of players.')
     parser.add_argument('--time', type=int, default=120,
@@ -222,4 +234,4 @@ if __name__ == '__main__':
     conf.frames_per_sec = args.fps
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run((args.ip, args.port), conf)
+    s.Run((args.ip, args.port), upnp, conf)
