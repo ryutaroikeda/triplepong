@@ -14,8 +14,6 @@ from gameobject import GameObject
 from gamestate import GameState
 from gameevent import GameEvent
 from gamerecord import GameRecord
-from player import Player
-from role import Role
 from nullrenderer import NullRenderer
 from nullkeyboard import NullKeyboard
 import tpsocket

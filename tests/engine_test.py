@@ -12,8 +12,6 @@ from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
-from player import Player
-from role import Role
 import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
