@@ -25,6 +25,17 @@ class GameState:
     ROLE_BALL = 3
     SUBFORMAT = '!iiiiiiiiiL'
     FORMAT    = '!iiiiiiiiiiL'
+    OBJECT_NONE = 0
+    OBJECT_SCREEN = 1
+    OBJECT_LEFT_GOAL = 2
+    OBJECT_RIGHT_GOAL = 3
+    OBJECT_TOP_BALL_WALL = 4
+    OBJECT_BOTTOM_BALL_WALL = 5
+    OBJECT_TOP_WALL = 6
+    OBJECT_BOTTOM_WALL = 7
+    OBJECT_BALL = 9
+    OBJECT_LEFT_PADDLE = 9
+    OBJECT_RIGHT_PADDLE = 10
     def __init__(self):
         '''Create the initial game state.
         '''
@@ -48,6 +59,10 @@ class GameState:
         self.ball = GameObject()
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
+        self.objects = [self.screen, self.goal_left, self.goal_right,
+                self.ball_wall_top, self.ball_wall_bottom,
+                self.paddle_wall_top, self.paddle_wall_bottom,
+                self.ball, self.paddle_left, self.paddle_right]
         # The number of players.
         self.player_size = 3
         self.game_length = 120.0

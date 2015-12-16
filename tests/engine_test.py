@@ -12,8 +12,6 @@ from engine import GameRecord
 from eventsocket import EventSocket
 from gamestate import GameState
 from gameevent import GameEvent
-from player import Player
-from role import Role
 import tplogger
 logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
@@ -31,13 +29,6 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(e.is_server == False)
         pass
 
-    def test_InitRolesAndPlayers_1(self):
-        e = GameEngine()
-        e.InitRolesAndPlayers()
-        for i in range(0, len(e.roles)):
-            self.assertTrue(e.roles[i].role == Role.ROLES[i+1])
-            self.assertTrue(e.roles[i].player.role == e.roles[i].role)
-
     def test_RoleToEvent(self):
         e = GameEngine()
         self.assertTrue(e.RoleToEvent(GameState.ROLE_LEFT_PADDLE) == \
@@ -47,55 +38,64 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(e.RoleToEvent(GameState.ROLE_BALL) == \
                 GameEvent.EVENT_FLAP_BALL)
 
-    def template_GetKeyboardEventFromPlayer(self, key_cool_down_time,
+    def template_GetKeyboardEvents(self, key_cool_down_time,
             last, frame, do_press_key, role, player_key, evt):
         e = GameEngine()
         e.key_cool_down_time = key_cool_down_time
+        e.key_bindings[e.player_id] = player_key
+        e.last_key_frames[e.player_id] = last
+        s = GameState()
+        s.frame = frame
+        s.roles[e.player_id] = role
         keys = (0,)*323
         if do_press_key:
             keys = (0,)*player_key + (1,) + (0,)*(323-1-player_key)
-        p = Player()
-        r = Role()
-        r.role = role
-        p.role = r
-        p.key = player_key
-        p.last_key_frame = last
-        self.assertTrue(e.GetKeyboardEventFromPlayer(p, keys, frame) == evt)
+        res = e.GetKeyboardEvents(keys, s)
+        self.assertTrue(res  == evt, 
+                'got {0}, expected {1}'.format(res, evt))
         if evt != GameEvent.EVENT_NO_OP:
-            self.assertTrue(p.last_key_frame == frame)
+            self.assertTrue(e.last_key_frames[e.player_id] == frame)
 
-    def test_GetKeyboardEventFromPlayer_1(self):
+    def test_GetKeyboardEvents_1(self):
         '''Test no key.
         '''
-        self.template_GetKeyboardEventFromPlayer(0, 0, 0, False,
+        self.template_GetKeyboardEvents(0, 0, 0, False,
                 GameState.ROLE_LEFT_PADDLE, 0, GameEvent.EVENT_NO_OP)
 
-    def test_GetKeyboardEventFromPlayer_2(self):
+    def test_GetKeyboardEvents_2(self):
         '''Test good key.
         '''
-        self.template_GetKeyboardEventFromPlayer(0, 0, 0, True,
+        self.template_GetKeyboardEvents(0, 0, 0, True,
                 GameState.ROLE_LEFT_PADDLE, 0,
                 GameEvent.EVENT_FLAP_LEFT_PADDLE)
-
-    def test_GetKeyboardEventFromPlayer_3(self):
+    def test_GetKeyboardEvents_3(self):
         '''Test cool down time.
         '''
-        self.template_GetKeyboardEventFromPlayer(1, 0, 0, True,
+        self.template_GetKeyboardEvents(1, 0, 0, True,
                 GameState.ROLE_LEFT_PADDLE, 0,
                 GameEvent.EVENT_NO_OP)
-
-    def test_GetKeyboardEventFromPlayer_4(self):
+    def test_GetKeyboardEvents_4(self):
         '''Test cool down on good frame.
         '''
-        self.template_GetKeyboardEventFromPlayer(1, 0, 1, True,
+        self.template_GetKeyboardEvents(1, 0, 1, True,
                 GameState.ROLE_LEFT_PADDLE, 32,
                 GameEvent.EVENT_FLAP_LEFT_PADDLE)
-        
-    def test_GetKeyboardEvents(self):
-        '''Test keyboard input is converted to game events.
-        '''
+    def test_GetKeyboardEvents_5(self):
+        self.template_GetKeyboardEvents(1, 0, 1, True,
+                GameState.ROLE_RIGHT_PADDLE, 32,
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+    def test_GetKeyboardEvents_6(self):
+        self.template_GetKeyboardEvents(1, 0, 1, True,
+                GameState.ROLE_BALL, 32,
+                GameEvent.EVENT_FLAP_BALL)
+    def test_GetKeyboardEvents_7(self):
+        self.template_GetKeyboardEvents(1, 0, 1, True,
+                GameState.ROLE_RIGHT_PADDLE, 0,
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+    def test_GetKeyboardEvents_8(self):
         e = GameEngine()
         e.key_cool_down_time = 0
+        e.key_bindings = [0, 0, 0]
         s = GameState()
         k = MockKeyboard()
         k.inputs = [0, 1]*3
@@ -109,48 +109,15 @@ class GameEngineTest(unittest.TestCase):
                 GameEvent.EVENT_FLAP_BALL]]
         for i in range(0, 3):
             e.player_id = player_ids[i]
+            e.key_bindings = [0, 0, 0]
+            e.key_bindings[i] = 32
             for j in range(0, 2):
-                key_flag = e.GetKeyboardEvents(s)
+                keys = e.keyboard.GetKeys()
+                key_flag = e.GetKeyboardEvents(keys, s)
                 self.assertTrue(key_flag == expected_keys[i][j])
                 pass
             pass
         pass
-
-    def template_RotatePlayerRoles(self, roles_num):
-        '''Argument:
-        roles_num -- The number of roles to test.
-        '''
-        assert(roles_num >= 0)
-        assert(roles_num <= 3)
-        roles = []
-        for i in range(0, roles_num):
-            r = Role()
-            p = Player()
-            r.player = p
-            r.role = Role.ROLES[i + 1]
-            roles.append(r)
-        players = []
-        for i in range(1, len(roles)):
-            players.append(roles[i].player)
-        if roles_num > 0:
-            players.append(roles[0].player)
-        e = GameEngine()
-        e.RotatePlayerRoles(roles)
-        for i in range(0, len(roles)):
-            self.assertTrue(roles[i].player == players[i])
-            self.assertTrue(roles[i].player.role == roles[i].role)
-
-    def test_RotatePlayerRoles_1(self):
-        self.template_RotatePlayerRoles(0)
-
-    def test_RotatePlayerRoles_2(self):
-        self.template_RotatePlayerRoles(1)
-
-    def test_RotatePlayerRoles_3(self):
-        self.template_RotatePlayerRoles(2)
-
-    def test_RotatePlayerRoles_4(self):
-        self.template_RotatePlayerRoles(3)
 
     def test_GetServerEvent_1(self):
         '''Test graceful exit with a dead connection.
