@@ -238,7 +238,7 @@ class GameEngineTest(unittest.TestCase):
         e = GameEngine()
         s = GameState()
         keys = GameEvent.EVENT_FLAP_LEFT_PADDLE
-        e.SendKeyboardEvents(svr, s, keys)
+        e.SendKeyboardEvents(svr, s.frame, keys)
         received_keys = e.GetClientEvents([client], 1)
         ssock.close()
         csock.close()

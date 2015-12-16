@@ -84,15 +84,14 @@ class TPClient(object):
         e.player_id = self.player_id
         e.renderer = renderer
         e.keyboard = keyboard
-        s = GameState()
         conf = None
         logger.info('waiting for game config')
         while conf == None:
             conf = svrsock.ReadEvent()
         logger.info('received game config')
-        conf.Apply(s)
+        conf.Apply(e)
         logger.info('starting game')
-        e.Play(s)
+        e.Play(e.state)
 
     def Run(self, svraddr, renderer, keyboard):
         '''Run the game as a client.

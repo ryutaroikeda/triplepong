@@ -164,12 +164,11 @@ class TPServer(object):
         e.is_server = True
         e.is_client = False
         e.clients = clients
-        s = GameState()
-        conf.Apply(s)
+        conf.Apply(e.state)
         logger.info('sending game config')
         for c in clients:
             c.WriteEvent(conf)
-        e.Play(s)
+        e.Play(e.state)
 
     def Run(self, addr, upnp, conf):
         '''Run the game server.
@@ -224,6 +223,8 @@ if __name__ == '__main__':
             help='The number of rounds.')
     parser.add_argument('--fps', type=int, default=60,
             help='The frame rate in seconds')
+    parser.add_argument('--delay', type=int, default=2,
+            help='The frame of lag between key input and output.')
     args = parser.parse_args()
     s = TPServer()
     conf = GameConfig()
@@ -232,6 +233,7 @@ if __name__ == '__main__':
     conf.ball_vel = args.speed
     conf.rounds = args.rounds
     conf.frames_per_sec = args.fps
+    conf.buffer_delay = args.delay
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
     s.Run((args.ip, args.port), upnp, conf)

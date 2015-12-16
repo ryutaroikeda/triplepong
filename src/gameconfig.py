@@ -6,12 +6,14 @@ from eventtype import EventType
 
 class GameConfig:
 
-    FORMAT=   '!iiiiiiiiiiiiiii'
-    SUBFORMAT='!iiiiiiiiiiiiii'
+    FORMAT=   '!iiiiiiiiiiiiiiii'
+    SUBFORMAT='!iiiiiiiiiiiiiii'
 
     def __init__(self):
         self.player_size =3
         self.game_length = 120
+        self.rounds = 2
+        self.buffer_delay = 2
         self.frames_per_sec = 60
         self.screen_width = 640
         self.screen_height = 480
@@ -23,7 +25,6 @@ class GameConfig:
         self.paddle_height = 60
         self.ball_vel = 4
         self.ball_size = 16
-        self.rounds = 2
         self.event_type = EventType.CONFIGURE
 
     def __repr__(self):
@@ -46,22 +47,27 @@ class GameConfig:
                 self.screen_width, self.screen_height, self.buffer_region,
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
-                self.ball_vel, self.ball_size, self.rounds)
+                self.ball_vel, self.ball_size, self.rounds, 
+                self.buffer_delay)
 
     def Deserialize(self, b):
         (self.player_size, self.game_length, self.frames_per_sec,
                 self.screen_width, self.screen_height, self.buffer_region,
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
-                self.ball_vel, self.ball_size, self.rounds,) = \
+                self.ball_vel, self.ball_size, self.rounds, 
+                self.buffer_delay) = \
                         struct.unpack(self.SUBFORMAT, b)
         pass
 
-    def Apply(self, s):
-        '''Apply the configuration to a game state.
+    def Apply(self, e):
+        '''Apply the configuration to a game engine.
         Argument:
-        s -- The game state to configure.
+        e -- The game engine to configure.
         '''
+        e.buffer_delay = self.buffer_delay
+        e.key_buffer = [0]*e.buffer_delay
+        s = e.state
         buffer_region = self.buffer_region
         ball_wall_offset_x = self.ball_wall_offset_x
         ball_wall_offset_y = self.ball_wall_offset_y

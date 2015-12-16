@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
+from engine import GameEngine
 from gameconfig import GameConfig
 from gamestate import GameState
 class GameConfigTest(unittest.TestCase):
@@ -59,8 +60,9 @@ class GameConfigTest(unittest.TestCase):
         conf.paddle_width = 32
         conf.paddle_height = 50
         conf.ball_size = 100
-        s = GameState()
-        conf.Apply(s)
+        e = GameEngine()
+        conf.Apply(e)
+        s = e.state
         self.assertTrue(s.frames_per_sec == conf.frames_per_sec)
         self.assertTrue(s.game_length == conf.game_length)
         self.assertTrue(s.rounds == conf.rounds)
