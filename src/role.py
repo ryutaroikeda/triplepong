@@ -7,7 +7,7 @@ class Role:
     NONE = 0
     LEFT_PADDLE = 1
     RIGHT_PADDLE = 2
-    BALL = 4
+    BALL = 3
     ROLES = [NONE, LEFT_PADDLE, RIGHT_PADDLE, BALL]
     def __init__(self):
         self.role = 0

@@ -6,6 +6,7 @@ class Player:
     role           -- A reference to a Role object.
     entity         -- The game object controlled by the player.
     color          -- The color of the player controlled object.
+    score          -- The score for the player.
     '''
     def __init__(self):
         self.is_active = False
@@ -14,3 +15,4 @@ class Player:
         self.role = None
         self.entity = None
         self.color = (0xFF, 0xFF, 0xFF)
+        self.score = 0
