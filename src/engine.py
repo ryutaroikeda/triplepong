@@ -621,8 +621,7 @@ class GameEngine(object):
         pass
 
     def RotateRoles(self, s):
-        '''DEPRECATED
-        Rotate the roles of the players.
+        '''Rotate the roles of the players.
         Argument:
         s -- The game state.
         '''
@@ -631,21 +630,6 @@ class GameEngine(object):
         s.roles = tmp
         for player_id in range(0, len(s.roles)):
             s.players[s.roles[player_id]] = player_id
-
-    def RotatePlayerRoles(self, roles):
-        '''Rotate the roles of the players.
-        Argument:
-        roles -- A list of Role objects.
-        '''
-        size = len(roles)
-        if size <= 0:
-            return
-        first_player = roles[0].player
-        for i in range(0, size):
-            roles[i].player = roles[(i + 1) % size].player
-        roles[size - 1].player = first_player
-        for i in range(0, size):
-            roles[i].player.role = roles[i].role
 
     def PlayRound(self, s, rec, rotations, rotation_length, frame_rate):
         '''Play one round of the game, with each player playing every role.
