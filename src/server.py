@@ -164,10 +164,13 @@ class TPServer(object):
         e.is_server = True
         e.is_client = False
         e.clients = clients
-        conf.Apply(e.state)
+        conf.Apply(e)
         logger.info('sending game config')
+        i = 0
         for c in clients:
+            conf.player_id = i
             c.WriteEvent(conf)
+            i += 1
         e.Play(e.state)
 
     def Run(self, addr, upnp, conf):
@@ -221,9 +224,9 @@ if __name__ == '__main__':
             help='The speed of the ball.')
     parser.add_argument('--rounds', type=int, default=2,
             help='The number of rounds.')
-    parser.add_argument('--fps', type=int, default=60,
+    parser.add_argument('--fps', type=int, default=40,
             help='The frame rate in seconds')
-    parser.add_argument('--delay', type=int, default=2,
+    parser.add_argument('--delay', type=int, default=0,
             help='The frame of lag between key input and output.')
     args = parser.parse_args()
     s = TPServer()

@@ -44,6 +44,8 @@ class GameConfigTest(unittest.TestCase):
         conf.ball_vel = 3
         conf.ball_size = 100
         conf.rounds = 8
+        conf.buffer_delay = 1
+        conf.player_id = 2
         # Ignore the event type bytes.
         b = conf.Serialize()[4:]
         test = GameConfig()
@@ -60,8 +62,10 @@ class GameConfigTest(unittest.TestCase):
         conf.paddle_width = 32
         conf.paddle_height = 50
         conf.ball_size = 100
+        conf.player_id = 2
         e = GameEngine()
         conf.Apply(e)
+        self.assertTrue(e.player_id == conf.player_id)
         s = e.state
         self.assertTrue(s.frames_per_sec == conf.frames_per_sec)
         self.assertTrue(s.game_length == conf.game_length)

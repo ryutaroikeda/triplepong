@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import copy
 import logging
 import multiprocessing
@@ -117,6 +119,7 @@ class GameEngine(object):
     buffer_delay-- The number of frames of delay to apply to key events.
     key_buffer         -- A list of future key events. The events for the 
                           current frame is (frame % buffer_delay)
+    do_interpolate     -- Set to True if the renderer should interpolate.
     '''
 
     K_SPACE = 32
@@ -135,6 +138,7 @@ class GameEngine(object):
         self.key_bindings = [32, -1, -1]
         self.buffer_delay = 0
         self.key_buffer = [0]*self.buffer_delay
+        self.do_interpolate = False
         pass
 
     def RoleToEvent(self, role):
@@ -165,6 +169,9 @@ class GameEngine(object):
         A flag of keyboard event codes.
         '''
         flag = 0
+        ESCAPE = 27
+        if keys[ESCAPE]:
+            raise Exception
         for i in range(0, 3):
             if self.key_bindings[i] < 0:
                 continue
@@ -539,7 +546,7 @@ class GameEngine(object):
             self.SendKeyboardEvents(self.server,
                     s.frame + self.buffer_delay, fresh_keys)
         if self.buffer_delay > 0:
-            # Interpolation delay.
+            # Buffer delay.
             # Read from the buffer. Then buffer the current keys.
             buffer_idx = s.frame % self.buffer_delay
             keys = self.key_buffer[buffer_idx]
@@ -561,7 +568,6 @@ class GameEngine(object):
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
         s.player_id = self.player_id
-        self.renderer.RenderAll(s)
         pass
 
     def RunFrameAsServer(self, s, rec):
@@ -599,8 +605,6 @@ class GameEngine(object):
         pass
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
-        self.renderer.RenderAll(s)
-        pass
 
     def GetTargetFrame(self, now, start_time, start_frame, end_frame, 
             frame_rate):
@@ -638,18 +642,30 @@ class GameEngine(object):
             # Compute the target current frame.
             target_frame = self.GetTargetFrame(time.time(), start_time,
                     start_frame, end_frame, frame_rate)
-            # Loop here until we catch up.
-            while s.frame < target_frame:
-                if self.is_client:
-                    self.RunFrameAsClient(s, rec)
-                elif self.is_server:
-                    self.RunFrameAsServer(s, rec)
-                else:
-                    # This feature is used for testing.
-                    rec.AddEntry(s, 0)
-                    self.PlayFrame(s, 0)
-                pass
-            pass
+            if target_frame == s.frame:
+                continue
+            # Play a frame.
+            if self.is_client:
+                self.RunFrameAsClient(s, rec)
+            elif self.is_server:
+                self.RunFrameAsServer(s, rec)
+            else:
+                # This feature is used for testing.
+                rec.AddEntry(s, 0)
+                self.PlayFrame(s, 0)
+            # Catch up.
+            if s.frame < target_frame:
+                continue
+            # Do the rendering
+            if self.do_interpolate:
+                end_time = ((target_frame + 1 - start_frame) \
+                        / float(frame_rate)) + start_time
+                now = time.time()
+                # Minus two because rec.idx is pointing to the next frame.
+                self.renderer.RenderInterpolated( \
+                        rec.states[(rec.idx - 2)%rec.size], s, now, end_time)
+            else:
+                self.renderer.RenderAll(s)
         pass
 
     def RotateRoles(self, s):
@@ -704,15 +720,22 @@ class GameEngine(object):
         self.RunGame(s, rec, frame_rate * 30, frame_rate)
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='The triplepong game \
+            engine.')
+    parser.add_argument('-i', '--interpolate', action='store_true',
+            default=False, help='Turn on renderer interpolation.')
+    args = parser.parse_args()
     e = GameEngine()
     e.is_client = True
     e.is_server = False
     e.key_bindings = [32, 112, 113]
     conf = GameConfig()
+    conf.do_interpolate = args.interpolate
     conf.Apply(e)
     from renderer import Renderer
     r = Renderer()
-    r.Init()
+    r.Init(conf)
     e.renderer = r
     e.keyboard = r
     e.Play(e.state)

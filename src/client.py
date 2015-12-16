@@ -8,6 +8,7 @@ import time
 sys.path.append(os.path.abspath('src'))
 from eventsocket import EventSocket
 from engine import GameEngine
+from gameconfig import GameConfig
 from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
@@ -76,21 +77,21 @@ class TPClient(object):
 
         Argument:
         svrsock -- A socket connected to the server.'''
-
+        svrconf = None
+        logger.info('waiting for server game config')
+        while svrconf == None:
+            svrconf = svrsock.ReadEvent()
+        logger.info('received server game config')
         e = GameEngine()
+        svrconf.Apply(e)
         e.server = svrsock
         e.is_client = True
         e.is_server = False
-        e.player_id = self.player_id
+        # e.player_id = self.player_id
         e.renderer = renderer
         e.keyboard = keyboard
-        conf = None
-        logger.info('waiting for game config')
-        while conf == None:
-            conf = svrsock.ReadEvent()
-        logger.info('received game config')
-        conf.Apply(e)
-        logger.info('starting game')
+        e.do_interpolate = True
+        logger.info('starting game as player {0}'.format(e.player_id))
         e.Play(e.state)
 
     def Run(self, svraddr, renderer, keyboard):
@@ -133,8 +134,10 @@ if __name__ == '__main__':
             help='The IP address of the server.')
     parser.add_argument('--port', type=int, default=8090, help='The port.')
     args = parser.parse_args()
+    conf = GameConfig()
     c = TPClient()
     from renderer import Renderer
     r = Renderer()
-    r.Init()
+    # For now, nothing in server's conf affects renderer.
+    r.Init(conf)
     c.Run((args.ip, args.port), r, r)

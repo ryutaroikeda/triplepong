@@ -1,6 +1,7 @@
 import os
 import pygame
 import sys
+import time
 sys.path.append(os.path.abspath('src'))
 from gamestate import GameState
 
@@ -15,7 +16,9 @@ class Renderer:
     
     Attributes:
     screen_width  -- The width of the screen.
-    screen_height -- The height of the screen.'''
+    screen_height -- The height of the screen.
+    state         -- The state to draw. Used in RenderInterpolated().
+    '''
 
     def __init__(self):
         self.screen_width = 640
@@ -29,6 +32,7 @@ class Renderer:
         self.background_color = (0xFF, 0xA9, 0x07)
         self.default_color = (0xFF, 0xCF, 0x74)
         self.your_color = (0xFF, 0xF1, 0xD7)
+        self.state = GameState()
         pass
     def GetRect(self, obj):
         '''Returns a tuple (x, y, w, h) representing a rect from the given 
@@ -116,13 +120,61 @@ class Renderer:
         
         Argument:
         state -- The game state to render.'''
-
         self.RenderBackground(self.surface)
         self.RenderScore(self.surface, state)
         self.RenderCrown(self.surface, state)
         self.RenderState(self.surface, state)
         pygame.display.flip()
+
+    def InterpolateScalar(self, x1, x2, t):
+        '''Interpolate x1 and x2 at time t.
+        Arguments:
+        x1 -- The value at time t = 0.
+        x2 -- The value at time t = 1.
+        t  -- The time between 0 and 1.
+        '''
+        return x1 + (x2 - x1) * t
+
+    def InterpolateStates(self, s1, s2, t, result):
+        '''Interpolate s1 and s2 at time t into result.
+        Arguments:
+        s1     -- The state at time t = 0.
+        s2     -- The state at time t = 1.
+        t      -- The time between 0 and 1.
+        result -- A game state.
+        '''
+        result.paddle_left.pos_y = self.InterpolateScalar( \
+                s1.paddle_left.pos_y, s2.paddle_left.pos_y, t)
+        result.paddle_right.pos_y = self.InterpolateScalar( \
+                s1.paddle_right.pos_y, s2.paddle_right.pos_y, t)
+        result.ball.pos_x = self.InterpolateScalar( \
+                s1.ball.pos_x, s2.ball.pos_x, t)
+        result.ball.pos_y = self.InterpolateScalar( \
+                s1.ball.pos_y, s2.ball.pos_y, t)
+
+    def RenderInterpolated(self, prev, state, start_time, end_time):
+        '''Render between two states.
+        Argument:
+        prev    -- The previous state.
+        state   -- The current state.
+        start_time -- The time in seconds.
+        end_time -- The time to stop rendering.
+        '''
+        delta = end_time - start_time
+        if delta <= 0.0:
+            return
+        self.state.roles = state.roles
+        self.state.players = state.players
+        self.state.scores = state.scores
+        self.state.player_id = state.player_id
+        while True:
+            t = (time.time() - start_time) / delta
+            self.InterpolateStates(prev, state, t, self.state)
+            self.RenderAll(self.state)
+            if time.time() >= end_time:
+                break
         pass
+
     def GetKeys(self):
         '''Get the keyboard state.'''
         # Events should be pumped before calling get_pressed(). These functions 
@@ -132,9 +184,13 @@ class Renderer:
         pygame.event.pump()
         return pygame.key.get_pressed()
 
-    def Init(self):
+    def Init(self, conf):
         '''Initialize the renderer. This must be called before use.
+        Argument:
+        conf -- The game configuration to use. This is required for setting the 
+                positions of immovable objects in .state.
         '''
+        conf.ApplyState(self.state)
         pygame.init()
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()

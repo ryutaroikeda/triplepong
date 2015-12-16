@@ -6,15 +6,17 @@ from eventtype import EventType
 
 class GameConfig:
 
-    FORMAT=   '!iiiiiiiiiiiiiiii'
-    SUBFORMAT='!iiiiiiiiiiiiiii'
+    FORMAT=   '!iiiiiiiiiiiiiiiiii'
+    SUBFORMAT='!iiiiiiiiiiiiiiiii'
 
     def __init__(self):
+        self.do_interpolate = False
+        self.player_id = 0
         self.player_size =3
         self.game_length = 120
         self.rounds = 2
         self.buffer_delay = 2
-        self.frames_per_sec = 60
+        self.frames_per_sec = 40
         self.screen_width = 640
         self.screen_height = 480
         self.buffer_region = 50
@@ -48,7 +50,7 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay)
+                self.buffer_delay, self.do_interpolate, self.player_id)
 
     def Deserialize(self, b):
         (self.player_size, self.game_length, self.frames_per_sec,
@@ -56,18 +58,15 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay) = \
+                self.buffer_delay, self.do_interpolate, self.player_id) = \
                         struct.unpack(self.SUBFORMAT, b)
         pass
 
-    def Apply(self, e):
-        '''Apply the configuration to a game engine.
+    def ApplyState(self, s):
+        '''Apply the configuration to a game state.
         Argument:
-        e -- The game engine to configure.
+        s -- The game state.
         '''
-        e.buffer_delay = self.buffer_delay
-        e.key_buffer = [0]*e.buffer_delay
-        s = e.state
         buffer_region = self.buffer_region
         ball_wall_offset_x = self.ball_wall_offset_x
         ball_wall_offset_y = self.ball_wall_offset_y
@@ -131,3 +130,16 @@ class GameConfig:
         s.paddle_right.vel_y = 0
         s.paddle_right.half_width = paddle_half_width
         s.paddle_right.half_height = paddle_half_height
+
+    def Apply(self, e):
+        '''Apply the configuration to a game engine.
+        Argument:
+        e -- The game engine to configure.
+        '''
+        e.buffer_delay = self.buffer_delay
+        e.key_buffer = [0]*e.buffer_delay
+        e.do_interpolate = self.do_interpolate
+        e.player_id = self.player_id
+        e.key_bindings = [-1, -1, -1]
+        e.key_bindings[e.player_id] = 32
+        self.ApplyState(e.state)
