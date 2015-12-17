@@ -58,7 +58,9 @@ class UDPSocket:
         Argument:
         ack -- The newly received ack.
         '''
-        if self.IsMoreRecent(ack, self.ack):
+        if ack == self.ack:
+            return
+        if self.IsMoreRecent(ack, self.ack, self.MAX_SEQ):
             if ack > self.ack:
                 shift = ack - self.ack
             else:
