@@ -240,4 +240,4 @@ if __name__ == '__main__':
     conf.buffer_delay = args.delay
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run(('', args.port), upnp, conf)
+    s.Run(('', args.port), args.upnp, conf)
