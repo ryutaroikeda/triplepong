@@ -210,8 +210,6 @@ class TPServer(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='The triplepong game server.')
-    parser.add_argument('--ip', type=str, default='', 
-            help='The IP address to run the server on.')
     parser.add_argument('--port', type=int, default=8090,
             help='The port number.')
     parser.add_argument('--upnp', action='store_true', default=False,
@@ -239,4 +237,4 @@ if __name__ == '__main__':
     conf.buffer_delay = args.delay
     # The empty string represents INADDR_ANY.
     # Using socket.INADDR_ANY will give you a type error.
-    s.Run((args.ip, args.port), upnp, conf)
+    s.Run(('', args.port), upnp, conf)
