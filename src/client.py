@@ -119,6 +119,8 @@ class TPClient(object):
             logger.info('initiating handshake')
             if self.Handshake(sock, 60) == -1:
                 continue
+            # Disable Nagel's algorithm
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
             self.PlayGame(EventSocket(sock), renderer, keyboard, conf)
             break
         sock.close()

@@ -203,6 +203,9 @@ class TPServer(object):
             if clients.__len__() < conf.player_size:
                 logger.error('handshake failed, retrying')
                 continue
+            for c in clients:
+                # Disable Nagel's algorithm
+                c.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
             evtsock_clients = [EventSocket(c) for c in clients]
             self.PlayGame(evtsock_clients, conf)
             break
