@@ -69,7 +69,7 @@ class TPClient(object):
         logger.info('handshake completed successfully')
         return 0
 
-    def PlayGame(self, svrsock, renderer, keyboard):
+    def PlayGame(self, svrsock, renderer, keyboard, conf):
         '''Play the game hosted by the server. svrsock must be connected to the 
         server before calling this method.
 
@@ -77,24 +77,23 @@ class TPClient(object):
 
         Argument:
         svrsock -- A socket connected to the server.'''
+        e = GameEngine()
         svrconf = None
         logger.info('waiting for server game config')
         while svrconf == None:
             svrconf = svrsock.ReadEvent()
         logger.info('received server game config')
-        e = GameEngine()
         svrconf.Apply(e)
         e.server = svrsock
         e.is_client = True
         e.is_server = False
-        # e.player_id = self.player_id
         e.renderer = renderer
         e.keyboard = keyboard
-        e.do_interpolate = True
+        e.buffer_size = conf.buffer_size
         logger.info('starting game as player {0}'.format(e.player_id))
         e.Play(e.state)
 
-    def Run(self, svraddr, renderer, keyboard):
+    def Run(self, svraddr, renderer, keyboard, conf):
         '''Run the game as a client.
 
         This method attempts to connect to the game server at svraddr and start 
@@ -120,7 +119,7 @@ class TPClient(object):
             logger.info('initiating handshake')
             if self.Handshake(sock, 60) == -1:
                 continue
-            self.PlayGame(EventSocket(sock), renderer, keyboard)
+            self.PlayGame(EventSocket(sock), renderer, keyboard, conf)
             break
         sock.close()
         return 0
@@ -133,11 +132,18 @@ if __name__ == '__main__':
     parser.add_argument('--ip', type=str, default='127.0.0.1',
             help='The IP address of the server.')
     parser.add_argument('--port', type=int, default=8090, help='The port.')
+    parser.add_argument('-i', '--interpolate', action='store_true',
+            default=False, help='Enable interpolation')
+    parser.add_argument('-b', '--buffersize', type=int, default=300,
+            help='A larger buffer increases responsiveness to the server.')
     args = parser.parse_args()
     conf = GameConfig()
+    conf.do_interpolate = args.interpolate
+    conf.buffer_size = args.buffersize
     c = TPClient()
     from renderer import Renderer
     r = Renderer()
     # For now, nothing in server's conf affects renderer.
-    r.Init(conf)
-    c.Run((args.ip, args.port), r, r)
+    r.Init()
+    conf.ApplyRenderer(r)
+    c.Run((args.ip, args.port), r, r, conf)

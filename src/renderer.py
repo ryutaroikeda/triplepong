@@ -33,6 +33,7 @@ class Renderer:
         self.default_color = (0xFF, 0xCF, 0x74)
         self.your_color = (0xFF, 0xF1, 0xD7)
         self.state = GameState()
+        self.do_interpolate = False
         pass
     def GetRect(self, obj):
         '''Returns a tuple (x, y, w, h) representing a rect from the given 
@@ -167,6 +168,7 @@ class Renderer:
         self.state.players = state.players
         self.state.scores = state.scores
         self.state.player_id = state.player_id
+        self.state.should_render_score = state.should_render_score
         while True:
             t = (time.time() - start_time) / delta
             self.InterpolateStates(prev, state, t, self.state)
@@ -174,6 +176,14 @@ class Renderer:
             if time.time() >= end_time:
                 break
         pass
+    
+    def Render(self, prev, state, start_time, end_time):
+        '''Render.
+        '''
+        if self.do_interpolate:
+            self.RenderInterpolated(prev, state, start_time, end_time)
+        else:
+            self.RenderAll(state)
 
     def GetKeys(self):
         '''Get the keyboard state.'''
@@ -184,13 +194,12 @@ class Renderer:
         pygame.event.pump()
         return pygame.key.get_pressed()
 
-    def Init(self, conf):
+    def Init(self):
         '''Initialize the renderer. This must be called before use.
         Argument:
         conf -- The game configuration to use. This is required for setting the 
                 positions of immovable objects in .state.
         '''
-        conf.ApplyState(self.state)
         pygame.init()
         pygame.display.set_mode((640, 480))
         self.surface = pygame.display.get_surface()

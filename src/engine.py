@@ -120,6 +120,7 @@ class GameEngine(object):
     key_buffer         -- A list of future key events. The events for the 
                           current frame is (frame % buffer_delay)
     do_interpolate     -- Set to True if the renderer should interpolate.
+    buffer_size        -- The size of the game state buffer.
     '''
 
     K_SPACE = 32
@@ -139,6 +140,7 @@ class GameEngine(object):
         self.buffer_delay = 0
         self.key_buffer = [0]*self.buffer_delay
         self.do_interpolate = False
+        self.buffer_size = 300
         pass
 
     def RoleToEvent(self, role):
@@ -657,15 +659,12 @@ class GameEngine(object):
             if s.frame < target_frame:
                 continue
             # Do the rendering
-            if self.do_interpolate:
-                end_time = ((target_frame + 1 - start_frame) \
-                        / float(frame_rate)) + start_time
-                now = time.time()
-                # Minus two because rec.idx is pointing to the next frame.
-                self.renderer.RenderInterpolated( \
-                        rec.states[(rec.idx - 2)%rec.size], s, now, end_time)
-            else:
-                self.renderer.RenderAll(s)
+            end_time = ((target_frame + 1 - start_frame) \
+                    / float(frame_rate)) + start_time
+            now = time.time()
+            # Minus two because rec.idx is pointing to the next frame.
+            self.renderer.Render(rec.states[(rec.idx - 2)%rec.size],
+                    s, now, end_time)
         pass
 
     def RotateRoles(self, s):
@@ -707,7 +706,7 @@ class GameEngine(object):
         rounds = s.rounds
         rec = GameRecord()
         # Pick an estimate for a value greater than 2L.
-        rec.SetSize(int(frame_rate) * 5)
+        rec.SetSize(self.buffer_size)
 
         for i in range(0, rounds):
             self.PlayRound(s, rec, 3, rotation_length, 
@@ -729,13 +728,14 @@ if __name__ == '__main__':
     e = GameEngine()
     e.is_client = True
     e.is_server = False
-    e.key_bindings = [32, 112, 113]
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
     conf.Apply(e)
+    e.key_bindings = [32, 112, 113]
     from renderer import Renderer
     r = Renderer()
-    r.Init(conf)
+    r.Init()
+    conf.ApplyRenderer(r)
     e.renderer = r
     e.keyboard = r
     e.Play(e.state)

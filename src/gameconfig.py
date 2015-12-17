@@ -130,6 +130,14 @@ class GameConfig:
         s.paddle_right.vel_y = 0
         s.paddle_right.half_width = paddle_half_width
         s.paddle_right.half_height = paddle_half_height
+    
+    def ApplyRenderer(self, r):
+        '''Apply the configuration to a renderer.
+        Argument:
+        r -- The renderer to configre.
+        '''
+        r.do_interpolate = self.do_interpolate
+        self.ApplyState(r.state)
 
     def Apply(self, e):
         '''Apply the configuration to a game engine.
@@ -138,7 +146,6 @@ class GameConfig:
         '''
         e.buffer_delay = self.buffer_delay
         e.key_buffer = [0]*e.buffer_delay
-        e.do_interpolate = self.do_interpolate
         e.player_id = self.player_id
         e.key_bindings = [-1, -1, -1]
         e.key_bindings[e.player_id] = 32

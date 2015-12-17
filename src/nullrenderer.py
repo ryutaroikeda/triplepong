@@ -1,7 +1,4 @@
 class NullRenderer:
-    def RenderAll(self, state):
-        '''Does nothing.'''
-        pass
-    def RenderInterpolated(self, s1, s2, start, emd):
+    def Render(self, a, b, c, d):
         pass
     pass
