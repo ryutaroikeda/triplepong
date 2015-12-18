@@ -1,9 +1,14 @@
+import multiprocessing
 import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
 from udpsock import UDPSocket
 from udpdatagram import UDPDatagram
+def UDPSocketTestPickleJar_Accept(sock, q):
+    conn = sock.Accept(1)
+    q.put(conn.sock.getpeername())
+
 class UDPSocketTest(unittest.TestCase):
     def template_IsMoreRecent(self, s1, s2, expected):
         s = UDPSocket()
@@ -29,8 +34,8 @@ class UDPSocketTest(unittest.TestCase):
         t_addr = ('127.0.0.1', 2056)
         s.Bind(s_addr)
         t.Bind(t_addr)
-        s.Connect(t_addr)
-        t.Connect(s_addr)
+        s.sock.connect(t_addr)
+        t.sock.connect(s_addr)
         s.seq = seq
         t.ack = ack
         t.ackbits = ackbits
@@ -108,4 +113,21 @@ class UDPSocketTest(unittest.TestCase):
     def test_SendAndRecv_2(self):
         self.template_SendAndRecv(1, 0, int('0'*32,2),
                 b'1'*UDPDatagram.MAX_PAYLOAD, 1, int('1'+'0'*31,2))
+
+    def test_HandshakeAndAccept(self):
+        sock = UDPSocket()
+        sock.Open()
+        sock.Bind(('', 10000))
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=UDPSocketTestPickleJar_Accept,
+                args=(sock, q))
+        p.start()
+        client = UDPSocket()
+        client.Open()
+        client.Handshake(('127.0.0.1', 10000), 1)
+        client_name = q.get()
+        p.join()
+        sock.Close()
+        self.assertTrue(client.sock.getsockname() == client_name)
+        client.Close()
 
