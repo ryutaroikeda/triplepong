@@ -37,7 +37,7 @@ class UDPSocket:
         '''
         self.port = port
         self.peer_ip = ip
-        self.sock.bind(self.peer_ip)
+        self.sock.bind((self.peer_ip, self.port))
 
     def Send(self, payload):
         '''

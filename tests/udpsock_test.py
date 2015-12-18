@@ -65,3 +65,9 @@ class UDPSocketTest(unittest.TestCase):
     def test_UpdateAck_10(self):
         self.template_UpdateAck(0, int('0'*31+'1',2), UDPSocket.MAX_SEQ - 1,
                 int('1'+'0'*30+'1',2))
+
+    def test_Bind_1(self):
+        s = UDPSocket()
+        s.Bind('', 0)
+        self.assertTrue(s.peer_ip == '')
+        self.assertTrue(s.port == 0)
