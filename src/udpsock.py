@@ -1,23 +1,20 @@
+import os
+import select
 import socket
+import sys
+sys.path.append(os.path.abspath('src'))
+from udpdatagram import UDPDatagram
 class UDPSocket:
-    MAX_DATAGRAM_SIZE = 128
-    MAX_SEQ           = (1 << 16)
+    '''
+    Attributes:
+    sock      -- A socket object.
+    ttl       -- The time-to-live for the connection.
+    seq       -- The number of datagrams sent (16 bits).
+    ack       -- The number of acknowledged datagrams (16 bits).
+    ackbits   -- Acknowledgement of the previous 32 datagrams. (32 bits).
+    '''
     def __init__(self):
-        '''
-        Attributes:
-        sock      -- A socket object.
-        port      -- The port of this end.
-        peer_ip   -- The IP address of the other end.
-        peer_port -- The port of the other end.
-        ttl       -- The time-to-live for the connection.
-        seq       -- The number of datagrams sent (16 bits).
-        ack       -- The number of acknowledged datagrams (16 bits).
-        ackbits   -- (32 bits).
-        '''
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.port = 0
-        self.peer_ip = ''
-        self.peer_port = 0
+        self.sock = None
         self.ttl = 0
         self.seq = 0
         self.ack = 0
@@ -27,17 +24,21 @@ class UDPSocket:
         '''
         Return value:
         True if s1 is more recent than s2, and False otherwise.
+        This method takes into account integer wrapping.
         '''
         return ((s1 > s2) and (s1 - s2 <= maximum // 2) or \
                 (s2 > s1) and (s2 - s1 > maximum // 2))
 
+    def Open(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def Bind(self, ip, port):
+    def Close(self):
+        self.sock.close()
+
+    def Bind(self, addr):
         '''Prepare to receive datagrams from ip on port.
         '''
-        self.port = port
-        self.peer_ip = ip
-        self.sock.bind((self.peer_ip, self.port))
+        self.sock.bind(addr)
 
     def Send(self, payload):
         '''
@@ -50,49 +51,66 @@ class UDPSocket:
         datagram.ackbits = self.ackbits
         datagram.payload = payload
         buf = datagram.Serialize()
-        self.sock.sendto(buf, (self.peer_ip, peer_port))
-        self.seq += 1
+        self.sock.send(buf)
+        self.seq = (self.seq + 1) % UDPDatagram.MAX_SEQ
 
     def UpdateAck(self, ack):
-        '''
+        '''Update the ack and ackbits.
+        If ack is most recent, it is set as the new ack and the ackbits are 
+        shifted. Otherwise, if ack is within 32 acks from the most recent, the 
+        corresponding ackbit is set.
         Argument:
-        ack -- The newly received ack.
+        ack -- The newly received sequence number.
         '''
         if ack == self.ack:
             return
-        if self.IsMoreRecent(ack, self.ack, self.MAX_SEQ):
+        if self.IsMoreRecent(ack, self.ack, UDPDatagram.MAX_SEQ):
             if ack > self.ack:
                 shift = ack - self.ack
             else:
-                shift = self.MAX_SEQ + ack - self.ack
+                shift = UDPDatagram.MAX_SEQ + ack - self.ack
             self.ackbits >>= shift
             self.ackbits |= (1 << 31) >> (shift - 1)
             self.ack = ack
         else:
             if ack > self.ack:
-                shift = self.MAX_SEQ + self.ack - ack - 1
+                shift = UDPDatagram.MAX_SEQ + self.ack - ack - 1
             else:
                 shift = self.ack - ack - 1
             self.ackbits |= ((1 << 31) >> shift)
 
-
     def Recv(self):
-        buf = self.sock.recvfrom(self.MAX_DATAGRAM_SIZE)
-        datagram = UDPDatagram()
-        datagram.Deserialize(buf)
-
-    def Connect(self, ip, port):
-        '''Attempt to connect to ip at port.
+        '''Non-blocking receive.
         '''
-        
-        pass
+        (ready, _, _) = select.select([self.sock], [], [], 0)
+        if ready == []:
+            return None
+        buf = self.sock.recv(UDPDatagram.MAX_DATAGRAM)
+        datagram = UDPDatagram()
+        # To do: try except with logging.
+        datagram.Deserialize(buf)
+        self.UpdateAck(datagram.seq)
+        return datagram
+
+    def Connect(self, addr):
+        '''Set the peer's address.
+        '''
+        self.sock.connect(addr)
+
+    def Handshake(self, addr):
+        '''Establish a connection.
+        '''
+        self.Connect(addr)
 
     def Accept(self):
         '''Try to accept a connection.
         Return value:
-        A UDPSocket connected to some end point.
+        A UDPSocket with the address of a peer.
         '''
-        (buf, addr) = self.sock.recvfrom(self.MAX_DATAGRAM_SIZE)
+
+        buf = self.sock.recvfrom(UDPDatagram.MAX_DATAGRAM)
+        s = UDPSocket()
+
 
 
 
