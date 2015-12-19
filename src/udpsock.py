@@ -19,6 +19,7 @@ class UDPSocket:
     ack       -- The number of acknowledged datagrams (16 bits).
     ackbits   -- Acknowledgement of the previous 32 datagrams. (32 bits).
     '''
+    MAX_TIME_TO_LIVE = 60
     GUID_1 = b'0e27b7418ee54d648b20dd82dc53905b'
     GUID_2 = b'b02dda09a088482bb8fe88df6e5268fe'
     GUID_3 = b'4200150f5d5a46a283483cc501f395e4'
@@ -62,6 +63,11 @@ class UDPSocket:
         buf = datagram.Serialize()
         self.sock.send(buf)
         self.seq = (self.seq + 1) % UDPDatagram.MAX_SEQ
+        self.ttl -= 1
+        if self.ttl <= 0:
+            logger.info('The connection is dead.')
+            return -1
+        return 0
 
     def UpdateAck(self, ack):
         '''Update the ack and ackbits.
@@ -96,9 +102,9 @@ class UDPSocket:
             return None
         buf = self.sock.recv(UDPDatagram.MAX_DATAGRAM)
         datagram = UDPDatagram()
-        # To do: try except with logging.
         datagram.Deserialize(buf)
         self.UpdateAck(datagram.seq)
+        self.ttl = UDPSocket.MAX_TIME_TO_LIVE
         return datagram
 
     def Handshake(self, addr, timeout):
@@ -118,6 +124,7 @@ class UDPSocket:
         self.sock.connect(peer_addr)
         self.sock.send(UDPSocket.GUID_3)
         logger.info('Handshake succeeded.')
+        self.ttl = UDPSocket.MAX_TIME_TO_LIVE
         return True
 
     def Accept(self, timeout):
@@ -148,6 +155,7 @@ class UDPSocket:
                 logger.info('Incorrect GUID received.')
                 return None
             logger.info('Connection accepted.')
+            s.ttl = UDPSocket.MAX_TIME_TO_LIVE
             return s
         except Exception as e:
             s.Close()
