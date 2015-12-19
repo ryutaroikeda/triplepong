@@ -14,7 +14,7 @@ from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
-from udpsocket import UDPSocket
+from udpsock import UDPSocket
 import upnp
 logger = tplogger.getTPLogger('server.log', logging.DEBUG)
 class TPServer(object):

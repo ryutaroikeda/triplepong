@@ -4,6 +4,7 @@ import os
 import struct
 import sys
 sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
 from gamestate import GameState
 
 class TPMessage(object):
