@@ -4,6 +4,7 @@ import os
 import struct
 import sys
 sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
 from gamestate import GameState
 
 class TPMessage(object):
@@ -15,15 +16,21 @@ class TPMessage(object):
     def __init__(self):
         self.method = self.METHOD_NONE
         self.player_id = GameState.ROLE_NONE
-        pass
+        self.event_type = EventType.HANDSHAKE
+
     def getsize(self):
         return struct.calcsize(self.FORMAT)
 
     def pack(self): 
         return struct.pack(self.FORMAT, self.method, self.player_id)
+
     def unpack(self, b):
         (self.method, self.player_id) = struct.unpack(self.FORMAT, b)
-        pass
-    pass
+
+    def Serialize(self):
+        return self.pack()
+
+    def Deserialize(self, b):
+        self.unpack(b)
 
 

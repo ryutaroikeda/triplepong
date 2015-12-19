@@ -9,7 +9,7 @@ from server import TPServer
 from client import TPClient
 class TPServerTestPickleJar(object):
     '''This class provides access to methods that are targets of spawned 
-    processes  in TPServerTest. According to 
+    processes in TPServerTest. According to 
     http://stackoverflow.com/questions/25646382/python-3-4-multiprocessing-does-
     not-work-with-unittest,
     unittest.TestCase is not pickleable (i.e. serializable) as of at least 

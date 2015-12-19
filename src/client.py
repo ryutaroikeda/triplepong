@@ -109,7 +109,7 @@ class TPClient(object):
             if sock != None:
                 sock.close()
                 pass
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             logger.info('connecting to {0}'.format(svraddr))
             try:
                 sock.connect(svraddr)

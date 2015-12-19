@@ -14,6 +14,7 @@ from gamestate import GameState
 import tpsocket
 from tpmessage import TPMessage
 import tplogger
+from udpsock import UDPSocket
 import upnp
 logger = tplogger.getTPLogger('server.log', logging.DEBUG)
 class TPServer(object):
@@ -155,6 +156,9 @@ class TPServer(object):
         logger.info('handshake successful')
         return 0
 
+    def UDPHandshake(self, conns):
+        pass
+
     def PlayGame(self, clients, conf):
         '''Runs the game for clients.
 
@@ -183,8 +187,8 @@ class TPServer(object):
         '''
 
         logger.info('starting server at {0}'.format(addr))
-        serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        serversock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)
         serversock.listen(10)
         if upnp:
