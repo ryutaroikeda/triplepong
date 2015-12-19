@@ -3,7 +3,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
-from udpsock import UDPSocket
+from udpsocket import UDPSocket
 from udpdatagram import UDPDatagram
 def UDPSocketTestPickleJar_Accept(sock, q):
     conn = sock.Accept(1)

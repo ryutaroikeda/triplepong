@@ -46,14 +46,14 @@ class UDPSocket:
         self.sock.close()
 
     def Bind(self, addr):
-        '''Prepare to receive datagrams from ip on port.
-        '''
         self.sock.bind(addr)
 
     def Send(self, payload):
         '''
         Argument:
         payload-- The data to send.
+        Return value:
+        True if this method succeeded.
         '''
         datagram = UDPDatagram()
         datagram.seq = self.seq
@@ -66,8 +66,8 @@ class UDPSocket:
         self.ttl -= 1
         if self.ttl <= 0:
             logger.info('The connection is dead.')
-            return -1
-        return 0
+            return False
+        return True
 
     def UpdateAck(self, ack):
         '''Update the ack and ackbits.
