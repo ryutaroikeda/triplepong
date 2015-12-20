@@ -30,6 +30,23 @@ class UDPSocket:
         self.ack = 0
         self.ackbits = 0
 
+    @staticmethod
+    def Pair():
+        s = UDPSocket()
+        t = UDPSocket()
+        s.Open()
+        t.Open()
+        s.Bind(('127.0.0.1', 0))
+        t.Bind(('127.0.0.1', 0))
+        s.sock.connect(t.sock.getsockname())
+        t.sock.connect(s.sock.getsockname())
+        s.ttl = UDPSocket.MAX_TIME_TO_LIVE
+        t.ttl = UDPSocket.MAX_TIME_TO_LIVE
+        return s, t
+
+    def fileno(self):
+        return self.sock.fileno()
+
     def IsMoreRecent(self, s1, s2, maximum):
         '''
         Return value:

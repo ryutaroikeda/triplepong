@@ -24,7 +24,7 @@ class GameEvent:
     FORMAT = '!iiL'
     def __init__(self):
         self.event_type = EventType.KEYBOARD
-        self.keys = []
+        self.keys = 0
         self.frame = 0
         pass
 

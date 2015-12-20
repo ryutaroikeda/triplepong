@@ -2,6 +2,7 @@ import os
 import select
 import sys
 sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
 from endgameevent import EndGameEvent
 from gameconfig import GameConfig
 from gameevent import GameEvent
@@ -11,9 +12,16 @@ from udpsocket import UDPSocket
 
 class UDPEventSocket:
     def __init__(self, sock):
+        '''
+        Argument:
+        sock -- A UDPSocket object.
+        '''
         self.sock = sock
         self.buffered_event = None
         self.should_read_buffer = False
+
+    def fileno(self):
+        return self.sock.fileno()
 
     def ReadEvent(self):
         if self.should_read_buffer:
@@ -22,9 +30,9 @@ class UDPEventSocket:
         (ready, _, _) = select.select([self.sock.sock], [], [], 0)
         if ready == []:
             return None
-        buf = self.sock.Recv()
+        datagram = self.sock.Recv()
         evt_type = EventType()
-        evt_type.Deserialize(buf[:4])
+        evt_type.Deserialize(datagram.payload[:4])
         if evt_type.event_type == EventType.STATE_UPDATE:
             evt = GameState()
         elif evt_type.event_type == EventType.KEYBOARD:
@@ -35,7 +43,9 @@ class UDPEventSocket:
             evt = GameConfig()
         elif evt_type.event_type == EventType.HANDSHAKE:
             evt = TPMessage()
-        evt.Deserialize(buf[4:evt.GetSize()])
+        else:
+            return None
+        evt.Deserialize(datagram.payload[4:evt.GetSize()+4])
         self.buffered_event = evt
         return evt
 

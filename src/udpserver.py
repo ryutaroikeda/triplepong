@@ -3,7 +3,9 @@ import os
 import select
 import sys
 sys.path.append(os.path.abspath('src'))
+from eventtype import EventType
 import tplogger
+from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
@@ -19,8 +21,11 @@ class UDPServer:
                 socks.append(UDPEventSocket(sock))
         return socks
 
-    def Handshake(self, conns):
+    def Handshake(self, conns, tries):
         '''
+        Argument:
+        conns    -- A list of UDPEventSocket clients.
+        tries    -- The number of attempts.
         Return value:
         True if the handshake succeeded.
         '''
@@ -29,19 +34,19 @@ class UDPServer:
         msg.method = TPMessage.METHOD_ASKREADY
         for c in list(conns):
             try:
-                for i in range(0, 5):
-                    c.WriteEvent(msg)
-            except:
+                c.WriteEvent(msg)
+            except Exception as e:
                 c.Close()
                 conns.remove(c)
+                logger.debug(e)
                 logger.info('Bad client. Failing')
                 return False
         logger.info('Waiting for confirmation.')
         waiting = list(conns)
-        for i in range(0, 10):
+        for i in range(0, tries):
             if waiting == []:
                 break
-            (ready, [], []) = select.select(waiting, [], [], 1)
+            (ready, [], []) = select.select(waiting, [], [], .01)
             if ready == []:
                 continue
             for c in ready:
@@ -67,7 +72,7 @@ class UDPServer:
         msg.method = TPMessage.METHOD_STARTGAME
         for c in conns:
             try:
-                c.SendEvent(msg)
+                c.WriteEvent(msg)
             except:
                 logger.warning('A client died just before the start. '
                         + 'It is too late to stop.')

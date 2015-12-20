@@ -131,3 +131,10 @@ class UDPSocketTest(unittest.TestCase):
         self.assertTrue(client.sock.getsockname() == client_name)
         client.Close()
 
+    def test_Pair_1(self):
+        p, q = UDPSocket.Pair()
+        self.assertTrue(p.sock.getsockname() == q.sock.getpeername())
+        self.assertTrue(p.sock.getpeername() == q.sock.getsockname())
+        self.assertTrue(p.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+        self.assertTrue(q.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+

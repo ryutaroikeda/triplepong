@@ -41,10 +41,7 @@ class TPServerTestPickleJar(object):
     pass
 
 class TPServerTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
+    @unittest.skip('deprecated')
     def test_handshake_one_client(self):
         svrsock, clientsock = socket.socketpair(
                 socket.AF_UNIX, socket.SOCK_STREAM)
@@ -64,12 +61,13 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 1)
         pass
 
+    @unittest.skip('deprecated')
     def test_handshake_two_clients_parallel(self):
-        addr = ('127.0.0.1', 8083)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        svrsock.bind(addr)
+        svrsock.bind(('127.0.0.1', 0))
+        addr = svrsock.getsockname()
         svrsock.listen(2)
         svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
                 args=(svrsock,2,q,))
@@ -91,12 +89,13 @@ class TPServerTest(unittest.TestCase):
         svrsock.close()
         self.assertTrue(result == 2)
         pass
+    @unittest.skip('deprecated')
     def test_handshake_three_clients_parallel(self):
-        addr = ('127.0.0.1', 8084)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        svrsock.bind(addr)
+        svrsock.bind(('127.0.0.1', 0))
+        addr = svrsock.getsockname()
         svrsock.listen(3)
         svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
                 args=(svrsock,3,q,))
