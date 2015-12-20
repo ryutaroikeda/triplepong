@@ -3,7 +3,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
-from udpsock import UDPSocket
+from udpsocket import UDPSocket
 from udpdatagram import UDPDatagram
 def UDPSocketTestPickleJar_Accept(sock, q):
     conn = sock.Accept(1)
@@ -130,4 +130,11 @@ class UDPSocketTest(unittest.TestCase):
         sock.Close()
         self.assertTrue(client.sock.getsockname() == client_name)
         client.Close()
+
+    def test_Pair_1(self):
+        p, q = UDPSocket.Pair()
+        self.assertTrue(p.sock.getsockname() == q.sock.getpeername())
+        self.assertTrue(p.sock.getpeername() == q.sock.getsockname())
+        self.assertTrue(p.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+        self.assertTrue(q.ttl == UDPSocket.MAX_TIME_TO_LIVE)
 

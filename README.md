@@ -12,11 +12,10 @@ Engine:
 * Color-coding or label for each player.
 
 Testing:
-* Improve code coverage (aim for 100%).
 * Profiling 
 
 Networking:
-* Fix server or client timing out and raising error during handshake.
+* UDP
 
 Graphics and User Interface:
 * Sound effects.
@@ -25,6 +24,3 @@ Graphics and User Interface:
 Extensions:
 * AI player.
 * Official website. 
-* Smart-phone app.
-* Port to browser.
-* UDP

@@ -12,25 +12,33 @@ class TPMessage(object):
     METHOD_ASKREADY = 1
     METHOD_CONFIRM = 2
     METHOD_STARTGAME = 3
-    FORMAT = '!ii'
+    FORMAT = '!iii'
+    SUBFORMAT = '!ii'
     def __init__(self):
         self.method = self.METHOD_NONE
         self.player_id = GameState.ROLE_NONE
         self.event_type = EventType.HANDSHAKE
 
-    def getsize(self):
-        return struct.calcsize(self.FORMAT)
+    def __eq__(self, other):
+        if other == None:
+            return False
+        return self.__dict__ == other.__dict__
 
-    def pack(self): 
-        return struct.pack(self.FORMAT, self.method, self.player_id)
+    def GetSize(self):
+        return struct.calcsize(self.SUBFORMAT)
 
-    def unpack(self, b):
-        (self.method, self.player_id) = struct.unpack(self.FORMAT, b)
-
-    def Serialize(self):
-        return self.pack()
+    def Serialize(self): 
+        return struct.pack(self.FORMAT, self.event_type, self.method,
+                self.player_id)
 
     def Deserialize(self, b):
-        self.unpack(b)
+        (self.method, self.player_id) = struct.unpack(self.SUBFORMAT, b)
 
+    def pack(self):
+        return self.Serialize()
 
+    def unpack(self, b):
+        self.Deserialize(b)
+
+    def getsize(self):
+        return self.GetSize()

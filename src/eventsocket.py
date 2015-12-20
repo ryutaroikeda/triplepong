@@ -46,8 +46,8 @@ class EventSocket:
         be returned on the next call to ReadEvent().
 
         Return value:
-        An event if available, or None.'''
-
+        An event if available, or None.
+        '''
         if self.should_read_buffer:
             self.should_read_buffer = False
             return self.buffered_event

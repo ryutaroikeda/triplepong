@@ -30,6 +30,23 @@ class UDPSocket:
         self.ack = 0
         self.ackbits = 0
 
+    @staticmethod
+    def Pair():
+        s = UDPSocket()
+        t = UDPSocket()
+        s.Open()
+        t.Open()
+        s.Bind(('127.0.0.1', 0))
+        t.Bind(('127.0.0.1', 0))
+        s.sock.connect(t.sock.getsockname())
+        t.sock.connect(s.sock.getsockname())
+        s.ttl = UDPSocket.MAX_TIME_TO_LIVE
+        t.ttl = UDPSocket.MAX_TIME_TO_LIVE
+        return s, t
+
+    def fileno(self):
+        return self.sock.fileno()
+
     def IsMoreRecent(self, s1, s2, maximum):
         '''
         Return value:
@@ -46,14 +63,14 @@ class UDPSocket:
         self.sock.close()
 
     def Bind(self, addr):
-        '''Prepare to receive datagrams from ip on port.
-        '''
         self.sock.bind(addr)
 
     def Send(self, payload):
         '''
         Argument:
         payload-- The data to send.
+        Return value:
+        True if this method succeeded.
         '''
         datagram = UDPDatagram()
         datagram.seq = self.seq
@@ -66,8 +83,8 @@ class UDPSocket:
         self.ttl -= 1
         if self.ttl <= 0:
             logger.info('The connection is dead.')
-            return -1
-        return 0
+            return False
+        return True
 
     def UpdateAck(self, ack):
         '''Update the ack and ackbits.

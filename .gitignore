@@ -5,3 +5,6 @@
 *.swp
 *.mypy
 tmp/*
+.DS_Store
+.coverage
+tags

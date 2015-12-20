@@ -21,12 +21,14 @@ class TPServerTestPickleJar(object):
         s = TPServer()
         cs = [svrsock]
         s.Handshake(cs)
+        svrsock.close()
         q.put(cs.__len__())
         pass
     def acceptAndHandshake(self, svrsock, clientNum, q):
         s = TPServer()
         socks = s.AcceptN(svrsock, clientNum)
         s.Handshake(socks)
+        svrsock.close()
         q.put(socks.__len__())
         pass
     def connectAndHandshake(self, svraddr, clientsock):
@@ -34,14 +36,12 @@ class TPServerTestPickleJar(object):
         clientsock.connect(svraddr)
         timeout = 2.0
         c.Handshake(clientsock, timeout)
+        clientsock.close()
         pass
     pass
 
 class TPServerTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
+    @unittest.skip('deprecated')
     def test_handshake_one_client(self):
         svrsock, clientsock = socket.socketpair(
                 socket.AF_UNIX, socket.SOCK_STREAM)
@@ -60,70 +60,14 @@ class TPServerTest(unittest.TestCase):
         clientsock.close()
         self.assertTrue(result == 1)
         pass
-    # Deprecating these tests because the handshake isn't meant to work in
-    # series. They shouldn't have been passing in the first place.
-#    def test_handshake_two_clients_sequence(self):
-#        addr = ('127.0.0.1', 8081)
-#        c1 = TPClient()
-#        c2 = TPClient()
-#        q = multiprocessing.Queue()
-#        jar = TPServerTestPickleJar()
-#        svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        svrsock.bind(addr)
-#        svrsock.listen(2)
-#        svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
-#                args=(svrsock,2,q,))
-#        svrp.start()
-#        csock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        csock1.connect(addr)
-#        csock2.connect(addr)
-#        timeout = 1.0
-#        c1.Handshake(csock1, timeout)
-#        c2.Handshake(csock2, timeout)
-#        result = q.get()
-#        csock1.close()
-#        csock2.close()
-#        svrp.join()
-#        svrsock.close()
-#        self.assertTrue(result == 2)
-#        pass
-#    def test_handshake_three_clients_sequence(self):
-#        addr = ('127.0.0.1', 8082)
-#        c1 = TPClient()
-#        c2 = TPClient()
-#        c3 = TPClient()
-#        q = multiprocessing.Queue()
-#        jar = TPServerTestPickleJar()
-#        svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        svrsock.bind(addr)
-#        svrsock.listen(3)
-#        svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
-#                args=(svrsock,3,q,))
-#        svrp.start()
-#        csock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        csock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        csock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        csock1.connect(addr)
-#        csock2.connect(addr)
-#        csock3.connect(addr)
-#        c1.Handshake(csock1, 2.0)
-#        c2.Handshake(csock2, 2.0)
-#        c3.Handshake(csock3, 2.0)
-#        result = q.get()
-#        csock1.close()
-#        csock2.close()
-#        csock3.close()
-#        svrp.join()
-#        svrsock.close()
-#        self.assertTrue(result == 3)
-#        pass
+
+    @unittest.skip('deprecated')
     def test_handshake_two_clients_parallel(self):
-        addr = ('127.0.0.1', 8083)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        svrsock.bind(addr)
+        svrsock.bind(('127.0.0.1', 0))
+        addr = svrsock.getsockname()
         svrsock.listen(2)
         svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
                 args=(svrsock,2,q,))
@@ -145,12 +89,13 @@ class TPServerTest(unittest.TestCase):
         svrsock.close()
         self.assertTrue(result == 2)
         pass
+    @unittest.skip('deprecated')
     def test_handshake_three_clients_parallel(self):
-        addr = ('127.0.0.1', 8084)
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
         svrsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        svrsock.bind(addr)
+        svrsock.bind(('127.0.0.1', 0))
+        addr = svrsock.getsockname()
         svrsock.listen(3)
         svrp = multiprocessing.Process(target=jar.acceptAndHandshake,
                 args=(svrsock,3,q,))

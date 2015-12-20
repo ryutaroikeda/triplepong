@@ -8,23 +8,27 @@ class EndGameEvent:
     Attributes:
     score_N -- The final score for player N.
     '''
-    event_type = EventType.END_GAME
-    score_0 = 0
-    score_1 = 0
-    score_2 = 0
     FORMAT = '!iiii'
     SUBFORMAT = '!iii'
-    
+    def __init__(self):
+        self.event_type = EventType.END_GAME
+        self.score_0 = 0
+        self.score_1 = 0
+        self.score_2 = 0
+        
     def __eq__(self, other):
         if other == None:
             return False
         return self.__dict__ == other.__dict__
 
+    def __ne__(self, other):
+        return not self == other
+
     def GetSize(self):
-        return struct.calcsize(self.SUBFORMAT)
+        return struct.calcsize(EndGameEvent.SUBFORMAT)
 
     def Serialize(self):
-        return struct.pack(self.FORMAT, self.event_type,
+        return struct.pack(EndGameEvent.FORMAT, self.event_type,
                 self.score_0, self.score_1, self.score_2)
 
     def Deserialize(self, b):
@@ -33,5 +37,5 @@ class EndGameEvent:
         b -- The byte string.
         '''
         (self.score_0, self.score_1, self.score_2,) = \
-                struct.unpack(self.SUBFORMAT, b)
+                struct.unpack(EndGameEvent.SUBFORMAT, b)
 
