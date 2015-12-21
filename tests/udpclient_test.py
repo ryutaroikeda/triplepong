@@ -9,11 +9,11 @@ class UDPClientTest(unittest.TestCase):
     def test_Handshake_1(self):
         client = UDPClient()
         svr = UDPEventSocket(None)
-        result = client.Handshake(svr, 0)
+        result = client.Handshake(svr, 0, 1)
         self.assertTrue(result == False)
     def test_Handshake_2(self):
         client = UDPClient()
         ssock = UDPSocket()
         svr = UDPEventSocket(ssock)
-        result = client.Handshake(svr, 0)
+        result = client.Handshake(svr, 0, 1)
         self.assertTrue(result == False)

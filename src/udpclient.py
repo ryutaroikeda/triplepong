@@ -21,7 +21,7 @@ class UDPClient:
         self.renderer = None
         self.conf = None
 
-    def Handshake(self, svr, tries):
+    def Handshake(self, svr, tries, timeout):
         '''Perform a handshake with the server. This must be done prior to 
         starting the game. This method sets self.conf to the game configuration 
         provided by the server.
@@ -30,12 +30,12 @@ class UDPClient:
         conf  -- The game config sent by the server.
         tries -- Number of attempts. This must be at least twice the 
                  number of duplicates sent by the server.
+        timeout -- Time to wait on sockets.
         Return value:
         True if the handshake succeeded.
         '''
         logger.info('Waiting for server to initiate handshake.')
         resend = 4
-        timeout = 0.1
         did_receive_invitation = False
         for i in range(0, tries):
             try:
@@ -86,7 +86,7 @@ class UDPClient:
         logger.info('Handshake succeeded.')
         return True
     
-    def Run(self, svraddr, renderer, keyboard, user_conf, tries):
+    def Run(self, svraddr, renderer, keyboard, user_conf, tries, timeout):
         '''Run the game as a client.
         Argument:
         svradr    -- The address of the server.
@@ -94,6 +94,7 @@ class UDPClient:
         keyboard  -- The keyboard to use.
         user_conf -- A GameConfig provided by the user.
         tries     -- Number of tries before failing.
+        timeout   -- The timeout for socket IO.
         Return value: True if a game was completed successfully.
         '''
         e = GameEngine()
@@ -104,7 +105,7 @@ class UDPClient:
                 logger.info('Connection failed.')
                 continue
             svr = UDPEventSocket(sock)
-            if not self.Handshake(svr, 20):
+            if not self.Handshake(svr, 20, timeout):
                 logger.info('Handshake failed.')
                 continue
             logger.info('Starting game.')
@@ -187,5 +188,5 @@ if __name__ == '__main__':
     # For now, nothing in server's conf affects renderer.
     r.Init()
     conf.ApplyRenderer(r)
-    if not c.Run((args.ip, args.port), r, r, conf, 100):
+    if not c.Run((args.ip, args.port), r, r, conf, 100, 60):
         print('Timed out.')

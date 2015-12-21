@@ -140,7 +140,7 @@ class UDPSocket:
             return False
         try:
             self.sock.connect(peer_addr)
-        except OSError as e:
+        except Exception as e:
             if e.errno != 56:
                 raise e
             logger.info('Already connected.')

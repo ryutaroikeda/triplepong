@@ -19,15 +19,15 @@ def UDPServerTestPickleJar_AcceptN(svr, svrsock, n, q):
     svrsock.Close()
     q.put(len(socks))
 
-def UDPServerTestPickleJar_Handshake(tries, client, svrsock, q):
-    res = client.Handshake(svrsock, tries)
+def UDPServerTestPickleJar_Handshake(tries, timeout, client, svrsock, q):
+    res = client.Handshake(svrsock, tries, timeout)
     svrsock.Close()
     q.put(res)
 
-def UDPServerTestPickleJar_Run(tries, c, svraddr, r, k, q):
+def UDPServerTestPickleJar_Run(tries, timeout, c, svraddr, r, k, q):
     result = False
     try:
-        result = c.Run(svraddr, r, k, None, tries)
+        result = c.Run(svraddr, r, k, None, tries, timeout)
     except Exception as e:
         logger.exception(e)
     q.put(result)
@@ -59,6 +59,7 @@ class UDPServerTest(unittest.TestCase):
         svrs = []
         clients = []
         tries = 10
+        timeout = 1
         # Spawn clients.
         for i in range(0, n):
             csock, ssock = UDPSocket.Pair()
@@ -68,7 +69,7 @@ class UDPServerTest(unittest.TestCase):
             q = multiprocessing.Queue()
             p = multiprocessing.Process(target=\
                     UDPServerTestPickleJar_Handshake,
-                    args=(tries, client, sesock, q))
+                    args=(tries, timeout, client, sesock, q))
             p.start()
             qs.append(q)
             ps.append(p)
@@ -104,12 +105,13 @@ class UDPServerTest(unittest.TestCase):
         qs = []
         clients = []
         tries = 2
+        timeout = 1
         for i in range(0, n):
             q = multiprocessing.Queue()
             c = UDPClient()
             p = multiprocessing.Process(target=\
                     UDPServerTestPickleJar_Run,
-                    args=(tries, c, svraddr, r, k, q))
+                    args=(tries, timeout, c, svraddr, r, k, q))
             p.start()
             ps.append(p)
             qs.append(q)
