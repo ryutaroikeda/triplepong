@@ -215,8 +215,9 @@ class GameEngine(object):
         evt = None
         try:
             evt = svr.ReadEvent()
-        except:
-            logger.info('closing connection to server')
+        except Exception as e:
+            logger.exception(e)
+            logger.info('Closing connection to server.')
             self.server.Close()
             self.server = None
         if evt == None:
@@ -245,13 +246,17 @@ class GameEngine(object):
             evt = None
             try:
                 evt = c.ReadEvent()
-            except:
+            except Exception as e:
+                logger.exception(e)
                 logger.info('closing connection to client {0}'.format( \
                         c.GetPeerName()))
                 c.Close()
                 clients.remove(c)
             # Check if the event happens in the future.
             if evt == None:
+                continue
+            # Ignore non-key events.
+            if evt.event_type != EventType.KEYBOARD:
                 continue
             if evt.frame > current_frame:
                 logger.debug('unreading future event')
