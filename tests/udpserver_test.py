@@ -13,9 +13,9 @@ from udpsocket import UDPSocket
 from nullkeyboard import NullKeyboard
 from nullrenderer import NullRenderer
 logger = tplogger.getTPLogger('udpserver_test.log', logging.DEBUG)
-def UDPServerTestPickleJar_AcceptN(svr, svrsock, n, q):
+def UDPServerTestPickleJar_AcceptN(timeout, svr, svrsock, n, q):
     socks = []
-    svr.AcceptN(svrsock, socks, n, 0.5)
+    svr.AcceptN(svrsock, socks, n, timeout)
     svrsock.Close()
     q.put(len(socks))
 
@@ -39,9 +39,10 @@ class UDPServerTest(unittest.TestCase):
         ssock.Bind(('127.0.0.1', 0))
         svr_addr = ssock.sock.getsockname()
         svr = UDPServer()
+        timeout = 0.5
         q = multiprocessing.Queue()
         p = multiprocessing.Process(target=UDPServerTestPickleJar_AcceptN,
-                args=(svr, ssock, n, q))
+                args=(timeout, svr, ssock, n, q))
         p.start()
         for i in range(0, n):
             c = UDPSocket()
@@ -77,7 +78,7 @@ class UDPServerTest(unittest.TestCase):
             svrs.append(sesock)
         conf = GameConfig()
         server = UDPServer()
-        server.Handshake(clients, conf, tries)
+        server.Handshake(clients, conf, tries, timeout)
         res = []
         for i in range(0, n):
             res.append(qs[i].get())
@@ -116,7 +117,7 @@ class UDPServerTest(unittest.TestCase):
             ps.append(p)
             qs.append(q)
         svr = UDPServer()
-        svr.Run(s, False, conf, tries)
+        svr.Run(s, False, conf, tries, timeout)
         s.Close()
         results = []
         for i in range(0, n):

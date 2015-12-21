@@ -188,5 +188,5 @@ if __name__ == '__main__':
     # For now, nothing in server's conf affects renderer.
     r.Init()
     conf.ApplyRenderer(r)
-    if not c.Run((args.ip, args.port), r, r, conf, 100, 60):
+    if not c.Run((args.ip, args.port), r, r, conf, 100, 1):
         print('Timed out.')

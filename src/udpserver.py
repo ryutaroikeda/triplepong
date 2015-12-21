@@ -25,13 +25,14 @@ class UDPServer:
                 socks.append(UDPEventSocket(sock))
         return socks
 
-    def Handshake(self, conns, conf, tries):
+    def Handshake(self, conns, conf, tries, timeout):
         '''
         Argument:
         conns    -- A list of UDPEventSocket clients.
         conf     -- The game config to send.
         tries    -- The number of attempts. This must be at least the number of 
                     duplicates sent by the client.
+        timeout  -- The timeout on socket IO.
         Return value:
         True if the handshake succeeded.
         '''
@@ -54,7 +55,6 @@ class UDPServer:
         for i in range(0, tries):
             if waiting == []:
                 break
-            timeout = 1
             (ready, [], []) = select.select(waiting, [], [], timeout)
             if ready == []:
                 continue
@@ -93,16 +93,24 @@ class UDPServer:
         logger.info('Handshake succeeded.')
         return True
 
-    def Run(self, sock, upnp, conf, tries):
+    def Run(self, sock, upnp, conf, tries, timeout):
+        '''
+        Arguments:
+        sock     -- The UDPSocket to accept clients on.
+        upnp     --
+        conf     -- The game configuration to use.
+        tries    -- The number of attempts to run a game.
+        timeout  -- The timeout for socket IO.
+        '''
         for i in range(0, tries):
             clients = []
-            self.AcceptN(sock, clients, conf.player_size, 1)
+            self.AcceptN(sock, clients, conf.player_size, timeout)
             if len(clients) < conf.player_size:
                 logger.info('Not enough clients.')
                 for c in clients:
                     c.Close()
                 continue
-            if not self.Handshake(clients, conf, 10):
+            if not self.Handshake(clients, conf, 10, timeout):
                 for c in clients:
                     c.Close()
                 continue
@@ -152,4 +160,4 @@ if __name__ == '__main__':
     sock.Open()
     sock.Bind(('', args.port))
     # The empty string represents INADDR_ANY.
-    s.Run(sock, args.upnp, conf, 10000)
+    s.Run(sock, args.upnp, conf, 10000, 60)
