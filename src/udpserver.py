@@ -21,7 +21,8 @@ class UDPServer:
         for i in range(0, n - len(socks)):
             sock = svr.Accept(timeout)
             if sock != None:
-                logger.info('Accepted connection.')
+                logger.info('Accepted connection from {0}.'.format(\
+                        sock.sock.getpeername()))
                 socks.append(UDPEventSocket(sock))
         return socks
 
@@ -158,6 +159,6 @@ if __name__ == '__main__':
     conf.buffer_delay = args.delay
     sock = UDPSocket()
     sock.Open()
-    sock.Bind(('', args.port))
     # The empty string represents INADDR_ANY.
+    sock.Bind(('', args.port))
     s.Run(sock, args.upnp, conf, 10000, 60)

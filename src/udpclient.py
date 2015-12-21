@@ -98,9 +98,9 @@ class UDPClient:
         Return value: True if a game was completed successfully.
         '''
         e = GameEngine()
-        sock = UDPSocket()
-        sock.Open()
         for i in range(0, tries):
+            sock = UDPSocket()
+            sock.Open()
             if not sock.Connect(svraddr, 1):
                 logger.info('Connection failed.')
                 continue
