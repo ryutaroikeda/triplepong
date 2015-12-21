@@ -1,9 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import logging
 import os
 import select
 import sys
 sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
+from gameconfig import GameConfig
+from engine import GameEngine
 import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
@@ -11,50 +15,56 @@ from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 
 class UDPServer:
-    def AcceptN(self, svr, socks, n):
-        '''Accept until socks has n sockets.
+    def AcceptN(self, svr, socks, n, timeout):
+        '''Accept until socks has n UDPEventSocket clients.
         '''
         for i in range(0, n - len(socks)):
-            sock = svr.Accept(5)
+            sock = svr.Accept(timeout)
             if sock != None:
                 logger.info('Accepted connection.')
                 socks.append(UDPEventSocket(sock))
         return socks
 
-    def Handshake(self, conns, tries):
+    def Handshake(self, conns, conf, tries):
         '''
         Argument:
         conns    -- A list of UDPEventSocket clients.
-        tries    -- The number of attempts.
+        conf     -- The game config to send.
+        tries    -- The number of attempts. This must be at least the number of 
+                    duplicates sent by the client.
         Return value:
         True if the handshake succeeded.
         '''
         logger.info('Starting handshake.')
-        msg = TPMessage()
-        msg.method = TPMessage.METHOD_ASKREADY
+        resend = 5
+        player_id = 0
         for c in list(conns):
             try:
-                c.WriteEvent(msg)
+                conf.player_id = player_id
+                for i in range(0, resend):
+                    c.WriteEvent(conf)
             except Exception as e:
                 c.Close()
                 conns.remove(c)
-                logger.debug(e)
-                logger.info('Bad client. Failing')
+                logger.exception(e)
                 return False
+            player_id += 1
         logger.info('Waiting for confirmation.')
         waiting = list(conns)
         for i in range(0, tries):
             if waiting == []:
                 break
-            (ready, [], []) = select.select(waiting, [], [], .01)
+            timeout = 1
+            (ready, [], []) = select.select(waiting, [], [], timeout)
             if ready == []:
                 continue
             for c in ready:
                 try:
                     reply = c.ReadEvent()
-                except:
+                except Exception as e:
                     c.Close()
                     conns.remove(c)
+                    logger.exception(e)
                     logger.info('Bad client. Failing.')
                     return False
                 if reply == None:
@@ -69,10 +79,12 @@ class UDPServer:
                 conns.remove(c)
             return False
         logger.info('Sending start message.')
+        msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
         for c in conns:
             try:
-                c.WriteEvent(msg)
+                for i in range(0, resend):
+                    c.WriteEvent(msg)
             except:
                 logger.warning('A client died just before the start. '
                         + 'It is too late to stop.')
@@ -80,3 +92,64 @@ class UDPServer:
                 conns.remove(c)
         logger.info('Handshake succeeded.')
         return True
+
+    def Run(self, sock, upnp, conf, tries):
+        for i in range(0, tries):
+            clients = []
+            self.AcceptN(sock, clients, conf.player_size, 1)
+            if len(clients) < conf.player_size:
+                logger.info('Not enough clients.')
+                for c in clients:
+                    c.Close()
+                continue
+            if not self.Handshake(clients, conf, 10):
+                for c in clients:
+                    c.Close()
+                continue
+            logger.info('Starting game.')
+            e = GameEngine()
+            e.is_server = True
+            e.is_client = False
+            e.clients = clients
+            conf.Apply(e)
+            e.Play(e.state)
+            logger.info('Game ended. Exiting.')
+            sock.Close()
+            for c in clients:
+                c.Close()
+            break
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=\
+            'The triplepong game server, UDP version.')
+    parser.add_argument('--port', type=int, default=8090,
+            help='The port number.')
+    parser.add_argument('--upnp', action='store_true', default=False,
+            help='Forward a port using UPnP')
+    parser.add_argument('--players', type=int, default=3,
+            help='The number of players.')
+    parser.add_argument('--time', type=int, default=120,
+            help='The duration of the game in seconds.')
+    parser.add_argument('--speed', type=int, default=4,
+            help='The speed of the ball.')
+    parser.add_argument('--rounds', type=int, default=2,
+            help='The number of rounds.')
+    parser.add_argument('--fps', type=int, default=60,
+            help='The frame rate in seconds')
+    parser.add_argument('--delay', type=int, default=0,
+            help='The frame of lag between key input and output.')
+    args = parser.parse_args()
+    s = UDPServer()
+    conf = GameConfig()
+    conf.player_size = args.players
+    conf.game_length = args.time
+    conf.ball_vel = args.speed
+    conf.rounds = args.rounds
+    conf.frames_per_sec = args.fps
+    conf.buffer_delay = args.delay
+    sock = UDPSocket()
+    sock.Open()
+    sock.Bind(('', args.port))
+    # The empty string represents INADDR_ANY.
+    s.Run(sock, args.upnp, conf, 10000)

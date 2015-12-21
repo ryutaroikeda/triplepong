@@ -35,7 +35,7 @@ class TPMessage(object):
         (self.method, self.player_id) = struct.unpack(self.SUBFORMAT, b)
 
     def pack(self):
-        return self.Serialize()
+        return struct.pack(self.SUBFORMAT, self.method, self.player_id)
 
     def unpack(self, b):
         self.Deserialize(b)

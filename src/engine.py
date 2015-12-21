@@ -173,7 +173,7 @@ class GameEngine(object):
         flag = 0
         ESCAPE = 27
         if keys[ESCAPE]:
-            raise Exception
+            raise Exception('Exited game.')
         for i in range(0, 3):
             if self.key_bindings[i] < 0:
                 continue

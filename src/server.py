@@ -183,7 +183,7 @@ class TPServer(object):
         '''
 
         logger.info('starting server at {0}'.format(addr))
-        serversock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         serversock.bind(addr)
         serversock.listen(10)

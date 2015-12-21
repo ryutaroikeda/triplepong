@@ -114,7 +114,7 @@ class UDPSocketTest(unittest.TestCase):
         self.template_SendAndRecv(1, 0, int('0'*32,2),
                 b'1'*UDPDatagram.MAX_PAYLOAD, 1, int('1'+'0'*31,2))
 
-    def test_HandshakeAndAccept(self):
+    def test_ConnectAndAccept(self):
         sock = UDPSocket()
         sock.Open()
         sock.Bind(('', 10000))
@@ -124,7 +124,7 @@ class UDPSocketTest(unittest.TestCase):
         p.start()
         client = UDPSocket()
         client.Open()
-        client.Handshake(('127.0.0.1', 10000), 1)
+        client.Connect(('127.0.0.1', 10000), 1)
         client_name = q.get()
         p.join()
         sock.Close()
@@ -137,4 +137,6 @@ class UDPSocketTest(unittest.TestCase):
         self.assertTrue(p.sock.getpeername() == q.sock.getsockname())
         self.assertTrue(p.ttl == UDPSocket.MAX_TIME_TO_LIVE)
         self.assertTrue(q.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+        p.Close()
+        q.Close()
 

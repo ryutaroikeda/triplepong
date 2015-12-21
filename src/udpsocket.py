@@ -124,7 +124,7 @@ class UDPSocket:
         self.ttl = UDPSocket.MAX_TIME_TO_LIVE
         return datagram
 
-    def Handshake(self, addr, timeout):
+    def Connect(self, addr, timeout):
         '''Attempt to establish a connection. The peer at addr should call
         Accept().
         Return value: True if the handshake succeeded.
@@ -138,7 +138,12 @@ class UDPSocket:
         if buf != UDPSocket.GUID_2:
             logger.info('Incorrect GUID received.')
             return False
-        self.sock.connect(peer_addr)
+        try:
+            self.sock.connect(peer_addr)
+        except OSError as e:
+            if e.errno != 56:
+                raise e
+            logger.info('Already connected.')
         self.sock.send(UDPSocket.GUID_3)
         logger.info('Handshake succeeded.')
         self.ttl = UDPSocket.MAX_TIME_TO_LIVE
@@ -154,7 +159,11 @@ class UDPSocket:
         if ready == []:
             logger.info('Accept timed out.')
             return None
-        (buf, addr) = self.sock.recvfrom(UDPDatagram.MAX_DATAGRAM)
+        try:
+            (buf, addr) = self.sock.recvfrom(UDPDatagram.MAX_DATAGRAM)
+        except Exception as e:
+            logger.exception(e)
+            return None
         s = UDPSocket()
         try:
             s.Open()
@@ -176,6 +185,7 @@ class UDPSocket:
             return s
         except Exception as e:
             s.Close()
+            logger.exception(e)
             logger.info('Handshake failed.')
             raise e
 

@@ -1,22 +1,36 @@
+import logging
 import multiprocessing
 import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
+from gameconfig import GameConfig
+import tplogger
 from udpclient import UDPClient
 from udpeventsocket import UDPEventSocket
 from udpserver import UDPServer
 from udpsocket import UDPSocket
+from nullkeyboard import NullKeyboard
+from nullrenderer import NullRenderer
+logger = tplogger.getTPLogger('udpserver_test.log', logging.DEBUG)
 def UDPServerTestPickleJar_AcceptN(svr, svrsock, n, q):
     socks = []
-    svr.AcceptN(svrsock, socks, n)
+    svr.AcceptN(svrsock, socks, n, 0.5)
     svrsock.Close()
     q.put(len(socks))
 
-def UDPServerTestPickleJar_Handshake(client, svrsock, q):
-    res = client.Handshake(svrsock, 1)
+def UDPServerTestPickleJar_Handshake(tries, client, svrsock, q):
+    res = client.Handshake(svrsock, tries)
     svrsock.Close()
     q.put(res)
+
+def UDPServerTestPickleJar_Run(tries, c, svraddr, r, k, q):
+    result = False
+    try:
+        result = c.Run(svraddr, r, k, None, tries)
+    except Exception as e:
+        logger.exception(e)
+    q.put(result)
 
 class UDPServerTest(unittest.TestCase):
     def template_AcceptN(self, n):
@@ -32,7 +46,7 @@ class UDPServerTest(unittest.TestCase):
         for i in range(0, n):
             c = UDPSocket()
             c.Open()
-            c.Handshake(svr_addr, 1)
+            c.Connect(svr_addr, 1)
             c.Close()
         connected = q.get()
         p.join()
@@ -44,6 +58,7 @@ class UDPServerTest(unittest.TestCase):
         ps = []
         svrs = []
         clients = []
+        tries = 10
         # Spawn clients.
         for i in range(0, n):
             csock, ssock = UDPSocket.Pair()
@@ -52,14 +67,16 @@ class UDPServerTest(unittest.TestCase):
             client = UDPClient()
             q = multiprocessing.Queue()
             p = multiprocessing.Process(target=\
-                    UDPServerTestPickleJar_Handshake, args=(client, sesock, q))
+                    UDPServerTestPickleJar_Handshake,
+                    args=(tries, client, sesock, q))
             p.start()
             qs.append(q)
             ps.append(p)
             clients.append(cesock)
             svrs.append(sesock)
+        conf = GameConfig()
         server = UDPServer()
-        server.Handshake(clients, 10)
+        server.Handshake(clients, conf, tries)
         res = []
         for i in range(0, n):
             res.append(qs[i].get())
@@ -71,6 +88,41 @@ class UDPServerTest(unittest.TestCase):
         for i in range(0, n):
             self.assertTrue(res[i])
     
+    def template_Run(self, n):
+        s = UDPSocket()
+        s.Open()
+        s.Bind(('', 0))
+        svraddr = s.sock.getsockname()
+        k = NullKeyboard()
+        r = NullRenderer()
+        conf = GameConfig()
+        conf.player_size = n
+        conf.game_length = 0
+        # Prevent engine from running for 30 seconds after the end of game.
+        conf.frames_per_sec = 0
+        ps = []
+        qs = []
+        clients = []
+        tries = 2
+        for i in range(0, n):
+            q = multiprocessing.Queue()
+            c = UDPClient()
+            p = multiprocessing.Process(target=\
+                    UDPServerTestPickleJar_Run,
+                    args=(tries, c, svraddr, r, k, q))
+            p.start()
+            ps.append(p)
+            qs.append(q)
+        svr = UDPServer()
+        svr.Run(s, False, conf, tries)
+        s.Close()
+        results = []
+        for i in range(0, n):
+            results.append(qs[i].get())
+            ps[i].join()
+        for i in range(0, n):
+            self.assertTrue(results[i])
+
     def test_AcceptN_1(self):
         self.template_AcceptN(0)
     
@@ -95,3 +147,14 @@ class UDPServerTest(unittest.TestCase):
     def test_Handshake_4(self):
         self.template_Handshake(3)
 
+    def test_Run_1(self):
+        self.template_Run(0)
+
+    def test_Run_2(self):
+        self.template_Run(1)
+
+    def test_Run_3(self):
+        self.template_Run(2)
+
+    def test_Run_4(self):
+        self.template_Run(3)

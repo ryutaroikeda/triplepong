@@ -49,7 +49,7 @@ class TPClient(object):
             return -1
         m.unpack(b)
         if m.method != TPMessage.METHOD_ASKREADY:
-            logger.error('received incorrect message')
+            logger.error('received incorrect message {0}'.format(m.method))
             return -1
         logger.info('sending confirmation')
         m.method = TPMessage.METHOD_CONFIRM
@@ -76,7 +76,8 @@ class TPClient(object):
         Receive the game configuration before running the game.
 
         Argument:
-        svrsock -- A socket connected to the server.'''
+        svrsock -- A socket connected to the server.
+        '''
         e = GameEngine()
         svrconf = None
         logger.info('waiting for server game config')
@@ -109,7 +110,7 @@ class TPClient(object):
             if sock != None:
                 sock.close()
                 pass
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             logger.info('connecting to {0}'.format(svraddr))
             try:
                 sock.connect(svraddr)

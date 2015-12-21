@@ -16,6 +16,8 @@ class GameConfig:
         self.game_length = 120
         self.rounds = 2
         self.buffer_delay = 2
+        # to do: serialize?
+        self.buffer_size = 300
         self.frames_per_sec = 40
         self.screen_width = 640
         self.screen_height = 480
@@ -79,8 +81,13 @@ class GameConfig:
         s.game_length = self.game_length
         s.frames_per_sec = self.frames_per_sec
         s.rounds = self.rounds
-        s.rotation_length = ((s.game_length / s.rounds) * \
-                s.frames_per_sec) // s.player_size
+        if s.rounds > 0:
+            s.rotation_length = ((s.game_length / s.rounds) * \
+                    s.frames_per_sec) 
+            if s.player_size > 0:
+                s.rotation_length //= s.player_size
+        else:
+            s.rotation_length = 0
         s.round_length = s.rotation_length * s.player_size
         s.screen.half_width = self.screen_width // 2
         s.screen.half_height = self.screen_height // 2

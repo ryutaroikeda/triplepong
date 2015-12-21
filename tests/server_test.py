@@ -41,7 +41,7 @@ class TPServerTestPickleJar(object):
     pass
 
 class TPServerTest(unittest.TestCase):
-    @unittest.skip('deprecated')
+    @unittest.skip('broken')
     def test_handshake_one_client(self):
         svrsock, clientsock = socket.socketpair(
                 socket.AF_UNIX, socket.SOCK_STREAM)
@@ -61,7 +61,7 @@ class TPServerTest(unittest.TestCase):
         self.assertTrue(result == 1)
         pass
 
-    @unittest.skip('deprecated')
+    @unittest.skip('broken')
     def test_handshake_two_clients_parallel(self):
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
@@ -89,7 +89,7 @@ class TPServerTest(unittest.TestCase):
         svrsock.close()
         self.assertTrue(result == 2)
         pass
-    @unittest.skip('deprecated')
+    @unittest.skip('broken')
     def test_handshake_three_clients_parallel(self):
         q = multiprocessing.Queue()
         jar = TPServerTestPickleJar()
