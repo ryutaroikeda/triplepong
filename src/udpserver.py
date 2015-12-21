@@ -86,7 +86,8 @@ class UDPServer:
             try:
                 for i in range(0, resend):
                     c.WriteEvent(msg)
-            except:
+            except Exception as e:
+                logger.exception(e)
                 logger.warning('A client died just before the start. '
                         + 'It is too late to stop.')
                 c.Close()
@@ -104,6 +105,7 @@ class UDPServer:
         timeout  -- The timeout for socket IO.
         '''
         for i in range(0, tries):
+            logger.info('Accepting clients.')
             clients = []
             self.AcceptN(sock, clients, conf.player_size, timeout)
             if len(clients) < conf.player_size:

@@ -101,9 +101,11 @@ class UDPClient:
         for i in range(0, tries):
             sock = UDPSocket()
             sock.Open()
+            logger.info('Connecting to server.')
             if not sock.Connect(svraddr, 1):
                 logger.info('Connection failed.')
                 continue
+            logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
             if not self.Handshake(svr, 20, timeout):
                 logger.info('Handshake failed.')
@@ -188,5 +190,5 @@ if __name__ == '__main__':
     # For now, nothing in server's conf affects renderer.
     r.Init()
     conf.ApplyRenderer(r)
-    if not c.Run((args.ip, args.port), r, r, conf, 100, 1):
+    if not c.Run((args.ip, args.port), r, r, conf, 10, 1):
         print('Timed out.')
