@@ -16,4 +16,10 @@ script:
 - make coverage
 after_success: 
 - coveralls
-
+after_failure:
+- cat /home/travis/builds/ryutaroikeda/triplepong/udpserver_test.log
+- cat /home/travis/builds/ryutaroikeda/triplepong/udpserver.log
+- cat /home/travis/builds/ryutaroikeda/triplepong/udpclient.log
+- cat /home/travis/builds/ryutaroikeda/triplepong/udpsocket.log
+- cat /home/travis/builds/ryutaroikeda/triplepong/engine_test.log
+- cat /home/travis/builds/ryutaroikeda/triplepong/engine.log
