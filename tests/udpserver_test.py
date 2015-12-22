@@ -39,7 +39,7 @@ class UDPServerTest(unittest.TestCase):
         ssock.Bind(('127.0.0.1', 0))
         svr_addr = ssock.sock.getsockname()
         svr = UDPServer()
-        timeout = 0.5
+        timeout = 1.0
         q = multiprocessing.Queue()
         p = multiprocessing.Process(target=UDPServerTestPickleJar_AcceptN,
                 args=(timeout, svr, ssock, n, q))
@@ -105,7 +105,7 @@ class UDPServerTest(unittest.TestCase):
         qs = []
         clients = []
         tries = 8
-        timeout = 0.5
+        timeout = 1.0
         for i in range(0, n):
             q = multiprocessing.Queue()
             c = UDPClient()
