@@ -13,6 +13,7 @@ from udpsocket import UDPSocket
 from nullkeyboard import NullKeyboard
 from nullrenderer import NullRenderer
 logger = tplogger.getTPLogger('udpserver_test.log', logging.DEBUG)
+
 def UDPServerTestPickleJar_AcceptN(timeout, svr, svrsock, n, q):
     socks = []
     svr.AcceptN(svrsock, socks, n, timeout)
@@ -55,6 +56,7 @@ class UDPServerTest(unittest.TestCase):
         self.assertTrue(connected == n)
 
     def template_Handshake(self, n):
+        # to do: if this fails intermittently, retry when client dies.
         qs = []
         ps = []
         svrs = []
@@ -77,7 +79,7 @@ class UDPServerTest(unittest.TestCase):
             svrs.append(sesock)
         conf = GameConfig()
         server = UDPServer()
-        server.Handshake(clients, conf, timeout)
+        status = server.Handshake(clients, conf, timeout)
         res = []
         for i in range(0, n):
             res.append(qs[i].get())
@@ -101,29 +103,38 @@ class UDPServerTest(unittest.TestCase):
         conf.game_length = 0
         # Prevent engine from running for 30 seconds after the end of game.
         conf.frames_per_sec = 0
-        ps = []
-        qs = []
-        clients = []
-        server_tries = 100
-        server_timeout = 60
-        client_tries = 60
-        client_timeout = 2.0
-        for i in range(0, n):
-            q = multiprocessing.Queue()
-            c = UDPClient()
-            p = multiprocessing.Process(target=\
-                    UDPServerTestPickleJar_Run,
-                    args=(client_tries, client_timeout, c, svraddr, r, k, q))
-            p.start()
-            ps.append(p)
-            qs.append(q)
-        svr = UDPServer()
-        svr.Run(s, False, conf, server_tries, server_timeout)
+        # Try to avoid the case with a client dying at the end of handshake.
+        test_tries = 10
+        status = 0
+        for i in range(0, test_tries):
+            ps = []
+            qs = []
+            clients = []
+            server_tries = 100
+            server_timeout = 60
+            client_tries = 60
+            client_timeout = 2.0
+            for i in range(0, n):
+                q = multiprocessing.Queue()
+                c = UDPClient()
+                p = multiprocessing.Process(target=\
+                        UDPServerTestPickleJar_Run,
+                        args=(client_tries, client_timeout, c, svraddr, r, k,
+                            q))
+                p.start()
+                ps.append(p)
+                qs.append(q)
+            svr = UDPServer()
+            status = svr.Run(s, False, conf, server_tries, server_timeout)
+            results = []
+            for i in range(0, n):
+                results.append(qs[i].get())
+                ps[i].join()
+            if status == 0:
+                break
         s.Close()
-        results = []
-        for i in range(0, n):
-            results.append(qs[i].get())
-            ps[i].join()
+        self.assertTrue(status == 0,
+                'Handshake did not complete with all clients alive.')
         for i in range(0, n):
             self.assertTrue(results[i])
 
@@ -132,7 +143,7 @@ class UDPServerTest(unittest.TestCase):
     
     def test_AcceptN_2(self):
         self.template_AcceptN(1)
-    
+
     def test_AcceptN_3(self):
         self.template_AcceptN(2)
     

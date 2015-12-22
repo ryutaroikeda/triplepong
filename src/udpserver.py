@@ -34,7 +34,8 @@ class UDPServer:
         conf     -- The game config to send.
         timeout  -- The timeout for the handshake.
         Return value:
-        True if the handshake succeeded.
+        0 if the handshake succeeded. -1 if the handshake failed. 1 if at least 
+        one client died after the start of game.
         '''
         start_time = time.time()
         end_time = start_time + timeout
@@ -50,7 +51,7 @@ class UDPServer:
                 c.Close()
                 conns.remove(c)
                 logger.exception(e)
-                return False
+                return -1
             player_id += 1
         logger.info('Waiting for confirmation.')
         waiting = list(conns)
@@ -69,7 +70,7 @@ class UDPServer:
                     conns.remove(c)
                     logger.exception(e)
                     logger.info('Bad client. Failing.')
-                    return False
+                    return -1
                 if reply == None:
                     continue
                 if reply.event_type == EventType.HANDSHAKE and \
@@ -80,22 +81,26 @@ class UDPServer:
             for c in waiting:
                 c.Close()
                 conns.remove(c)
-            return False
+            return -1
         logger.info('Sending start message.')
         msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
+        did_lose_client = False
         for c in conns:
             try:
                 for i in range(0, resend):
                     c.WriteEvent(msg)
             except Exception as e:
+                did_lose_client = True
                 logger.exception(e)
                 logger.warning('A client died just before the start. '
                         + 'It is too late to stop.')
                 c.Close()
                 conns.remove(c)
         logger.info('Handshake succeeded.')
-        return True
+        if did_lose_client:
+            return 1
+        return 0
 
     def Run(self, sock, upnp, conf, tries, timeout):
         '''
@@ -105,6 +110,8 @@ class UDPServer:
         conf     -- The game configuration to use.
         tries    -- Number of attempts to run a game.
         timeout  -- The timeout for socket IO.
+        Return value: 0 if the game ran normally, 1 if a client died during 
+        handshake, and -1 on failure.
         '''
         for i in range(0, tries):
             logger.info('Accepting clients.')
@@ -115,7 +122,8 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
-            if not self.Handshake(clients, conf, timeout):
+            status = self.Handshake(clients, conf, timeout) 
+            if status == -1:
                 for c in clients:
                     c.Close()
                 continue
@@ -130,7 +138,8 @@ class UDPServer:
             sock.Close()
             for c in clients:
                 c.Close()
-            break
+            return status
+        return -1
 
 if __name__ == '__main__':
     import argparse
