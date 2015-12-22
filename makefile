@@ -11,7 +11,7 @@ test:
 	$(PYTHON) -m unittest discover --start-directory ./tests -p '*_test.py'
 
 stress:
-	for ((i=0;i<100;i++)) do make test; done &> .tmp
+	for ((i=0;i<10;i++)) do make test; done &> .tmp
 
 clean:
 	rm *.log

@@ -92,10 +92,6 @@ class UDPServerTest(unittest.TestCase):
             self.assertTrue(res[i])
     
     def template_Run(self, n):
-        s = UDPSocket()
-        s.Open()
-        s.Bind(('', 0))
-        svraddr = s.sock.getsockname()
         k = NullKeyboard()
         r = NullRenderer()
         conf = GameConfig()
@@ -107,6 +103,10 @@ class UDPServerTest(unittest.TestCase):
         test_tries = 10
         status = 0
         for i in range(0, test_tries):
+            s = UDPSocket()
+            s.Open()
+            s.Bind(('', 0))
+            svraddr = s.sock.getsockname()
             ps = []
             qs = []
             clients = []
@@ -130,9 +130,9 @@ class UDPServerTest(unittest.TestCase):
             for i in range(0, n):
                 results.append(qs[i].get())
                 ps[i].join()
+            s.Close()
             if status == 0:
                 break
-        s.Close()
         self.assertTrue(status == 0,
                 'Handshake did not complete with all clients alive.')
         for i in range(0, n):
