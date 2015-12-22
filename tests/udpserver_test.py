@@ -104,19 +104,21 @@ class UDPServerTest(unittest.TestCase):
         ps = []
         qs = []
         clients = []
-        tries = 20
-        timeout = 2.0
+        server_tries = 100
+        server_timeout = 60
+        client_tries = 60
+        client_timeout = 2.0
         for i in range(0, n):
             q = multiprocessing.Queue()
             c = UDPClient()
             p = multiprocessing.Process(target=\
                     UDPServerTestPickleJar_Run,
-                    args=(tries, timeout, c, svraddr, r, k, q))
+                    args=(client_tries, client_timeout, c, svraddr, r, k, q))
             p.start()
             ps.append(p)
             qs.append(q)
         svr = UDPServer()
-        svr.Run(s, False, conf, tries, timeout)
+        svr.Run(s, False, conf, server_tries, server_timeout)
         s.Close()
         results = []
         for i in range(0, n):
