@@ -114,11 +114,13 @@ class UDPClient:
             sock.Open()
             logger.info('Connecting to server.')
             if not sock.Connect(svraddr, 1):
+                sock.Close()
                 logger.info('Connection failed.')
                 continue
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
             if not self.Handshake(svr, timeout):
+                sock.Close()
                 logger.info('Handshake failed.')
                 continue
             logger.info('Starting game.')
