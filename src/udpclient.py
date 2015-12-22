@@ -21,6 +21,15 @@ class UDPClient:
         self.renderer = None
         self.conf = None
 
+    def _Handshake(self, n, tries):
+        for i in range(0, tries):
+            clients = []
+            while len(clients) < n:
+
+                pass
+
+        pass
+
     def Handshake(self, svr, tries, timeout):
         '''Perform a handshake with the server. This must be done prior to 
         starting the game. This method sets self.conf to the game configuration 

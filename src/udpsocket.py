@@ -129,10 +129,14 @@ class UDPSocket:
         Accept().
         Return value: True if the handshake succeeded.
         '''
+        (_, ready, _) = select.select([], [self.sock], [], timeout)
+        if ready == []:
+            logger.info('Connect timed out (1).')
+            return False
         self.sock.sendto(UDPSocket.GUID_1, addr)
         (ready, _, _) = select.select([self.sock], [], [], timeout)
         if ready == []:
-            logger.info('Handhshake timed out.')
+            logger.info('Connect timed out. (2)')
             return False
         (buf, peer_addr) = self.sock.recvfrom(len(UDPSocket.GUID_2))
         if buf != UDPSocket.GUID_2:
@@ -144,6 +148,10 @@ class UDPSocket:
             if e.errno != 56:
                 raise e
             logger.info('Already connected.')
+        (_, ready, _) = select.select([], [self.sock], [], timeout)
+        if ready == []:
+            logger.info('Connection timed out (3).')
+            return False
         self.sock.send(UDPSocket.GUID_3)
         logger.info('Handshake succeeded.')
         self.ttl = UDPSocket.MAX_TIME_TO_LIVE
@@ -169,6 +177,11 @@ class UDPSocket:
             s.Open()
             s.Bind(('', 0))
             s.sock.connect(addr)
+            (_, ready, _) = select.select([], [s.sock], [], timeout)
+            if ready == []:
+                s.Close()
+                logger.info('Accept timed out (2).')
+                return None
             s.sock.send(UDPSocket.GUID_2)
             (ready, _, _) = select.select([s.sock], [], [], timeout)
             if ready == []:
@@ -187,5 +200,4 @@ class UDPSocket:
             s.Close()
             logger.exception(e)
             logger.info('Handshake failed.')
-            raise e
 
