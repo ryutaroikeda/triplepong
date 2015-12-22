@@ -104,8 +104,8 @@ class UDPServerTest(unittest.TestCase):
         ps = []
         qs = []
         clients = []
-        tries = 1
-        timeout = 2.0
+        tries = 10
+        timeout = 1.0
         for i in range(0, n):
             q = multiprocessing.Queue()
             c = UDPClient()
