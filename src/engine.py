@@ -314,9 +314,13 @@ class GameEngine(object):
         evt.score_0 = s.scores[0]
         evt.score_1 = s.scores[1]
         evt.score_2 = s.scores[2]
-        for c in clients:
-            c.WriteEvent(evt)
-            pass
+        for c in list(clients):
+            try:
+                c.WriteEvent(evt)
+            except Exception as e:
+                logger.exception(e)
+                c.Close()
+                clients.remove(c)
 
     def ApplyGravity(self, s):
         '''Apply gravity to the paddles and the ball
