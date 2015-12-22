@@ -17,9 +17,10 @@ script:
 after_success: 
 - coveralls
 after_failure:
-- cat /home/travis/builds/ryutaroikeda/triplepong/udpserver_test.log
-- cat /home/travis/builds/ryutaroikeda/triplepong/udpserver.log
-- cat /home/travis/builds/ryutaroikeda/triplepong/udpclient.log
-- cat /home/travis/builds/ryutaroikeda/triplepong/udpsocket.log
-- cat /home/travis/builds/ryutaroikeda/triplepong/engine_test.log
-- cat /home/travis/builds/ryutaroikeda/triplepong/engine.log
+- PROJECTPATH=$(pwd)
+- cat "$PROJECTPATH/udpserver_test.log"
+- cat "$PROJECTPATH/udpserver.log"
+- cat "$PROJECTPATH/udpclient.log"
+- cat "$PROJECTPATH/udpsocket.log"
+- cat "$PROJECTPATH/engine_test.log"
+- cat "$PROJECTPATH/engine.log"

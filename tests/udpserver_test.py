@@ -100,7 +100,7 @@ class UDPServerTest(unittest.TestCase):
         # Prevent engine from running for 30 seconds after the end of game.
         conf.frames_per_sec = 0
         # Try to avoid the case with a client dying at the end of handshake.
-        test_tries = 10
+        test_tries = 20
         status = 0
         for i in range(0, test_tries):
             s = UDPSocket()
