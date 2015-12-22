@@ -191,6 +191,10 @@ if __name__ == '__main__':
             default=False, help='Enable interpolation')
     parser.add_argument('-b', '--buffersize', type=int, default=300,
             help='A larger buffer increases responsiveness to the server.')
+    parser.add_argument('--tries', type=int, default=60,
+            help='The number of attempts to connect to the server.')
+    parser.add_argument('--timeout', type=int, default=1,
+            help='The time allowed for connection and handshake.')
     args = parser.parse_args()
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
@@ -201,5 +205,5 @@ if __name__ == '__main__':
     # For now, nothing in server's conf affects renderer.
     r.Init()
     conf.ApplyRenderer(r)
-    if not c.Run((args.ip, args.port), r, r, conf, 10, 1):
+    if not c.Run((args.ip, args.port), r, r, conf, args.tries, args.timeout):
         print('Timed out.')

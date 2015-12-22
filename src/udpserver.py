@@ -152,6 +152,10 @@ if __name__ == '__main__':
             help='The frame rate in seconds')
     parser.add_argument('--delay', type=int, default=0,
             help='The frame of lag between key input and output.')
+    parser.add_argument('--tries', type=int, default=100,
+            help='The number of attempts to run the game.')
+    parser.add_argument('--timeout', type=int, default=60,
+            help='The time allowed for connection and handshake.')
     args = parser.parse_args()
     s = UDPServer()
     conf = GameConfig()
@@ -165,4 +169,4 @@ if __name__ == '__main__':
     sock.Open()
     # The empty string represents INADDR_ANY.
     sock.Bind(('', args.port))
-    s.Run(sock, args.upnp, conf, 5, 60)
+    s.Run(sock, args.upnp, conf, args.tries, args.timeout)
