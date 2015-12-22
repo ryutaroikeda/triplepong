@@ -15,8 +15,9 @@ class UDPEventSocketTest(unittest.TestCase):
         s, t = UDPSocket.Pair()
         e = UDPEventSocket(s)
         f = UDPEventSocket(t)
-        e.WriteEvent(evt)
-        for i in range(0, 10):
+        for i in range(0, 20):
+            e.WriteEvent(evt)
+        for i in range(0, 20):
             received = f.ReadEvent()
             if received != None:
                 break

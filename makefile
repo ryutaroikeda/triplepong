@@ -3,12 +3,16 @@ TESTS=$(wildcard tests/*_test.py)
 
 default: test
 
-.PHONY: test clean client server coverage travis all default
+.PHONY: test clean coverage travis all stress
 
 all: coverage travis
 
 test:
 	$(PYTHON) -m unittest discover --start-directory ./tests -p '*_test.py'
+
+stress:
+	for ((i=0;i<100;i++)) do make test; done &> .tmp
+
 clean:
 	rm *.log
 
