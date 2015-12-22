@@ -19,8 +19,8 @@ def UDPServerTestPickleJar_AcceptN(timeout, svr, svrsock, n, q):
     svrsock.Close()
     q.put(len(socks))
 
-def UDPServerTestPickleJar_Handshake(tries, timeout, client, svrsock, q):
-    res = client.Handshake(svrsock, tries, timeout)
+def UDPServerTestPickleJar_Handshake(timeout, client, svrsock, q):
+    res = client.Handshake(svrsock, timeout)
     svrsock.Close()
     q.put(res)
 
@@ -59,7 +59,6 @@ class UDPServerTest(unittest.TestCase):
         ps = []
         svrs = []
         clients = []
-        tries = 10
         timeout = 1
         # Spawn clients.
         for i in range(0, n):
@@ -70,7 +69,7 @@ class UDPServerTest(unittest.TestCase):
             q = multiprocessing.Queue()
             p = multiprocessing.Process(target=\
                     UDPServerTestPickleJar_Handshake,
-                    args=(tries, timeout, client, sesock, q))
+                    args=(timeout, client, sesock, q))
             p.start()
             qs.append(q)
             ps.append(p)
@@ -78,7 +77,7 @@ class UDPServerTest(unittest.TestCase):
             svrs.append(sesock)
         conf = GameConfig()
         server = UDPServer()
-        server.Handshake(clients, conf, tries, timeout)
+        server.Handshake(clients, conf, timeout)
         res = []
         for i in range(0, n):
             res.append(qs[i].get())

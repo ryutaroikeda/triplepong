@@ -30,25 +30,26 @@ class UDPClient:
 
         pass
 
-    def Handshake(self, svr, tries, timeout):
+    def Handshake(self, svr, timeout):
         '''Perform a handshake with the server. This must be done prior to 
         starting the game. This method sets self.conf to the game configuration 
         provided by the server.
         Argument:
         svr   -- A UDPEventSocket connected to the server.
         conf  -- The game config sent by the server.
-        tries -- Number of attempts. This must be at least twice the 
-                 number of duplicates sent by the server.
-        timeout -- Time to wait on sockets.
+        timeout -- Timeout for the handshake.
         Return value:
         True if the handshake succeeded.
         '''
+        start_time = time.time()
+        end_time = start_time + timeout
         logger.info('Waiting for server to initiate handshake.')
         resend = 4
         did_receive_invitation = False
-        for i in range(0, tries):
+        while time.time() < end_time:
             try:
-                (ready, _, _) = select.select([svr], [], [], timeout)
+                (ready, _, _) = select.select([svr], [], [], 
+                        end_time - time.time())
                 if ready == []:
                     continue
                 msg = svr.ReadEvent()
@@ -74,9 +75,10 @@ class UDPClient:
                 return False           
         logger.info('Waiting for start of game.')
         did_receive_start = False
-        for i in range(0, tries):
+        while time.time() < end_time:
             try:
-                (ready, _, _) = select.select([svr], [], [], timeout)
+                (ready, _, _) = select.select([svr], [], [], 
+                        end_time - time.time())
                 if ready == []:
                     continue
                 msg = svr.ReadEvent()
@@ -116,7 +118,7 @@ class UDPClient:
                 continue
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
-            if not self.Handshake(svr, 20, timeout):
+            if not self.Handshake(svr, timeout):
                 logger.info('Handshake failed.')
                 continue
             logger.info('Starting game.')

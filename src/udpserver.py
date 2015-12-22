@@ -4,6 +4,7 @@ import logging
 import os
 import select
 import sys
+import time
 sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 from gameconfig import GameConfig
@@ -26,17 +27,17 @@ class UDPServer:
                 socks.append(UDPEventSocket(sock))
         return socks
 
-    def Handshake(self, conns, conf, tries, timeout):
+    def Handshake(self, conns, conf, timeout):
         '''
         Argument:
         conns    -- A list of UDPEventSocket clients.
         conf     -- The game config to send.
-        tries    -- The number of attempts. This must be at least the number of 
-                    duplicates sent by the client.
-        timeout  -- The timeout on socket IO.
+        timeout  -- The timeout for the handshake.
         Return value:
         True if the handshake succeeded.
         '''
+        start_time = time.time()
+        end_time = start_time + timeout
         logger.info('Starting handshake.')
         resend = 5
         player_id = 0
@@ -53,10 +54,11 @@ class UDPServer:
             player_id += 1
         logger.info('Waiting for confirmation.')
         waiting = list(conns)
-        for i in range(0, tries):
+        while time.time() < end_time:
             if waiting == []:
                 break
-            (ready, [], []) = select.select(waiting, [], [], timeout)
+            (ready, [], []) = select.select(waiting, [], [], 
+                    end_time - time.time())
             if ready == []:
                 continue
             for c in ready:
@@ -101,7 +103,7 @@ class UDPServer:
         sock     -- The UDPSocket to accept clients on.
         upnp     --
         conf     -- The game configuration to use.
-        tries    -- The number of attempts to run a game.
+        tries    -- Number of attempts to run a game.
         timeout  -- The timeout for socket IO.
         '''
         for i in range(0, tries):
@@ -113,7 +115,7 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
-            if not self.Handshake(clients, conf, 10, timeout):
+            if not self.Handshake(clients, conf, timeout):
                 for c in clients:
                     c.Close()
                 continue
@@ -163,4 +165,4 @@ if __name__ == '__main__':
     sock.Open()
     # The empty string represents INADDR_ANY.
     sock.Bind(('', args.port))
-    s.Run(sock, args.upnp, conf, 10000, 60)
+    s.Run(sock, args.upnp, conf, 5, 60)
