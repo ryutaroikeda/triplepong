@@ -30,13 +30,14 @@ class UDPClient:
 
         pass
 
-    def Handshake(self, svr, timeout):
+    def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
         starting the game. This method sets self.conf to the game configuration 
         provided by the server.
         Argument:
-        svr   -- A UDPEventSocket connected to the server.
-        conf  -- The game config sent by the server.
+        svr     -- A UDPEventSocket connected to the server.
+        conf    -- The game config sent by the server.
+        resend  -- Number of duplicate messages to send.
         timeout -- Timeout for the handshake.
         Return value:
         True if the handshake succeeded.
@@ -44,7 +45,6 @@ class UDPClient:
         start_time = time.time()
         end_time = start_time + timeout
         logger.info('Waiting for server to initiate handshake.')
-        resend = 4
         did_receive_invitation = False
         while time.time() < end_time:
             try:
@@ -97,7 +97,8 @@ class UDPClient:
         logger.info('Handshake succeeded.')
         return True
     
-    def Run(self, svraddr, renderer, keyboard, user_conf, tries, timeout):
+    def Run(self, svraddr, renderer, keyboard, user_conf, tries, resend,
+            timeout):
         '''Run the game as a client.
         Argument:
         svradr    -- The address of the server.
@@ -105,6 +106,7 @@ class UDPClient:
         keyboard  -- The keyboard to use.
         user_conf -- A GameConfig provided by the user.
         tries     -- Number of tries before failing.
+        resend    -- The number of duplicate messages to send.
         timeout   -- The timeout for socket IO.
         Return value: True if a game was completed successfully.
         '''
@@ -119,7 +121,7 @@ class UDPClient:
                 continue
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
-            if not self.Handshake(svr, timeout):
+            if not self.Handshake(svr, resend, timeout):
                 sock.Close()
                 logger.info('Handshake failed.')
                 continue
@@ -195,8 +197,10 @@ if __name__ == '__main__':
             help='A larger buffer increases responsiveness to the server.')
     parser.add_argument('--tries', type=int, default=60,
             help='The number of attempts to connect to the server.')
+    parse.add_argument('--resend', type=int, default=4,
+            help='The number of duplicate messages to send during handshake.')
     parser.add_argument('--timeout', type=int, default=1,
-            help='The time allowed for connection and handshake.')
+            help='The time allowed for each connection and handshake.')
     args = parser.parse_args()
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
@@ -207,5 +211,6 @@ if __name__ == '__main__':
     # For now, nothing in server's conf affects renderer.
     r.Init()
     conf.ApplyRenderer(r)
-    if not c.Run((args.ip, args.port), r, r, conf, args.tries, args.timeout):
+    if not c.Run((args.ip, args.port), r, r, conf, args.tries, args.resend,
+            args.timeout):
         print('Timed out.')

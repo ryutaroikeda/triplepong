@@ -20,15 +20,15 @@ def UDPServerTestPickleJar_AcceptN(timeout, svr, svrsock, n, q):
     svrsock.Close()
     q.put(len(socks))
 
-def UDPServerTestPickleJar_Handshake(timeout, client, svrsock, q):
-    res = client.Handshake(svrsock, timeout)
+def UDPServerTestPickleJar_Handshake(resend, timeout, client, svrsock, q):
+    res = client.Handshake(svrsock, resend, timeout)
     svrsock.Close()
     q.put(res)
 
-def UDPServerTestPickleJar_Run(tries, timeout, c, svraddr, r, k, q):
+def UDPServerTestPickleJar_Run(tries, resend, timeout, c, svraddr, r, k, q):
     result = False
     try:
-        result = c.Run(svraddr, r, k, None, tries, timeout)
+        result = c.Run(svraddr, r, k, None, tries, resend, timeout)
     except Exception as e:
         logger.exception(e)
     q.put(result)
@@ -62,6 +62,7 @@ class UDPServerTest(unittest.TestCase):
         svrs = []
         clients = []
         timeout = 1
+        resend = 1
         # Spawn clients.
         for i in range(0, n):
             csock, ssock = UDPSocket.Pair()
@@ -71,7 +72,7 @@ class UDPServerTest(unittest.TestCase):
             q = multiprocessing.Queue()
             p = multiprocessing.Process(target=\
                     UDPServerTestPickleJar_Handshake,
-                    args=(timeout, client, sesock, q))
+                    args=(resend, timeout, client, sesock, q))
             p.start()
             qs.append(q)
             ps.append(p)
@@ -113,14 +114,15 @@ class UDPServerTest(unittest.TestCase):
             server_tries = 100
             server_timeout = 60
             client_tries = 60
+            client_resend = 1
             client_timeout = 2.0
             for i in range(0, n):
                 q = multiprocessing.Queue()
                 c = UDPClient()
                 p = multiprocessing.Process(target=\
                         UDPServerTestPickleJar_Run,
-                        args=(client_tries, client_timeout, c, svraddr, r, k,
-                            q))
+                        args=(client_tries, client_resend, client_timeout, 
+                            c, svraddr, r, k, q))
                 p.start()
                 ps.append(p)
                 qs.append(q)
