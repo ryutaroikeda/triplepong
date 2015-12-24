@@ -33,6 +33,7 @@ class GameConfig:
         self.sync_timeout = 0.0
         self.sync_rate = 0.0
         self.buffer_size = 300
+        self.start_time = 0.0
 
     def __repr__(self):
         return str(self.__dict__)
@@ -159,4 +160,5 @@ class GameConfig:
         e.player_id = self.player_id
         e.key_bindings = [-1, -1, -1]
         e.key_bindings[e.player_id] = 32
+        e.start_time = self.start_time
         self.ApplyState(e.state)

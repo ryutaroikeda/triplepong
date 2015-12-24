@@ -36,7 +36,6 @@ class UDPClient:
         provided by the server.
         Argument:
         svr     -- A UDPEventSocket connected to the server.
-        conf    -- The game config sent by the server.
         resend  -- Number of duplicate messages to send.
         timeout -- Timeout for the handshake.
         Return value:
@@ -90,6 +89,7 @@ class UDPClient:
                 continue
             if msg.method == TPMessage.METHOD_STARTGAME:
                 did_receive_start = True
+                self.conf.start_time = msg.timestamp
                 break
         if not did_receive_start:
             logger.info('Handshake timed out.')

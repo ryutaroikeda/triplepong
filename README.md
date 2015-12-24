@@ -9,6 +9,7 @@ A pong game for three players. And flappy birds!
 To do:
 
 Engine:
+* use server start-of-game time in GetTargetFrame
 * Color-coding or label for each player.
 
 Testing:

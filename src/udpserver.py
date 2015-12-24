@@ -85,9 +85,12 @@ class UDPServer:
         logger.info('Sending start message.')
         msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
+        buffer_time = 5
+        game_start_time = time.time() + buffer_time
         did_lose_client = False
         for c in conns:
             try:
+                msg.timestamp = game_start_time + c.delta
                 for i in range(0, resend):
                     c.WriteEvent(msg)
             except Exception as e:
@@ -131,6 +134,8 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
+
+
             logger.info('Starting game.')
             e = GameEngine()
             e.is_server = True

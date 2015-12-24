@@ -16,12 +16,19 @@ logger = tplogger.getTPLogger('udpserver_test.log', logging.DEBUG)
 
 def UDPServerTestPickleJar_AcceptN(timeout, svr, svrsock, n, q):
     socks = []
-    svr.AcceptN(svrsock, socks, n, timeout)
+    try:
+        svr.AcceptN(svrsock, socks, n, timeout)
+    except Exception as e:
+        logger.exception(e)
     svrsock.Close()
     q.put(len(socks))
 
 def UDPServerTestPickleJar_Handshake(resend, timeout, client, svrsock, q):
-    res = client.Handshake(svrsock, resend, timeout)
+    try:
+        res = client.Handshake(svrsock, resend, timeout)
+    except Exception as e:
+        logger.exception(e)
+        res = False
     svrsock.Close()
     q.put(res)
 

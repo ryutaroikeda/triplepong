@@ -11,6 +11,7 @@ class GameEvent:
     playing locally or making predictions).
     
     Attributes:
+    start_time -- The time of start of game.
     event_type -- The type of the event. When reading bytes off a socket 
     stream, the event_type tells you how many more bytes to read.
     keys       -- The list of game event codes. When serializing, they are OR'd 
@@ -23,6 +24,7 @@ class GameEvent:
     SUBFORMAT = '!iL'
     FORMAT = '!iiL'
     def __init__(self):
+        self.start_time = 0.0
         self.event_type = EventType.KEYBOARD
         self.keys = 0
         self.frame = 0

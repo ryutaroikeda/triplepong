@@ -674,7 +674,6 @@ class GameEngine(object):
             # Minus two because rec.idx is pointing to the next frame.
             self.renderer.Render(rec.states[(rec.idx - 2)%rec.size],
                     s, now, end_time)
-        pass
 
     def RotateRoles(self, s):
         '''Rotate the roles of the players.
