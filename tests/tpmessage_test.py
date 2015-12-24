@@ -16,6 +16,11 @@ class TPMessageTest(unittest.TestCase):
         t.Deserialize(b[4:])
         self.assertTrue(msg == t)
 
-    def test_SerializeAndDeserialize(self):
+    def test_SerializeAndDeserialize_1(self):
         msg = TPMessage()
+        self.template_SerializeAndDeserialize(msg)
+
+    def test_SerializeAndDeserialize_2(self):
+        msg = TPMessage()
+        msg.timestamp = 1.0
         self.template_SerializeAndDeserialize(msg)

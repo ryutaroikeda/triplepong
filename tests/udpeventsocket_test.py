@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import sys
 import unittest
@@ -9,6 +10,10 @@ from gamestate import GameState
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
+
+def UDPEventSocketJar_RecvSync(e, timeout, q):
+    status = e.RecvSync(timeout)
+    q.put(status)
 
 class UDPEventSocketTest(unittest.TestCase):
     def template_ReadAndWriteEvent(self, evt):
@@ -78,5 +83,37 @@ class UDPEventSocketTest(unittest.TestCase):
         evt.method = 4
         self.template_ReadAndWriteEvent(evt)
 
+    def test_RecvSync_1(self):
+        s, t = UDPSocket.Pair()
+        e = UDPEventSocket(s)
+        status = e.RecvSync(0.01)
+        s.Close()
+        t.Close()
+        self.assertTrue(status == 0)
 
+    def test_Sync_1(self):
+        s, t = UDPSocket.Pair()
+        e = UDPEventSocket(s)
+        status = e.Sync(0.01)
+        s.Close()
+        t.Close()
+        self.assertTrue(status == 0)
+
+    def test_SyncAndRecvSync_1(self):
+        s, t = UDPSocket.Pair()
+        e = UDPEventSocket(s)
+        f = UDPEventSocket(t)
+        timeout = 0.2
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=UDPEventSocketJar_RecvSync,
+                args=(f, timeout, q,))
+        p.start()
+        status = e.Sync(timeout)
+        other_status = q.get()
+        p.join()
+        e.Close()
+        f.Close()
+        self.assertTrue(status == 0)
+        self.assertTrue(other_status == 0)
+        self.assertTrue(e.latency <= timeout/2)
 

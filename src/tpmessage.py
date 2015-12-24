@@ -12,12 +12,16 @@ class TPMessage(object):
     METHOD_ASKREADY = 1
     METHOD_CONFIRM = 2
     METHOD_STARTGAME = 3
-    FORMAT = '!iii'
-    SUBFORMAT = '!ii'
+    METHOD_SYNC = 4
+    FORMAT = '!iiiiid'
+    SUBFORMAT = '!iiiid'
     def __init__(self):
         self.method = self.METHOD_NONE
         self.player_id = GameState.ROLE_NONE
         self.event_type = EventType.HANDSHAKE
+        self.seq = 0
+        self.ack = 0
+        self.timestamp = 0.0
 
     def __eq__(self, other):
         if other == None:
@@ -29,10 +33,11 @@ class TPMessage(object):
 
     def Serialize(self): 
         return struct.pack(self.FORMAT, self.event_type, self.method,
-                self.player_id)
+                self.player_id, self.seq, self.ack,  self.timestamp)
 
     def Deserialize(self, b):
-        (self.method, self.player_id) = struct.unpack(self.SUBFORMAT, b)
+        (self.method, self.player_id, self.seq, self.ack, self.timestamp) = \
+                struct.unpack(self.SUBFORMAT, b)
 
     def pack(self):
         return struct.pack(self.SUBFORMAT, self.method, self.player_id)

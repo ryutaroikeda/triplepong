@@ -200,4 +200,3 @@ class UDPSocket:
             s.Close()
             logger.exception(e)
             logger.info('Handshake failed.')
-
