@@ -1,3 +1,4 @@
+import logging
 import multiprocessing
 import os
 import sys
@@ -7,12 +8,17 @@ from endgameevent import EndGameEvent
 from gameconfig import GameConfig
 from gameevent import GameEvent
 from gamestate import GameState
+import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
-
+logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
 def UDPEventSocketJar_RecvSync(e, timeout, q):
-    status = e.RecvSync(timeout)
+    try:
+        status = e.RecvSync(timeout)
+    except Exception as e:
+        logger.exception(e)
+        status = -2
     q.put(status)
 
 class UDPEventSocketTest(unittest.TestCase):
@@ -94,7 +100,7 @@ class UDPEventSocketTest(unittest.TestCase):
     def test_Sync_1(self):
         s, t = UDPSocket.Pair()
         e = UDPEventSocket(s)
-        status = e.Sync(0.01)
+        status = e.Sync(0.01, 200)
         s.Close()
         t.Close()
         self.assertTrue(status == 0)
@@ -104,11 +110,12 @@ class UDPEventSocketTest(unittest.TestCase):
         e = UDPEventSocket(s)
         f = UDPEventSocket(t)
         timeout = 0.2
+        sync_rate = 20
         q = multiprocessing.Queue()
         p = multiprocessing.Process(target=UDPEventSocketJar_RecvSync,
                 args=(f, timeout, q,))
         p.start()
-        status = e.Sync(timeout)
+        status = e.Sync(timeout, sync_rate)
         other_status = q.get()
         p.join()
         e.Close()

@@ -16,8 +16,6 @@ class GameConfig:
         self.game_length = 120
         self.rounds = 2
         self.buffer_delay = 2
-        # to do: serialize?
-        self.buffer_size = 300
         self.frames_per_sec = 40
         self.screen_width = 640
         self.screen_height = 480
@@ -30,6 +28,11 @@ class GameConfig:
         self.ball_vel = 4
         self.ball_size = 16
         self.event_type = EventType.CONFIGURE
+        # These are not serialized.
+        self.do_sync = False
+        self.sync_timeout = 0.0
+        self.sync_rate = 0.0
+        self.buffer_size = 300
 
     def __repr__(self):
         return str(self.__dict__)

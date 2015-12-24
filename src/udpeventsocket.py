@@ -71,7 +71,7 @@ class UDPEventSocket:
     def GetPeerName(self):
         return self.sock.sock.getpeername()
 
-    def Sync(self, timeout):
+    def Sync(self, timeout, sync_rate):
         '''Find the average difference between this system clock and the peer.
         We measure the average latency and compare time stamps.
         This UDPSocket must be 'connected' to a peer.
@@ -79,8 +79,8 @@ class UDPEventSocket:
         timeout -- The time to run this for.
         Return value: 0 on success and -1 on error.
         '''
-        send_rate = 10
-        time_between_send = 1.0 / send_rate
+        assert(sync_rate != 0)
+        time_between_send = 1.0 / sync_rate
         last_send = 0.0
         end_time = time.time() + timeout
         n = 0
@@ -156,9 +156,9 @@ class UDPEventSocket:
                 msg = self.ReadEvent()
                 reply.timestamp = time.time()
                 if msg.event_type != EventType.HANDSHAKE:
-                    continue
+                    break
                 if msg.method != TPMessage.METHOD_SYNC:
-                    continue
+                    break
                 reply.ack = msg.seq
                 (_, ready, _) = select.select([], [self], [],
                         max(0, end_time - time.time()))

@@ -25,10 +25,11 @@ def UDPServerTestPickleJar_Handshake(resend, timeout, client, svrsock, q):
     svrsock.Close()
     q.put(res)
 
-def UDPServerTestPickleJar_Run(tries, resend, timeout, c, svraddr, r, k, q):
+def UDPServerTestPickleJar_Run(tries, resend, timeout, c, svraddr, r, k, 
+        conf, q):
     result = False
     try:
-        result = c.Run(svraddr, r, k, None, tries, resend, timeout)
+        result = c.Run(svraddr, r, k, conf, tries, resend, timeout)
     except Exception as e:
         logger.exception(e)
     q.put(result)
@@ -92,7 +93,7 @@ class UDPServerTest(unittest.TestCase):
         for i in range(0, n):
             self.assertTrue(res[i])
     
-    def template_Run(self, n):
+    def template_Run(self, n, svr_do_sync, user_do_sync):
         k = NullKeyboard()
         r = NullRenderer()
         conf = GameConfig()
@@ -100,6 +101,9 @@ class UDPServerTest(unittest.TestCase):
         conf.game_length = 0
         # Prevent engine from running for 30 seconds after the end of game.
         conf.frames_per_sec = 0
+        conf.do_sync = svr_do_sync
+        conf.sync_timeout = 0.05
+        conf.sync_rate = 100
         # Try to avoid the case with a client dying at the end of handshake.
         test_tries = 20
         status = 0
@@ -116,13 +120,17 @@ class UDPServerTest(unittest.TestCase):
             client_tries = 60
             client_resend = 1
             client_timeout = 2.0
+            user_conf = GameConfig()
+            user_conf.do_sync = user_do_sync
+            user_conf.sync_timeout = 0.05
+            user_conf.sync_rate = 100
             for i in range(0, n):
                 q = multiprocessing.Queue()
                 c = UDPClient()
                 p = multiprocessing.Process(target=\
                         UDPServerTestPickleJar_Run,
                         args=(client_tries, client_resend, client_timeout, 
-                            c, svraddr, r, k, q))
+                            c, svraddr, r, k, user_conf, q))
                 p.start()
                 ps.append(p)
                 qs.append(q)
@@ -165,13 +173,31 @@ class UDPServerTest(unittest.TestCase):
         self.template_Handshake(3)
 
     def test_Run_1(self):
-        self.template_Run(0)
+        self.template_Run(0, False, False)
 
     def test_Run_2(self):
-        self.template_Run(1)
+        self.template_Run(1, False, False)
 
     def test_Run_3(self):
-        self.template_Run(2)
+        self.template_Run(2, False, False)
 
     def test_Run_4(self):
-        self.template_Run(3)
+        self.template_Run(3, False, False)
+
+    def test_Run_5(self):
+        self.template_Run(0, True, False)
+
+    def test_Run_6(self):
+        self.template_Run(1, True, False)
+
+    def test_Run_7(self):
+        self.template_Run(1, False, True)
+
+    def test_Run_8(self):
+        self.template_Run(1, True, True)
+
+    def test_Run_9(self):
+        self.template_Run(2, True, True)
+
+    def test_Run_10(self):
+        self.template_Run(3, True, True)

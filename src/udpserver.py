@@ -122,6 +122,10 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
+            # Make clock measurements for each client.
+            if conf.do_sync:
+                for c in clients:
+                    c.Sync(conf.sync_timeout, conf.sync_rate)
             status = self.Handshake(clients, conf, timeout) 
             if status == -1:
                 for c in clients:
@@ -165,6 +169,8 @@ if __name__ == '__main__':
             help='The number of attempts to run the game.')
     parser.add_argument('--timeout', type=int, default=60,
             help='The time allowed for connection and handshake.')
+    parser.add_argument('--sync', default=False,
+            help='Measure latency and clock of clients.')
     args = parser.parse_args()
     s = UDPServer()
     conf = GameConfig()
@@ -174,6 +180,7 @@ if __name__ == '__main__':
     conf.rounds = args.rounds
     conf.frames_per_sec = args.fps
     conf.buffer_delay = args.delay
+    conf.do_sync = args.sync
     sock = UDPSocket()
     sock.Open()
     # The empty string represents INADDR_ANY.
