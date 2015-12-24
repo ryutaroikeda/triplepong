@@ -121,6 +121,8 @@ class UDPClient:
                 continue
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
+            # todo; Allow server to make clock measurements.
+            #svr.RecvSync(3)
             if not self.Handshake(svr, resend, timeout):
                 sock.Close()
                 logger.info('Handshake failed.')

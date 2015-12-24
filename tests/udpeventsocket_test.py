@@ -116,4 +116,6 @@ class UDPEventSocketTest(unittest.TestCase):
         self.assertTrue(status == 0)
         self.assertTrue(other_status == 0)
         self.assertTrue(e.latency <= timeout/2)
+        # The delta should be small because we are using the same clock.
+        self.assertTrue(e.delta <= timeout/2)
 
