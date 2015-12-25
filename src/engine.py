@@ -658,7 +658,10 @@ class GameEngine(object):
     def UpdateHistory(self, frame, keybits, update_frame, update, size):
         '''
         This method is intended to be used by a peer receiving key input 
-        history to update its local state.
+        history to update its local state. The history is represented by a
+        size-bit integer keybits and a frame number f. The ith bit from the 
+        right in keybits is the input at frame f - (size - ((f - i) % size)).
+
         update_frame must be less than frame.
 
         Arguments:
@@ -672,11 +675,74 @@ class GameEngine(object):
         An updated size-bit history of keys at frame.
         '''
         assert(update_frame <= frame)
-        # Rotate the oldest frames to bit 0
+        # Rotate the oldest frame to the 0th bit.
         rot_keybits = self.RotateBits(keybits, frame % size, size)
         rot_update = self.RotateBits(update, update_frame % size, size)
         result = rot_keybits | (rot_update >> (frame - update_frame))
         return self.RotateBits(result, size - (frame % size), size)
+
+    def BitsToEvent(self, state, bits):
+        '''
+        Arguments:
+        state -- The GameState.
+        bits  -- A list of bits, one for each player.
+
+        Return value:
+        The GameEvent corresponding to the bits.
+        '''
+        assert(len(bits) <= 3)
+        evt = 0
+        for i in range(0, len(bits)):
+            evt |= self.RoleToEvent(state.roles[i]) * bits[i]
+        return evt
+
+    def GetBit(self, bits, n):
+        '''
+        Returm value:
+        Get the nth least significant bit of bits.
+        '''
+        assert(n >= 0)
+        return ((bits & (1 << n)) >> n)
+
+    def RewindAndReplayBits(self, state, histories, rec, replay_from,
+            replay_to, size):
+        '''
+        This method uses the histories of key inputs of each player to compute
+        the local game state. The game is played up to and excluding frame
+        replay_to. The states in rec are updated.
+
+        replay_to is the frame associated with the entries in histories.
+
+        Arguments:
+        state        -- The current frame.
+        histories    -- A list of size-bit histories.
+        rec          -- The GameRecord.
+        replay_from  -- The frame to rewind to and replay from.
+        replay_to    -- The frame to play up to.
+        size         -- The size of a history.
+
+        Return value:
+        The GameState replayed from frame replay_from and up to and excluding 
+        frame replay_to.
+        '''
+        assert(rec != None)
+        assert(replay_from >= 0)
+        assert(state.frame >= replay_from)
+        assert(state.frame - replay_from <= rec.available)
+        assert(replay_from <= replay_to)
+        assert(replay_to - replay_from <= size)
+        assert(size > 0)
+        assert(rec.size == size)
+        s = GameState()
+        rec.states[replay_from % rec.size].Copy(s)
+        for i in range(replay_from, replay_to):
+            n = i % size
+            evt = self.BitsToEvent(state, [self.GetBit(histories[0], n),
+                    self.GetBit(histories[1], n),
+                    self.GetBit(histories[2], n)])
+            self.PlayFrame(s, evt)
+            s.Copy(rec.states[(i+1)%rec.size])
+        return s
 
     # UDP stuff END
 

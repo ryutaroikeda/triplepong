@@ -1,13 +1,21 @@
+import logging
 import multiprocessing
 import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
+import tplogger
 from udpsocket import UDPSocket
 from udpdatagram import UDPDatagram
+logger = tplogger.getTPLogger('udpsocket_test.log', logging.DEBUG)
 def UDPSocketTestPickleJar_Accept(sock, q):
-    conn = sock.Accept(1)
-    q.put(conn.sock.getpeername())
+    try:
+        conn = sock.Accept(1)
+        addr = conn.sock.getpeername()
+    except Exception as e:
+        logger.exception(e)
+        addr = ('',0)
+    q.put(addr)
 
 class UDPSocketTest(unittest.TestCase):
     def template_IsMoreRecent(self, s1, s2, expected):
@@ -113,6 +121,22 @@ class UDPSocketTest(unittest.TestCase):
     def test_SendAndRecv_2(self):
         self.template_SendAndRecv(1, 0, int('0'*32,2),
                 b'1'*UDPDatagram.MAX_PAYLOAD, 1, int('1'+'0'*31,2))
+
+    def test_Recv_IgnoreOld_1(self):
+        s, t = UDPSocket.Pair()
+        tries = 20
+        count = 0
+        t.should_ignore_old = True
+        for i in range(0, tries):
+            s.seq = 1
+            s.Send(b'')
+        for i in range(0, tries):
+            e = t.Recv()
+            if e != None:
+                count += 1
+        s.Close()
+        t.Close()
+        self.assertTrue(count == 1, 'Counted {0}'.format(count))
 
     def test_ConnectAndAccept(self):
         sock = UDPSocket()

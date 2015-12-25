@@ -18,6 +18,7 @@ class UDPSocket:
     seq       -- The number of datagrams sent (16 bits).
     ack       -- The number of acknowledged datagrams (16 bits).
     ackbits   -- Acknowledgement of the previous 32 datagrams. (32 bits).
+    should_ignore_old -- If True, ignore datagrams earlier than the latest ack.
     '''
     MAX_TIME_TO_LIVE = 60
     GUID_1 = b'0e27b7418ee54d648b20dd82dc53905b'
@@ -29,6 +30,7 @@ class UDPSocket:
         self.seq = 0
         self.ack = 0
         self.ackbits = 0
+        self.should_ignore_old = False
 
     @staticmethod
     def Pair():
@@ -120,8 +122,13 @@ class UDPSocket:
         buf = self.sock.recv(UDPDatagram.MAX_DATAGRAM)
         datagram = UDPDatagram()
         datagram.Deserialize(buf)
+        ignore = False
+        if not self.IsMoreRecent(datagram.seq, self.ack, UDPDatagram.MAX_SEQ):
+            ignore = self.should_ignore_old
         self.UpdateAck(datagram.seq)
         self.ttl = UDPSocket.MAX_TIME_TO_LIVE
+        if ignore:
+            return None
         return datagram
 
     def Connect(self, addr, timeout):

@@ -144,19 +144,22 @@ class UDPClient:
         sock.Close()
         return False
 
-    def PlayFrames(self, e, s, r, start_time, max_frame, frame_rate, 
+    def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate, 
             buffer_delay, key_cool_down):
         '''
-        To do:
         Arguments:
         e             -- The game engine.
         s             -- The game state.
         r             -- The renderer.
+        rec           -- The GameRecord.
         start_time    -- The time of game start.
         max_frame     -- The number of frames to play.
         frame_rate    -- The number of frames to play per second.
         buffer_delay  -- The number of frames of delay to apply.
         key_cool_down -- The frames of delay between event triggers.
+
+        Variables:
+        key_binding   -- The key for the client. 32 is SPACE.
         '''
         assert(frame_rate > 0)
         assert(buffer_delay <= 16)
@@ -166,9 +169,7 @@ class UDPClient:
         end_frame = start_frame + max_frame
         player_id = e.player_id
         buffer_size = 64
-        key_buffer = [0, 0, 0]
-        key_buffer_past = 0
-        key_buffer_future = 0
+        histories = [0, 0, 0]
         key_binding = 32
         key_event = e.RoleToEvent(e.roles[player_id])
         while True:
@@ -181,6 +182,8 @@ class UDPClient:
                 if keys[key_binding]:
                     key_buffer[player_id] |= (1 << buffer_idx)
                     events |= key_event
+            # Get server updates.
+
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
                     end_frame, time.time())
             while s.frame < target_frame:

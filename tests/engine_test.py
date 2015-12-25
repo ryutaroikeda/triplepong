@@ -224,6 +224,30 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(e.UpdateHistory(frame,keybits,update_frame,
             update, size) == expected_bits)
 
+    def template_BitsToEvent(self, roles, bits, expected_evt):
+        e = GameEngine()
+        s = GameState()
+        s.roles = roles
+        evt = e.BitsToEvent(s, bits)
+        self.assertTrue(evt == expected_evt)
+
+    def template_GetBit(self, bits, n, expected_bit):
+        e = GameEngine()
+        self.assertTrue(e.GetBit(bits, n) == expected_bit)
+    
+    def template_RewindAndReplayBits(self, frame, histories, 
+            replay_from, replay_to, size):
+        rec = GameRecord()
+        rec.SetSize(size)
+        e = GameEngine()
+        s = GameState()
+        for i in range(0, frame):
+            rec.AddEntry(s, 0)
+            e.PlayFrame(s, 0)
+        t = e.RewindAndReplayBits(s, histories, rec, replay_from,
+                replay_to, size)
+        self.assertTrue(t.frame == replay_to)
+
     #UDP stuff END
 
     def test_init(self):
@@ -1298,5 +1322,18 @@ class GameEngineTest(unittest.TestCase):
         self.template_UpdateHistory(64,int('0100'*8,2),
                 34, int('1111'*8,2), 32,int('0100'*7+'0111',2))
 
+    def test_BitsToEvent_1(self):
+        self.template_BitsToEvent([GameState.ROLE_LEFT_PADDLE,0,0],
+                [1,0,0],GameEvent.EVENT_FLAP_LEFT_PADDLE)
 
+    def test_GetBit_1(self):
+        self.template_GetBit(int('0000',2), 0, 0)
 
+    def test_GetBit_2(self):
+        self.template_GetBit(int('1000',2), 3, 1)
+
+    def test_RewindAndReplayBits(self):
+        self.template_RewindAndReplayBits(0, [0,0,0],0,0,64)
+    
+    def test_RewindAndReplayBits(self):
+        self.template_RewindAndReplayBits(64,[1,1,1],0,64,64)

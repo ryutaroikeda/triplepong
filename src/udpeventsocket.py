@@ -16,6 +16,11 @@ from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpeventsocket.log', logging.DEBUG)
 
 class UDPEventSocket:
+    '''
+    Attributes:
+    should_ignore_old -- If True, ReadEvent ignores events with seq < sock.ack.
+                         This does not affect buffered events.
+    '''
     def __init__(self, sock):
         '''
         Argument:
@@ -26,6 +31,7 @@ class UDPEventSocket:
         self.should_read_buffer = False
         self.latency = 0
         self.delta = 0
+        self.should_ignore_old = False
 
     def fileno(self):
         return self.sock.fileno()
