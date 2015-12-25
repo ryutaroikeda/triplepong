@@ -18,13 +18,16 @@ class GameState:
                  rotations.
     round_length -- The duration of a round in frames.
     rotation_length -- The duration of a rotation in frames.
+
+    UDP
+    keybits            -- The key input of 64 previous frames for each player.
     '''
     ROLE_NONE = 0
     ROLE_LEFT_PADDLE = 1
     ROLE_RIGHT_PADDLE = 2
     ROLE_BALL = 3
-    SUBFORMAT = '!iiiiiiiiiL'
-    FORMAT    = '!iiiiiiiiiiL'
+    SUBFORMAT = '!hhhhhhhhhLLLL'
+    FORMAT    = '!ihhhhhhhhhLLLL'
     OBJECT_NONE = 0
     OBJECT_SCREEN = 1
     OBJECT_LEFT_GOAL = 2
@@ -132,7 +135,8 @@ class GameState:
         self.should_render_score = False
         self.is_ended = False
         self.player_id = 0
-        pass
+        # 64 frames of input history for each player.
+        self.keybits = [0, 0, 0]
 
     def __str__(self):
         return str(self.__dict__)
@@ -178,17 +182,18 @@ class GameState:
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
-                self.key_flags,
-                self.frame)
+                self.key_flags, self.frame, 
+                self.keybits[0], self.keybits[1], self.keybits[2])
+
     def Deserialize(self, b):
         '''Deserialize a partial representation of the state.'''
         (self.ball.pos_x, self.ball.pos_y,
                 self.ball.vel_x, self.ball.vel_y,
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
-                self.key_flags,
-                self.frame,) = struct.unpack(GameState.SUBFORMAT, b)
-        pass
+                self.key_flags, self.frame,
+                self.keybits[0], self.keybits[1], self.keybits[2],) = \
+                        struct.unpack(GameState.SUBFORMAT, b)
 
     def Copy(self, other):
         '''Copy this partial state without creating a new instance.

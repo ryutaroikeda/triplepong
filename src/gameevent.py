@@ -16,18 +16,23 @@ class GameEvent:
     stream, the event_type tells you how many more bytes to read.
     keys       -- The list of game event codes. When serializing, they are OR'd 
     together.
-    frame      -- the number of frames since the start of the game.'''
+    frame      -- the number of frames since the start of the game.
+
+    UDP
+    keybits    -- History of the previous 64 frames of keys.
+    '''
     EVENT_NO_OP = 0
     EVENT_FLAP_LEFT_PADDLE = 1
     EVENT_FLAP_RIGHT_PADDLE = 2
     EVENT_FLAP_BALL = 4
-    SUBFORMAT = '!iL'
-    FORMAT = '!iiL'
+    SUBFORMAT = '!iLL'
+    FORMAT = '!iiLL'
     def __init__(self):
         self.start_time = 0.0
         self.event_type = EventType.KEYBOARD
         self.keys = 0
         self.frame = 0
+        self.keybits = 0
         pass
 
     def __eq__(self, other):
@@ -37,16 +42,18 @@ class GameEvent:
 
     def GetSize(self):
         return struct.calcsize(GameEvent.SUBFORMAT)
+
     def Serialize(self):
         '''
         Return value:
         The byte string representation of the event.'''
         return struct.pack(self.FORMAT, self.event_type, self.keys,
-                self.frame)
+                self.frame, self.keybits)
 
     def Deserialize(self, b):
         '''Deserialize the byte string representation of the game event.
         
         The event_type should not be included in b.'''
-        (self.keys, self.frame,) = struct.unpack(self.SUBFORMAT, b)
+        (self.keys, self.frame, self.keybits) = \
+                struct.unpack(self.SUBFORMAT, b)
     pass

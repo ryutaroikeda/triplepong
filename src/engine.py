@@ -632,6 +632,54 @@ class GameEngine(object):
             target = end_frame
         return target
 
+    # UDP stuff BEGIN
+    def GetCurrentFrame(self, start_time, frame_rate, end_frame, now):
+        '''Get the frame the server is on.
+        Arguments:
+        start_time -- Time at the start of game.
+        frame_rate -- Frames per second.
+        end_frame  -- Frame to stop on.
+        now        -- Current time.
+        '''
+        target = int((now - start_time) * frame_rate)
+        return min(target, end_frame)
+
+    def RotateBits(self, bits, shift, size):
+        '''
+        Arguments:
+        bits  -- Bits of length size.
+        shift -- The bit positions to rotate right by.
+        size  -- The length of bits.
+        '''
+        assert(shift <= size)
+        valmax = 1 << size
+        return (bits >> shift) | ((bits << (size-shift)) % valmax)
+
+    def UpdateHistory(self, frame, keybits, update_frame, update, size):
+        '''
+        This method is intended to be used by a peer receiving key input 
+        history to update its local state.
+        update_frame must be less than frame.
+
+        Arguments:
+        frame        -- The frame associated with keybits.
+        keybits      -- size-bits of keys.
+        update_frame -- The frame associated with update.
+        update       -- size-bits of keys.
+        size         -- The number of bits in history.
+
+        Return value:
+        An updated size-bit history of keys at frame.
+        '''
+        assert(update_frame <= frame)
+        # Rotate the oldest frames to bit 0
+        rot_keybits = self.RotateBits(keybits, frame % size, size)
+        rot_update = self.RotateBits(update, update_frame % size, size)
+        result = rot_keybits | (rot_update >> (frame - update_frame))
+        return self.RotateBits(result, size - (frame % size), size)
+
+    # UDP stuff END
+
     def RunGame(self, s, rec, max_frame, frame_rate):
         '''Run the game.
 

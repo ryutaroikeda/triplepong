@@ -144,14 +144,15 @@ class UDPClient:
         sock.Close()
         return False
 
-    def PlayFrames(self, e, s, r, max_frame, frame_rate, buffer_delay,
-            key_cool_down):
+    def PlayFrames(self, e, s, r, start_time, max_frame, frame_rate, 
+            buffer_delay, key_cool_down):
         '''
         To do:
         Arguments:
         e             -- The game engine.
         s             -- The game state.
         r             -- The renderer.
+        start_time    -- The time of game start.
         max_frame     -- The number of frames to play.
         frame_rate    -- The number of frames to play per second.
         buffer_delay  -- The number of frames of delay to apply.
@@ -161,11 +162,10 @@ class UDPClient:
         assert(buffer_delay <= 16)
         assert(key_cool_down <= 16)
         assert(buffer_delay + key_cool_down <= 16)
-        start_time = time.time()
         start_frame = s.frame
         end_frame = start_frame + max_frame
         player_id = e.player_id
-        buffer_size = 32
+        buffer_size = 64
         key_buffer = [0, 0, 0]
         key_buffer_past = 0
         key_buffer_future = 0
@@ -181,8 +181,8 @@ class UDPClient:
                 if keys[key_binding]:
                     key_buffer[player_id] |= (1 << buffer_idx)
                     events |= key_event
-            target_frame = e.GetTargetFrame(time.time(), start_time, 
-                    start_frame, end_frame, frame_rate)
+            target_frame = e.GetCurrentFrame(start_time, frame_rate, 
+                    end_frame, time.time())
             while s.frame < target_frame:
                 break
             break

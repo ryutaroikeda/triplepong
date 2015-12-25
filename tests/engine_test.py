@@ -18,26 +18,6 @@ sys.path.append(os.path.abspath('tests'))
 from mockkeyboard import MockKeyboard
 from mockeventsocket import MockEventSocket
 class GameEngineTest(unittest.TestCase):
-    def setUp(self):
-        pass
-    def tearDown(self):
-        pass
-
-    def test_init(self):
-        e = GameEngine()
-        self.assertTrue(e.is_client == False)
-        self.assertTrue(e.is_server == False)
-        pass
-
-    def test_RoleToEvent(self):
-        e = GameEngine()
-        self.assertTrue(e.RoleToEvent(GameState.ROLE_LEFT_PADDLE) == \
-                GameEvent.EVENT_FLAP_LEFT_PADDLE)
-        self.assertTrue(e.RoleToEvent(GameState.ROLE_RIGHT_PADDLE) == \
-                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
-        self.assertTrue(e.RoleToEvent(GameState.ROLE_BALL) == \
-                GameEvent.EVENT_FLAP_BALL)
-
     def template_GetKeyboardEvents(self, key_cool_down_time,
             last, frame, do_press_key, role, player_key, evt):
         e = GameEngine()
@@ -55,6 +35,212 @@ class GameEngineTest(unittest.TestCase):
                 'got {0}, expected {1}'.format(res, evt))
         if evt != GameEvent.EVENT_NO_OP:
             self.assertTrue(e.last_key_frames[e.player_id] == frame)
+
+    def template_SendAndGetEvent(self, s, evt, send, get):
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        send(e, s, svr, client, evt)
+        received = get(e, s, svr, client)
+        ssock.close()
+        csock.close()
+        self.assertTrue(evt == received)
+
+    def template_SendAndGetState(self, s, evt):
+        def send(e, s, svr, client, evt):
+            e.SendStateUpdate([client], evt)
+        def get(e, s, svr, client):
+            return e.GetServerEvent(svr, s)
+        # Caution: SendStateUpdate only sends the partial game state.
+        self.template_SendAndGetEvent(s, evt, send, get)
+
+    def template_RunFrameAsClient(self, max_frame, max_buffer, state_evts):
+        '''
+        Arguments:
+        state_evts -- A list of state events to receive, one for each frame.
+        Use None for no event.
+        max_frame  -- The number of frames to run the test for.
+        max_buffer -- The size of the recording.
+
+        Return value:
+        The final game state.
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.keyboard = MockKeyboard()
+        e.is_client = True
+        e.server = svr
+        rec = GameRecord()
+        rec.SetSize(max_buffer)
+        s = GameState()
+        for i in range(0, max_frame):
+            client.WriteEvent(state_evts[i])
+            e.RunFrameAsClient(s, rec)
+            pass
+        ssock.close()
+        csock.close()
+        return s
+
+    def template_RewindAndReplayWithKey(self, max_buffer, key_rec, evt):
+        '''
+        Arguments:
+        max_buffer -- The size of the buffer to use.
+        key_rec    -- The key flags for each frame in the record, up to the 
+                   arrival of evt.
+        evt        -- The event to rewind for.
+        
+        '''
+        e = GameEngine()
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(max_buffer)
+        for i in range(0, len(key_rec)):
+            rec.AddEntry(s, key_rec[i])
+            e.PlayFrame(s, key_rec[i])
+            pass
+        rewound = e.RewindAndReplayWithKey(s, evt, rec)
+        self.assertTrue(rewound != None)
+        key_rec[evt.frame] |= evt.keys
+        test = GameState()
+        for i in range(0, len(key_rec)):
+            e.PlayFrame(test, key_rec[i])
+            pass
+        test.Diff(rewound)
+        self.assertTrue(test == rewound)
+        pass
+
+    def template_RunFrameAsServer(self, max_buffer, key_evts):
+        '''A test template for RunFrameAsServer.
+        This tests RunFrameAsServer with the given buffer size and key events.
+        The test input is validated by checking for key_evts entry that cannot 
+        be rewound with the buffer size provided.
+        Arguments:
+        max_buffer -- The size of the buffer.
+        key_evts   -- The list of key events to be received on each frame.
+                      Use None to indicate no event.
+        
+        '''
+        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        svr = EventSocket(ssock)
+        client = EventSocket(csock)
+        e = GameEngine()
+        e.is_server = True
+        e.clients = [client]
+        rec = GameRecord()
+        rec.SetSize(max_buffer)
+        s = GameState()
+        # Validate the input.
+        ## Count the number of events.
+        count = 0
+        max_frame = len(key_evts)
+        for i in range(0, max_frame):
+            if key_evts[i] == None:
+                continue
+            assert(i - key_evts[i].frame <= max_buffer)
+            if key_evts[i].frame < max_frame:
+                count += 1
+            pass
+        for i in range(0, max_frame):
+            svr.WriteEvent(key_evts[i])
+            e.RunFrameAsServer(s, rec)
+            pass
+        ssock.close()
+        csock.close()
+        # Check we got all the events.
+        self.assertTrue(client.events_read == count)
+        raw_evts = [0]*max_frame
+        for i in range(0, max_frame):
+            if key_evts[i] == None:
+                continue
+            raw_evts[key_evts[i].frame] = key_evts[i].keys
+            pass
+        test = GameState()
+        for i in range(0, max_frame):
+            e.PlayFrame(test, raw_evts[i])
+            pass
+        test.Diff(s)
+        self.assertTrue(test == s)
+
+    def template_RunGame(self, is_client, is_server, max_frame, max_buffer):
+        assert(not(is_client and is_server))
+        e = GameEngine()
+        e.is_client = is_client
+        e.is_server = is_server
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(1)
+        frame_rate = 10000000
+        e.RunGame(s, rec, max_frame, frame_rate)
+        self.assertTrue(s.frame == max_frame)
+
+    def template_RunGameWithServerAndClient(self, max_frame, max_buffer, 
+            keyboard):
+        '''Test the server and one client running together.
+        Arguments:
+        max_buffer -- The size of the buffer.
+        keyboard -- The keyboard inputs for the client.
+        '''
+        frame_rate = 100000000
+        clt_e = GameEngine()
+        clt_s = GameState()
+        clt_rec = GameRecord()
+        clt_rec.SetSize(max_buffer)
+        svr_e = GameEngine()
+        svr_s = GameState()
+        svr_rec = GameRecord()
+        svr_rec.SetSize(max_buffer)
+        raise NotImplementedError       
+
+    def template_PlayRound(self, is_client, is_server, rots, rot_len):
+        assert(not(is_client and is_server))
+        e = GameEngine()
+        e.is_client = is_client
+        e.is_server = is_server
+        s = GameState()
+        rec = GameRecord()
+        rec.SetSize(1)
+        frame_rate = 10000000
+        e.PlayRound(s, rec, rots, rot_len, frame_rate)
+        self.assertTrue(s.frame == rot_len * rots)
+
+    # UDP stuff BEGIN
+
+    def template_GetCurrentFrame(self, start, frame_rate, end_frame,
+            now, expected_frame):
+        e = GameEngine()
+        self.assertTrue(e.GetCurrentFrame(start, frame_rate, end_frame,
+            now) == expected_frame)
+
+    def template_RotateBits(self, bits, shift, size, expected_bits):
+        e = GameEngine()
+        self.assertTrue(e.RotateBits(bits, shift, size) == expected_bits)
+
+    def template_UpdateHistory(self, frame, keybits, update_frame, 
+            update, size, expected_bits):
+        e = GameEngine()
+        self.assertTrue(e.UpdateHistory(frame,keybits,update_frame,
+            update, size) == expected_bits)
+
+    #UDP stuff END
+
+    def test_init(self):
+        e = GameEngine()
+        self.assertTrue(e.is_client == False)
+        self.assertTrue(e.is_server == False)
+        pass
+
+    def test_RoleToEvent(self):
+        e = GameEngine()
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_LEFT_PADDLE) == \
+                GameEvent.EVENT_FLAP_LEFT_PADDLE)
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_RIGHT_PADDLE) == \
+                GameEvent.EVENT_FLAP_RIGHT_PADDLE)
+        self.assertTrue(e.RoleToEvent(GameState.ROLE_BALL) == \
+                GameEvent.EVENT_FLAP_BALL)
+
 
     def test_GetKeyboardEvents_1(self):
         '''Test no key.
@@ -202,24 +388,6 @@ class GameEngineTest(unittest.TestCase):
         e.SendStateUpdate(e.clients, s)
         self.assertTrue(e.clients == [])
 
-    def template_SendAndGetEvent(self, s, evt, send, get):
-        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
-        svr = EventSocket(ssock)
-        client = EventSocket(csock)
-        e = GameEngine()
-        send(e, s, svr, client, evt)
-        received = get(e, s, svr, client)
-        ssock.close()
-        csock.close()
-        self.assertTrue(evt == received)
-
-    def template_SendAndGetState(self, s, evt):
-        def send(e, s, svr, client, evt):
-            e.SendStateUpdate([client], evt)
-        def get(e, s, svr, client):
-            return e.GetServerEvent(svr, s)
-        # Caution: SendStateUpdate only sends the partial game state.
-        self.template_SendAndGetEvent(s, evt, send, get)
 
     def test_send_and_receive_state(self):
         '''Test SendStateUpdate and GetServerEvent.
@@ -403,34 +571,6 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(rewound == None)
         pass
 
-    def template_RunFrameAsClient(self, max_frame, max_buffer, state_evts):
-        '''
-        Arguments:
-        state_evts -- A list of state events to receive, one for each frame.
-        Use None for no event.
-        max_frame  -- The number of frames to run the test for.
-        max_buffer -- The size of the recording.
-
-        Return value:
-        The final game state.
-        '''
-        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
-        svr = EventSocket(ssock)
-        client = EventSocket(csock)
-        e = GameEngine()
-        e.keyboard = MockKeyboard()
-        e.is_client = True
-        e.server = svr
-        rec = GameRecord()
-        rec.SetSize(max_buffer)
-        s = GameState()
-        for i in range(0, max_frame):
-            client.WriteEvent(state_evts[i])
-            e.RunFrameAsClient(s, rec)
-            pass
-        ssock.close()
-        csock.close()
-        return s
 
 
     def test_RunFrameAsClient_1(self):
@@ -533,33 +673,6 @@ class GameEngineTest(unittest.TestCase):
                 updates)
         result.Diff(s)
         self.assertTrue(result == s)
-        pass
-    def template_RewindAndReplayWithKey(self, max_buffer, key_rec, evt):
-        '''
-        Arguments:
-        max_buffer -- The size of the buffer to use.
-        key_rec    -- The key flags for each frame in the record, up to the 
-                   arrival of evt.
-        evt        -- The event to rewind for.
-        
-        '''
-        e = GameEngine()
-        s = GameState()
-        rec = GameRecord()
-        rec.SetSize(max_buffer)
-        for i in range(0, len(key_rec)):
-            rec.AddEntry(s, key_rec[i])
-            e.PlayFrame(s, key_rec[i])
-            pass
-        rewound = e.RewindAndReplayWithKey(s, evt, rec)
-        self.assertTrue(rewound != None)
-        key_rec[evt.frame] |= evt.keys
-        test = GameState()
-        for i in range(0, len(key_rec)):
-            e.PlayFrame(test, key_rec[i])
-            pass
-        test.Diff(rewound)
-        self.assertTrue(test == rewound)
         pass
 
     def test_RewindAndReplayWithKey_1(self):
@@ -713,57 +826,6 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(test == s)
         pass
 
-    def template_RunFrameAsServer(self, max_buffer, key_evts):
-        '''A test template for RunFrameAsServer.
-        This tests RunFrameAsServer with the given buffer size and key events.
-        The test input is validated by checking for key_evts entry that cannot 
-        be rewound with the buffer size provided.
-        Arguments:
-        max_buffer -- The size of the buffer.
-        key_evts   -- The list of key events to be received on each frame.
-                      Use None to indicate no event.
-        
-        '''
-        ssock, csock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
-        svr = EventSocket(ssock)
-        client = EventSocket(csock)
-        e = GameEngine()
-        e.is_server = True
-        e.clients = [client]
-        rec = GameRecord()
-        rec.SetSize(max_buffer)
-        s = GameState()
-        # Validate the input.
-        ## Count the number of events.
-        count = 0
-        max_frame = len(key_evts)
-        for i in range(0, max_frame):
-            if key_evts[i] == None:
-                continue
-            assert(i - key_evts[i].frame <= max_buffer)
-            if key_evts[i].frame < max_frame:
-                count += 1
-            pass
-        for i in range(0, max_frame):
-            svr.WriteEvent(key_evts[i])
-            e.RunFrameAsServer(s, rec)
-            pass
-        ssock.close()
-        csock.close()
-        # Check we got all the events.
-        self.assertTrue(client.events_read == count)
-        raw_evts = [0]*max_frame
-        for i in range(0, max_frame):
-            if key_evts[i] == None:
-                continue
-            raw_evts[key_evts[i].frame] = key_evts[i].keys
-            pass
-        test = GameState()
-        for i in range(0, max_frame):
-            e.PlayFrame(test, raw_evts[i])
-            pass
-        test.Diff(s)
-        self.assertTrue(test == s)
 
     def test_RunFrameAsServer_1(self):
         '''Test the template.
@@ -836,17 +898,6 @@ class GameEngineTest(unittest.TestCase):
         e = GameEngine()
         self.assertTrue(e.GetTargetFrame(18.5, 6.5, 20, 100, 5) == 80)
 
-    def template_RunGame(self, is_client, is_server, max_frame, max_buffer):
-        assert(not(is_client and is_server))
-        e = GameEngine()
-        e.is_client = is_client
-        e.is_server = is_server
-        s = GameState()
-        rec = GameRecord()
-        rec.SetSize(1)
-        frame_rate = 10000000
-        e.RunGame(s, rec, max_frame, frame_rate)
-        self.assertTrue(s.frame == max_frame)
 
     def test_RunGame_1(self):
         self.template_RunGame(False, False, 0, 1)
@@ -865,24 +916,6 @@ class GameEngineTest(unittest.TestCase):
 
     def test_RunGameAsServer_2(self):
         self.template_RunGame(False, True, 134, 1)
-
-    def template_RunGameWithServerAndClient(self, max_frame, max_buffer, 
-            keyboard):
-        '''Test the server and one client running together.
-        Arguments:
-        max_buffer -- The size of the buffer.
-        keyboard -- The keyboard inputs for the client.
-        '''
-        frame_rate = 100000000
-        clt_e = GameEngine()
-        clt_s = GameState()
-        clt_rec = GameRecord()
-        clt_rec.SetSize(max_buffer)
-        svr_e = GameEngine()
-        svr_s = GameState()
-        svr_rec = GameRecord()
-        svr_rec.SetSize(max_buffer)
-        raise NotImplementedError       
 
     def test_RunFrameAsServerAndClient(self):
         '''Test the consistency of game state with RunFrameAsServer.
@@ -1131,17 +1164,6 @@ class GameEngineTest(unittest.TestCase):
         players[GameState.ROLE_BALL] = 1
         self.assertTrue(s.players == players)
 
-    def template_PlayRound(self, is_client, is_server, rots, rot_len):
-        assert(not(is_client and is_server))
-        e = GameEngine()
-        e.is_client = is_client
-        e.is_server = is_server
-        s = GameState()
-        rec = GameRecord()
-        rec.SetSize(1)
-        frame_rate = 10000000
-        e.PlayRound(s, rec, rots, rot_len, frame_rate)
-        self.assertTrue(s.frame == rot_len * rots)
 
     def test_PlayRound_1(self):
         self.template_PlayRound(False, False, 0, 0)
@@ -1203,4 +1225,78 @@ class GameEngineTest(unittest.TestCase):
         e.EndGame(s)
         self.assertTrue(s.is_ended == True)
         self.assertTrue(s.should_render_score == True)
+
+    def test_GetCurrentFrame_1(self):
+        self.template_GetCurrentFrame(0,0,1,0,0)
+
+    def test_GetCurrentFrame_2(self):
+        self.template_GetCurrentFrame(0,30,60,1,30)
+
+    def test_GetCurrentFrame_3(self):
+        self.template_GetCurrentFrame(1,30,60,2,30)
+
+    def test_GetCurrentFrame_4(self):
+        self.template_GetCurrentFrame(1,30,10,2,10)
+
+    def test_RotateBits_1(self):
+        self.template_RotateBits(int('0000',2), 0, 4, int('0000',2))
+
+    def test_RotateBits_2(self):
+        self.template_RotateBits(int('0001',2), 1, 4, int('1000',2))
+
+    def test_RotateBits_3(self):
+        self.template_RotateBits(int('0001',2), 2, 4, int('0100',2))
+
+    def test_RotateBits_4(self):
+        self.template_RotateBits(int('0001',2), 3, 4, int('0010',2))
+
+    def test_RotateBits_5(self):
+        self.template_RotateBits(int('0001',2), 4, 4, int('0001',2))
+
+    def test_RotateBits_6(self):
+        self.template_RotateBits(int('00100000',2), 3, 8, int('00000100',2))
+
+    def test_RotateBits_7(self):
+        self.template_RotateBits(int('00100000'*2,2), 5, 16, 
+                int('00000001'*2,2))
+
+    def test_RotateBits_8(self):
+        self.template_RotateBits(int('0001'*8,2), 1, 32, int('1000'*8,2))
+
+    def test_RotateBits_9(self):
+        self.template_RotateBits(int('0011'*16,2), 1, 64, int('1001'*16,2))
+
+    def test_UpdateHistory_1(self):
+        self.template_UpdateHistory(0,int('0000'*8,2),0,int('0000'*8,2),
+                32,int('0000'*8,2))
+
+    def test_UpdateHistory_2(self):
+        self.template_UpdateHistory(0,int('0001'*8,2),0,int('1000'*8,2),
+                32,int('1001'*8,2))
+
+    def test_UpdateHistory_3(self):
+        self.template_UpdateHistory(1,int('0001'*8,2),1,int('1000'*8,2),
+                32,int('1001'*8,2))
+
+    def test_UpdateHistory_4(self):
+        self.template_UpdateHistory(33,int('0001'*8,2),33,
+                int('1000'*8,2), 32,int('1001'*8,2))
+
+    def test_UpdateHistory_5(self):
+        self.template_UpdateHistory(33,int('0001'*8,2),0,
+                int('1000'*8,2), 32,int('0001'*8,2))
+
+    def test_UpdateHistory_6(self):
+        self.template_UpdateHistory(64, int('0100'*8,2),
+                32, int('1111'*8,2), 32, int('0100'*8,2))
+
+    def test_UpdateHistory_7(self):
+        self.template_UpdateHistory(64,int('0100'*8,2),
+                33, int('1111'*8,2), 32,int('0100'*7+'0101',2))
+
+    def test_UpdateHistory_8(self):
+        self.template_UpdateHistory(64,int('0100'*8,2),
+                34, int('1111'*8,2), 32,int('0100'*7+'0111',2))
+
+
 
