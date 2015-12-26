@@ -20,6 +20,8 @@ class UDPClient:
         self.keyboard = None
         self.renderer = None
         self.conf = None
+        self.unacked_1 = -1
+        self.unacked_2 = -1
 
     def _Handshake(self, n, tries):
         for i in range(0, tries):
@@ -144,6 +146,88 @@ class UDPClient:
         sock.Close()
         return False
 
+    def HandleKeyboardEvents(self):
+        pass
+
+    def HandleServerEvents(self, e, s, rec, histories, size):
+        '''
+        Arguments:
+        e      -- The GameEngine.
+        s      -- The GameState.
+        rec    -- The GameRecord.
+        '''
+        while True:
+            evt = self.server.ReadEvent()
+            if evt == None:
+                break
+            if evt.event_type == EventType.STATE_UPDATE:
+                # Update the history and rewind.
+                self.ApplyStateUpdate(e, s, rec, histories, evt, size)
+            elif evt.event_type == EventType.END_GAME:
+                e.HandleEndGameEvent(s, evt)
+
+    def ApplyStateUpdate(self, e, s, rec, histories, update, size):
+        '''
+        Updates the local state s, the record rec, and histories.
+        This method is intended to be used by the client receiving a state
+        update.
+
+        If update.frame is earlier than the next buffered key event or
+        later than the previous event ack, overwrite rec at update.frame and 
+        rewind from there.
+        If update.frame is later than the key event but earlier than 
+        its ack, we don't overwrite rec at update.frame because doing so will
+        temporarily 'undo' the key. Instead, we only update histories
+        and rewind.
+
+        Arguments:
+        e         -- The GameEngine.
+        s         -- The GameState to update.
+        rec       -- The GameRecord.
+        histories -- A list of size-bit histories of s.
+        update    -- The update GameState.
+        size      -- The history size.
+        '''
+        assert e != None
+        assert s != None
+        assert rec != None
+        assert update != None
+        assert rec.size == size
+        should_apply_state = False
+        # Update the ack status.
+        if self.unacked_1 >= 0 and e.IsAcked(self.unacked_1,
+                update.histories[self.player_id], update.frame):
+            self.unacked_1 = self.unacked_2
+            self.unacked_2 = -1
+        if s.frame - update.frame > rec.available:
+            # The update is too old.
+            return
+        if self.unacked_1 >= 0 and s.frame > update.frame:
+            # We copy the update directly into rec if it occurred in the past
+            # and either the unacked event hasn't triggered or the event was 
+            # lost.
+            if self.unacked_1 >= s.frame:
+                # The unacked event hasn't triggered yet. 
+                # It's safe to use the server state.
+                should_apply_state = True
+            elif self.unacked_1 < update.frame - size:
+                # The event was lost, so revert to the server state.
+                # This will probably cause a hitch, but it's necessary to 
+                # keep the states consistent.
+                self.unacked_1 = self.unacked_2
+                self.unacked_2 = -1
+                should_apply_state = True
+        if should_apply_state:
+            assert s.frame >= update.frame
+            # Overwrite the record.
+            update.Copy(rec.states[update.frame % rec.size])
+            replay_from = update.frame
+            rec.available = s.frame - update.frame
+        else:
+            replay_from = max(max(s.frame, update.frame) - size, 0)
+        e.ApplyUpdate(s, histories, rec, replay_from, s.frame, histories,
+                update.frame, update.histories, size)
+
     def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate, 
             buffer_delay, key_cool_down):
         '''
@@ -177,13 +261,14 @@ class UDPClient:
                 break
             buffer_idx = s.frame % buffer_size
             events = 0
+            # Get keyboard input and send to server.
             if self.keyboard != None:
                 keys = self.keyboard.GetKeys()
                 if keys[key_binding]:
                     key_buffer[player_id] |= (1 << buffer_idx)
                     events |= key_event
             # Get server updates.
-
+            self.HandleServerEvents(e, s, rec, histories, size)
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
                     end_frame, time.time())
             while s.frame < target_frame:

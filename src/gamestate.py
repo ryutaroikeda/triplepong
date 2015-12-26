@@ -20,7 +20,7 @@ class GameState:
     rotation_length -- The duration of a rotation in frames.
 
     UDP
-    keybits            -- The key input of 64 previous frames for each player.
+    histories            -- The key input of 64 previous frames for each player.
     '''
     ROLE_NONE = 0
     ROLE_LEFT_PADDLE = 1
@@ -62,10 +62,10 @@ class GameState:
         self.ball = GameObject()
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
-        self.objects = [self.screen, self.goal_left, self.goal_right,
-                self.ball_wall_top, self.ball_wall_bottom,
-                self.paddle_wall_top, self.paddle_wall_bottom,
-                self.ball, self.paddle_left, self.paddle_right]
+        #self.objects = [self.screen, self.goal_left, self.goal_right,
+        #        self.ball_wall_top, self.ball_wall_bottom,
+        #        self.paddle_wall_top, self.paddle_wall_bottom,
+        #        self.ball, self.paddle_left, self.paddle_right]
         # The number of players.
         self.player_size = 3
         self.game_length = 120.0
@@ -136,7 +136,7 @@ class GameState:
         self.is_ended = False
         self.player_id = 0
         # 64 frames of input history for each player.
-        self.keybits = [0, 0, 0]
+        self.histories = [0, 0, 0]
 
     def __str__(self):
         return str(self.__dict__)
@@ -183,7 +183,7 @@ class GameState:
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
                 self.key_flags, self.frame, 
-                self.keybits[0], self.keybits[1], self.keybits[2])
+                self.histories[0], self.histories[1], self.histories[2])
 
     def Deserialize(self, b):
         '''Deserialize a partial representation of the state.'''
@@ -192,7 +192,7 @@ class GameState:
                 self.paddle_left.pos_y, self.paddle_left.vel_y,
                 self.paddle_right.pos_y, self.paddle_right.vel_y,
                 self.key_flags, self.frame,
-                self.keybits[0], self.keybits[1], self.keybits[2],) = \
+                self.histories[0], self.histories[1], self.histories[2],) = \
                         struct.unpack(GameState.SUBFORMAT, b)
 
     def Copy(self, other):

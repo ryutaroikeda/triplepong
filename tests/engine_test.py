@@ -235,18 +235,69 @@ class GameEngineTest(unittest.TestCase):
         e = GameEngine()
         self.assertTrue(e.GetBit(bits, n) == expected_bit)
     
-    def template_RewindAndReplayBits(self, frame, histories, 
-            replay_from, replay_to, size):
+    def template_RewindAndReplayBits(self,
+            plvy0, prvy0, bvx0, bvy0, plpy0, prpy0, bpx0, bpy0,
+            plvy1, prvy1, bvx1, bvy1, plpy1, prpy1, bpx1, bpy1,
+            frame, histories, replay_from, replay_to, size, 
+            should_apply_gravity, should_apply_collision, paddle_vel, ball_vel):
+        s = GameState()
+        s.paddle_left.vel_y = plvy0
+        s.paddle_left.pos_y = plpy0
+        s.paddle_right.vel_y = prvy0
+        s.paddle_right.pos_y = prpy0
+        s.ball.vel_x = bvx0
+        s.ball.vel_y = bvy0
+        s.ball.pos_x = bpx0
+        s.ball.pos_y = bpy0
+        expected_state = GameState()
+        expected_state.paddle_left.vel_y = plvy1
+        expected_state.paddle_left.pos_y = plpy1
+        expected_state.paddle_right.vel_y = prvy1
+        expected_state.paddle_right.pos_y = prpy1
+        expected_state.ball.vel_x = bvx1
+        expected_state.ball.vel_y = bvy1
+        expected_state.ball.pos_x = bpx1
+        expected_state.ball.pos_y = bpy1
+        expected_state.frame = replay_to
+        e = GameEngine()
+        e.should_apply_gravity = should_apply_gravity
+        e.should_apply_collision = should_apply_collision
+        e.paddle_flap_vel = paddle_vel
+        e.ball_flap_vel = ball_vel
+        rec = GameRecord()
+        rec.SetSize(size)
+        for i in range(0, frame):
+            rec.AddRecord(s)
+            e.PlayFrame(s, 0)
+        e.RewindAndReplayBits(s, histories, rec, replay_from,
+                replay_to, size)
+        s.Diff(expected_state)
+        self.assertTrue(s == expected_state, '{0} != {1}'.format(s,
+            expected_state))
+
+    def template_ApplyUpdate(self, frame, histories, replay_from, s_frame, 
+            s_bits, t_frame, t_bits, size):
+        '''
+        frame  -- Number of frames in the GameRecord.
+        '''
+        s = GameState()
         rec = GameRecord()
         rec.SetSize(size)
         e = GameEngine()
-        s = GameState()
         for i in range(0, frame):
             rec.AddEntry(s, 0)
             e.PlayFrame(s, 0)
-        t = e.RewindAndReplayBits(s, histories, rec, replay_from,
-                replay_to, size)
-        self.assertTrue(t.frame == replay_to)
+        e.ApplyUpdate(s, histories, rec, replay_from,  s_frame, s_bits, 
+                t_frame, t_bits, size)
+        self.assertTrue(s.frame == max(s.frame, s_frame, t_frame),
+                '{0} != max({0}, {1}, {2})'.format(s.frame, s_frame,
+                    t_frame))
+
+    def template_IsAcked(self, frame, history, history_frame, size,
+            expected_result):
+        e = GameEngine()
+        result = e.IsAcked(frame, history, history_frame, size) 
+        self.assertTrue(result == expected_result)
 
     #UDP stuff END
 
@@ -1332,8 +1383,56 @@ class GameEngineTest(unittest.TestCase):
     def test_GetBit_2(self):
         self.template_GetBit(int('1000',2), 3, 1)
 
-    def test_RewindAndReplayBits(self):
-        self.template_RewindAndReplayBits(0, [0,0,0],0,0,64)
-    
-    def test_RewindAndReplayBits(self):
-        self.template_RewindAndReplayBits(64,[1,1,1],0,64,64)
+    def test_RewindAndReplayBits_1(self):
+        self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 
+                0, 0, 0, 0, 0, 0, 100, 100,
+                1, [0,0,0],0,1,64, False, False, 0, 0)
+
+    def test_RewindAndReplayBits_2(self):
+        self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 
+                0, 0, 0, 0, 0, 0, 100, 100,
+                64,[0,0,0],0,64,64, False, False, 0, 0)
+
+    def test_RewindAndReplayBits_3(self):
+        self.template_RewindAndReplayBits(2, 3, 1, 1, 0, 0, 100, 100, 
+                2, 3, 1, 1, 128, 192, 164, 164,
+                64,[0,0,0],0,64,64, False, False, 0, 0)
+
+    def test_RewindAndReplayBits_4(self):
+        self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 
+                1, 0, 0, 0, 64, 0, 100, 100,
+                64,[1,0,0],0,64,64, False, False, 1, 0)
+
+    def test_RewindAndReplayBits_5(self):
+        self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 
+                0, 1, 0, 0, 0, 64, 100, 100,
+                64,[0,1,0],0,64,64, False, False, 1, 0)
+                
+    def test_RewindAndReplayBits_6(self):
+        self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 
+                0, 0, 0, 1, 0, 0, 100, 164,
+                64,[0,0,1],0,64,64, False, False, 0, 1)
+
+    #def template_ApplyUpdate(self, frame, histories, s_frame, s_bits, 
+            #t_frame, t_bits, size):
+
+    @unittest.skip('')
+    def test_ApplyUpdate_1(self):
+        self.template_ApplyUpdate(1, [0,0,0], 0, 0, [0,0,0], 0, [0,0,0], 64)
+
+    @unittest.skip('')
+    def test_ApplyUpdate_2(self):
+        self.template_ApplyUpdate(64, [0,0,0], 8, 72, [0,0,0], 10, 
+                [0,0,0], 64)
+
+    def test_IsAcked_1(self):
+        self.template_IsAcked(0, int('0'*64,2), 0, 64, False)
+
+    def test_IsAcked_2(self):
+        self.template_IsAcked(0, int('0'*63+'1',2), 1, 64, True)
+
+    def test_IsAcked_3(self):
+        self.template_IsAcked(0, int('1'*64,2), 65, 64, False)
+
+    def test_IsAcked_4(self):
+        self.template_IsAcked(100, int('0'*27+'1'+'0'*36,2), 150, 64, True)

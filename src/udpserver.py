@@ -105,6 +105,17 @@ class UDPServer:
             return 1
         return 0
 
+    def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate):
+        '''
+        Play max_frame frames.
+        Arguments:
+        e           -- The GameEngine.
+        s           -- The GameState.
+        r           -- The Renderer.
+        rec         -- The GameRecord.
+        '''
+        pass
+
     def Run(self, sock, upnp, conf, tries, timeout):
         '''
         Arguments:
@@ -134,7 +145,6 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
-
 
             logger.info('Starting game.')
             e = GameEngine()

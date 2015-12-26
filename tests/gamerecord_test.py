@@ -14,7 +14,7 @@ class GameRecordTest(unittest.TestCase):
         self.assertTrue(rec.size == size)
         self.assertTrue(rec.available == 0)
         self.assertTrue(rec.idx == 0)
-        pass
+        
 
     def test_AddEntry(self):
         rec = GameRecord()
@@ -31,7 +31,7 @@ class GameRecordTest(unittest.TestCase):
         # The record should cycle around.
         rec.AddEntry(s, 0)
         self.assertTrue(rec.states[0].ball.pos_x == s.ball.pos_x)
-        pass
+        
 
     def template_ApplyEvent(self, max_buffer, available, current_frame, 
             evt_frame, keys, result):
@@ -50,7 +50,7 @@ class GameRecordTest(unittest.TestCase):
         s = GameState()
         for i in range(0, available):
             rec.AddEntry(s, 0)
-            pass
+            
         evt = GameEvent()
         evt.frame = evt_frame
         evt.keys = keys
@@ -59,23 +59,34 @@ class GameRecordTest(unittest.TestCase):
         idx = (rec.idx - (current_frame - evt_frame)) % rec.size
         if result == 0:
             self.assertTrue(rec.states[idx].key_flags == evt.keys)
-        pass
+        
 
     def test_ApplyEvent_1(self):
         '''Ignore event in the future.
         '''
         self.template_ApplyEvent(10, 10, 10, 20, 0, -1)
-        pass
+        
 
     def test_ApplyEvent_2(self):
         '''Ignore event when record is unavailable.
         '''
         self.template_ApplyEvent(20, 10, 30, 11, 1, -1)
-        pass
 
     def test_ApplyEvent_3(self):
         '''Apply event.
         '''
         self.template_ApplyEvent(20, 10, 32, 22, 1, 0)
-        pass
-    pass
+
+    def test_AddRecord(self):
+        paddle_left_pos_y = 1000
+        a = GameRecord()
+        a.SetSize(4)
+        s = GameState()
+        s.frame = 6
+        s.paddle_left.pos_y = paddle_left_pos_y
+        a.AddRecord(s)
+        self.assertTrue(a.available == 1)
+        self.assertTrue(a.states[2].paddle_left.pos_y == paddle_left_pos_y,
+                '{0} != {1}'.format(a.states[2].paddle_left.pos_y,
+                    paddle_left_pos_y))
+    

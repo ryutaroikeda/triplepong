@@ -113,7 +113,6 @@ class GameEngine(object):
     is_local           -- True if this is running in local mode.
     clients            -- The list of client sockets.
     server             -- The socket connected to the server.
-    player_data        -- (Deprecate) Data for each player.
     key_bindings       -- The key to use for each player. A negative value
                           means the player has no key binding.
     buffer_delay-- The number of frames of delay to apply to key events.
@@ -121,6 +120,9 @@ class GameEngine(object):
                           current frame is (frame % buffer_delay)
     do_interpolate     -- Set to True if the renderer should interpolate.
     buffer_size        -- The size of the game state buffer.
+    histories          -- N-bit record of key presses for each player.
+    history_size       -- The number of bits of history.
+    should_apply_gravity -- Gravity is enabled if True.
     '''
 
     K_SPACE = 32
@@ -138,10 +140,13 @@ class GameEngine(object):
         self.server = None
         self.key_bindings = [32, -1, -1]
         self.buffer_delay = 0
-        self.key_buffer = [0]*self.buffer_delay
+        self.key_buffer = [0]*self.buffer_delay # to do: deprecate
         self.do_interpolate = False
         self.buffer_size = 300
-        pass
+        self.should_apply_gravity = True
+        self.should_apply_collision = True
+        self.paddle_flap_vel = -12
+        self.ball_flap_vel = -8
 
     def RoleToEvent(self, role):
         '''Convert role into its corresponding game event.
@@ -264,7 +269,7 @@ class GameEngine(object):
                 continue
             evts.append(evt)
             logger.debug('received key event {0}'.format(evt.frame))
-            pass
+            
         return evts
 
     def SendStateUpdate(self, clients, s):
@@ -282,7 +287,7 @@ class GameEngine(object):
                         c.GetPeerName()))
                 c.Close()
                 clients.remove(c)
-        pass
+        
 
     def SendKeyboardEvents(self, svr, frame, keys):
         '''Serialize a game event and send to the server.
@@ -332,14 +337,14 @@ class GameEngine(object):
 
         if s.paddle_left.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_left.vel_y += 1
-            pass
+            
         if s.paddle_right.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_right.vel_y += 1
-            pass
+            
         if s.ball.vel_y < BALL_TERM_VELOCITY:
             s.ball.vel_y += 1
-            pass
-        pass
+            
+        
 
     def ApplyEvents(self, s, keys):
         '''Apply the effect of events to the game state.
@@ -357,21 +362,15 @@ class GameEngine(object):
         s    -- the game state.
         evts -- a list of events to apply.'''
 
-        PADDLE_FLAP_VEL = -12
-        BALL_FLAP_VEL   = -8
         if keys & GameEvent.EVENT_FLAP_LEFT_PADDLE:
-            s.paddle_left.vel_y = PADDLE_FLAP_VEL
-            pass
+            s.paddle_left.vel_y = self.paddle_flap_vel
         if keys & GameEvent.EVENT_FLAP_RIGHT_PADDLE:
-            s.paddle_right.vel_y = PADDLE_FLAP_VEL
-            pass
+            s.paddle_right.vel_y = self.paddle_flap_vel
         if keys & GameEvent.EVENT_FLAP_BALL:
-            s.ball.vel_y = BALL_FLAP_VEL
-            pass
-        pass
+            s.ball.vel_y = self.ball_flap_vel
 
     def ApplyLogic(self, s):
-        '''Update positions and handle collision detection.
+        '''Update positions.
         
         Arguments:
             s    -- the state of the game.'''
@@ -381,39 +380,43 @@ class GameEngine(object):
         s.ball.pos_y += s.ball.vel_y
         s.paddle_left.pos_y += s.paddle_left.vel_y
         s.paddle_right.pos_y += s.paddle_right.vel_y
-        # handle collisions
+
+    def ApplyCollision(self, s):
+        '''
+        Handle collisions.
+        '''
         if s.paddle_left.IsCollidingWith(s.ball):
             s.paddle_left.AlignRight(s.ball)
             s.ball.vel_x = - s.ball.vel_x
-            pass
+            
         if s.paddle_right.IsCollidingWith(s.ball):
             s.paddle_right.AlignLeft(s.ball)
             s.ball.vel_x = - s.ball.vel_x
-            pass
+            
         if s.ball.IsCollidingWith(s.ball_wall_top):
             s.ball_wall_top.AlignBottom(s.ball)
             s.ball.vel_y = - s.ball.vel_y
-            pass
+            
         if s.ball.IsCollidingWith(s.ball_wall_bottom):
             s.ball_wall_bottom.AlignTop(s.ball)
             s.ball.vel_y = - s.ball.vel_y
-            pass
+            
         if s.paddle_left.IsCollidingWith(s.paddle_wall_top):
             s.paddle_wall_top.AlignBottom(s.paddle_left)
             s.paddle_left.vel_y = - s.paddle_left.vel_y
-            pass
+            
         if s.paddle_right.IsCollidingWith(s.paddle_wall_top):
             s.paddle_wall_top.AlignBottom(s.paddle_right)
             s.paddle_right.vel_y = - s.paddle_right.vel_y
-            pass
+            
         if s.paddle_left.IsCollidingWith(s.paddle_wall_bottom):
             s.paddle_wall_bottom.AlignTop(s.paddle_left)
             s.paddle_left.vel_y = - s.paddle_left.vel_y
-            pass
+            
         if s.paddle_right.IsCollidingWith(s.paddle_wall_bottom):
             s.paddle_wall_bottom.AlignTop(s.paddle_right)
             s.paddle_right.vel_y = - s.paddle_right.vel_y
-            pass
+            
         if s.ball.IsCollidingWith(s.goal_left):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
@@ -423,7 +426,7 @@ class GameEngine(object):
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
                 s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
-            pass
+            
         if s.ball.IsCollidingWith(s.goal_right):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
             s.ball.pos_y = ( s.ball_wall_top.pos_y +
@@ -433,8 +436,6 @@ class GameEngine(object):
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
                 s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
-            pass
-        pass
 
     def PlayFrame(self, s, keys):
         '''Move the game forward by one frame.
@@ -442,11 +443,14 @@ class GameEngine(object):
         Arguments:
         s    -- The game state.
         keys -- The flag for key events.'''
-        self.ApplyGravity(s)
+        if self.should_apply_gravity:
+            self.ApplyGravity(s)
         self.ApplyEvents(s, keys)
+        if self.should_apply_collision:
+            self.ApplyCollision(s)
         self.ApplyLogic(s)
         s.frame += 1
-        pass
+        
 
     def RewindAndReplayWithState(self, auth_state, current_frame, rec):
         '''Rewind and replay the game from a given state.
@@ -486,7 +490,7 @@ class GameEngine(object):
         for i in range(0, rewind):
             self.PlayFrame(auth_state,
                     rec.states[(rec.idx - rewind + i) % rec.size].key_flags)
-            pass
+            
         rec.available = rewind
         auth_state.key_flags = 0
         return auth_state
@@ -531,14 +535,15 @@ class GameEngine(object):
             rec.states[idx].Copy(t)
             self.PlayFrame(t, t.key_flags)
             t.key_flags = key_flags
-            pass
+            
         rec.states[rec.idx].Copy(s)
         # reset key_flags (some tests rely on this feature).
         s.key_flags = 0
         return s
 
     def RunFrameAsClient(self, s, rec):
-        '''The main loop of the client.
+        '''
+        The main loop of the client.
 
         The client checks for updates from the server. If there isn't an update 
         available, the client plays a frame with the keys obtained from the 
@@ -575,14 +580,15 @@ class GameEngine(object):
             # if update is None, we should ignore it. Otherwise, update.
             if update != None:
                 update.Copy(s)
-            pass
+            
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
         s.player_id = self.player_id
-        pass
+        
 
     def RunFrameAsServer(self, s, rec):
-        '''The main loop of the server.
+        '''
+        The main loop of the server.
 
         The server first checks for events from the clients. If there isn't an 
         event available, the server plays a frame.
@@ -603,7 +609,7 @@ class GameEngine(object):
             # Update the record with the new event, if applicable.
             if rec.ApplyEvent(s.frame, evt) == 0:
                 applied_evts.append(evt)
-            pass
+            
         if len(applied_evts) > 0:
             # Sort the events by frame.
             sorted(applied_evts, key=lambda x: x.frame, reverse=False)
@@ -613,7 +619,7 @@ class GameEngine(object):
             # Send state to clients.
             s.key_flags = keys
             self.SendStateUpdate(self.clients, s)
-        pass
+        
         rec.AddEntry(s, keys)
         self.PlayFrame(s, keys)
 
@@ -659,8 +665,10 @@ class GameEngine(object):
         '''
         This method is intended to be used by a peer receiving key input 
         history to update its local state. The history is represented by a
-        size-bit integer keybits and a frame number f. The ith bit from the 
-        right in keybits is the input at frame f - (size - ((f - i) % size)).
+        size-bit integer keybits and a frame number f. 
+        The history represents inputs that occurred in frames 
+        [f - size, f) excluding f. If g is a frame in this range, the
+        (g % size)th bit of the history represents the input at frame g.
 
         update_frame must be less than frame.
 
@@ -674,12 +682,18 @@ class GameEngine(object):
         Return value:
         An updated size-bit history of keys at frame.
         '''
-        assert(update_frame <= frame)
+        assert isinstance(frame, int)
+        assert isinstance(keybits, int)
+        assert isinstance(update_frame, int)
+        assert isinstance(update, int)
+        assert isinstance(size, int)
+        assert update_frame <= frame
         # Rotate the oldest frame to the 0th bit.
         rot_keybits = self.RotateBits(keybits, frame % size, size)
         rot_update = self.RotateBits(update, update_frame % size, size)
         result = rot_keybits | (rot_update >> (frame - update_frame))
         return self.RotateBits(result, size - (frame % size), size)
+
 
     def BitsToEvent(self, state, bits):
         '''
@@ -707,9 +721,9 @@ class GameEngine(object):
     def RewindAndReplayBits(self, state, histories, rec, replay_from,
             replay_to, size):
         '''
-        This method uses the histories of key inputs of each player to compute
-        the local game state. The game is played up to and excluding frame
-        replay_to. The states in rec are updated.
+        This method uses the histories of key inputs of each player to 
+        compute the local game state. The game is played up to and 
+        excluding frame replay_to. state and the states in rec are updated.
 
         replay_to is the frame associated with the entries in histories.
 
@@ -721,28 +735,90 @@ class GameEngine(object):
         replay_to    -- The frame to play up to.
         size         -- The size of a history.
 
-        Return value:
-        The GameState replayed from frame replay_from and up to and excluding 
-        frame replay_to.
         '''
-        assert(rec != None)
-        assert(replay_from >= 0)
-        assert(state.frame >= replay_from)
-        assert(state.frame - replay_from <= rec.available)
-        assert(replay_from <= replay_to)
-        assert(replay_to - replay_from <= size)
-        assert(size > 0)
-        assert(rec.size == size)
+        assert rec != None
+        assert replay_from >= 0
+        assert state.frame > replay_from
+        assert state.frame - replay_from <= rec.available
+        assert replay_from <= replay_to
+        assert replay_to - replay_from <= size
+        assert size > 0
+        assert rec.size == size
         s = GameState()
         rec.states[replay_from % rec.size].Copy(s)
+        assert(s.frame == replay_from)
         for i in range(replay_from, replay_to):
             n = i % size
-            evt = self.BitsToEvent(state, [self.GetBit(histories[0], n),
+            evt = self.BitsToEvent(s, [self.GetBit(histories[0], n),
                     self.GetBit(histories[1], n),
                     self.GetBit(histories[2], n)])
             self.PlayFrame(s, evt)
-            s.Copy(rec.states[(i+1)%rec.size])
-        return s
+            rec.AddRecord(s)
+        s.Copy(state)
+
+    def ApplyUpdate(self, s, histories, rec, rewind_from,  s_frame, s_bits,
+            t_frame, t_bits, size):
+        '''
+        Updates the GameState and histories.
+
+        Arguments:
+        s         -- The GameState.
+        histories -- A list of size-bit input records.
+        rec       -- The GameRecord.
+        rewind_from -- The frame to rewind from.
+        s_frame   -- The frame of s_bits.
+        s_bits    -- A history bit list.
+        t_frame   -- The frame of t_bits.
+        t_bits    -- Anoter history bit list.
+        size      -- Size of histories.
+        '''
+        assert s_frame >= 0 
+        assert t_frame >= 0 
+        assert len(s_bits) == len(t_bits) 
+        assert len(histories) == len(s_bits) 
+        # Find the newer history.
+        old_frame = min(s_frame, t_frame)
+        new_frame = max(s_frame, t_frame)
+        if s_frame < t_frame:
+            old_bits = s_bits
+            new_bits = t_bits
+        else:
+            old_bits = t_bits
+            new_bits = s_bits
+        # Update histories.
+        for i in range(0, len(s_bits)):
+            histories[i] = self.UpdateHistory(new_frame, new_bits[i],
+                    old_frame, old_bits[i], size)
+        # Rewind and replay.
+        self.RewindAndReplayBits(s, histories, rec, rewind_from, new_frame, 
+                size)
+
+    def IsAcked(self, frame, history, history_frame, size):
+        '''
+        Arguments:
+        frame          -- The frame to check.
+        history        -- A size-bit record of key inputs.
+        history_frame  -- The frame after the last in history.
+        size           -- The size of history.
+
+        Return value:
+        True if the bit corresponding to frame in history is 1 and False
+        otherwise.
+        '''
+        assert isinstance(frame, int)
+        assert isinstance(history, int)
+        assert isinstance(history_frame, int)
+        assert isinstance(size, int)
+        assert frame >= 0
+        assert history_frame >= 0
+        if frame >= history_frame:
+            # Too recent.
+            return False
+        if history_frame - frame > size:
+            # Too old to tell.
+            return False
+        return self.GetBit(history, frame % size) == 1
+
 
     # UDP stuff END
 
@@ -833,7 +909,7 @@ class GameEngine(object):
         for i in range(0, rounds):
             self.PlayRound(s, rec, 3, rotation_length, 
                     frame_rate)
-            pass
+            
         if self.is_server:
             self.SendEndGameEvent(self.clients, s)
         self.EndGame(s)
@@ -861,4 +937,4 @@ if __name__ == '__main__':
     e.renderer = r
     e.keyboard = r
     e.Play(e.state)
-    pass
+    

@@ -67,4 +67,13 @@ class GameRecord:
         idx = (self.idx - rewind) % self.size
         self.states[idx].key_flags |= evt.keys
         return 0
-    pass
+
+    # UDP
+    def AddRecord(self, s):
+        '''
+        Add a state to the record, using the frame number as the index.
+        '''
+        assert s != None
+        s.Copy(self.states[s.frame % self.size])
+        if self.available < self.size:
+            self.available += 1
