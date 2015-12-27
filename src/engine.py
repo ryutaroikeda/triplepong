@@ -675,7 +675,8 @@ class GameEngine(object):
         Arguments:
         frame        -- The frame associated with keybits.
         keybits      -- size-bits of keys.
-        update_frame -- The frame associated with update.
+        update_frame -- The frame associated with update. This must be
+                        older than frame.
         update       -- size-bits of keys.
         size         -- The number of bits in history.
 
@@ -728,7 +729,7 @@ class GameEngine(object):
         replay_to is the frame associated with the entries in histories.
 
         Arguments:
-        state        -- The current frame.
+        state        -- The GameState.
         histories    -- A list of size-bit histories.
         rec          -- The GameRecord.
         replay_from  -- The frame to rewind to and replay from.
@@ -756,37 +757,34 @@ class GameEngine(object):
             rec.AddRecord(s)
         s.Copy(state)
 
-    def ApplyUpdate(self, s, histories, rec, rewind_from,  s_frame, s_bits,
-            t_frame, t_bits, size):
+    def ApplyUpdate(self, s, histories, rec, rewind_from, update_frame, 
+            update_bits, size):
         '''
-        Updates the GameState and histories.
+        Updates the GameState, GameRecord, and histories.
 
         Arguments:
-        s         -- The GameState.
-        histories -- A list of size-bit input records.
+        s         -- The GameState to update.
+        histories -- A list of size-bit records to update.
         rec       -- The GameRecord.
         rewind_from -- The frame to rewind from.
-        s_frame   -- The frame of s_bits.
-        s_bits    -- A history bit list.
-        t_frame   -- The frame of t_bits.
-        t_bits    -- Anoter history bit list.
+        update_frame   -- The frame of update_bits.
+        update_bits    -- A history bit list.
         size      -- Size of histories.
         '''
-        assert s_frame >= 0 
-        assert t_frame >= 0 
-        assert len(s_bits) == len(t_bits) 
-        assert len(histories) == len(s_bits) 
+        assert s.frame >= 0 
+        assert update_frame >= 0 
+        assert len(histories) == len(update_bits) 
         # Find the newer history.
-        old_frame = min(s_frame, t_frame)
-        new_frame = max(s_frame, t_frame)
-        if s_frame < t_frame:
-            old_bits = s_bits
-            new_bits = t_bits
+        old_frame = min(s.frame, update_frame)
+        new_frame = max(s.frame, update_frame)
+        if s.frame < update_frame:
+            old_bits = histories
+            new_bits = update_bits
         else:
-            old_bits = t_bits
-            new_bits = s_bits
+            old_bits = update_bits
+            new_bits = histories
         # Update histories.
-        for i in range(0, len(s_bits)):
+        for i in range(0, len(histories)):
             histories[i] = self.UpdateHistory(new_frame, new_bits[i],
                     old_frame, old_bits[i], size)
         # Rewind and replay.

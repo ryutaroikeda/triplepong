@@ -275,10 +275,10 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(s == expected_state, '{0} != {1}'.format(s,
             expected_state))
 
-    def template_ApplyUpdate(self, frame, histories, replay_from, s_frame, 
-            s_bits, t_frame, t_bits, size):
+    def template_ApplyUpdate(self, frame, histories, update_frame, update_bits,
+            size, expected_histories):
         '''
-        frame  -- Number of frames in the GameRecord.
+        Test that histories is updated correctly.
         '''
         s = GameState()
         rec = GameRecord()
@@ -287,11 +287,13 @@ class GameEngineTest(unittest.TestCase):
         for i in range(0, frame):
             rec.AddEntry(s, 0)
             e.PlayFrame(s, 0)
-        e.ApplyUpdate(s, histories, rec, replay_from,  s_frame, s_bits, 
-                t_frame, t_bits, size)
-        self.assertTrue(s.frame == max(s.frame, s_frame, t_frame),
-                '{0} != max({0}, {1}, {2})'.format(s.frame, s_frame,
-                    t_frame))
+        replay_from = max(frame - rec.available, update_frame - size)
+        e.ApplyUpdate(s, histories, rec, replay_from, update_frame, 
+                update_bits, size)
+        for i in range(0, 3):
+            self.assertTrue(histories[i] == expected_histories[i],
+                    '{0} != {1}'.format(bin(histories[i]),
+                        bin(expected_histories[i])))
 
     def template_IsAcked(self, frame, history, history_frame, size,
             expected_result):
@@ -1414,16 +1416,23 @@ class GameEngineTest(unittest.TestCase):
                 64,[0,0,1],0,64,64, False, False, 0, 1)
 
     #def template_ApplyUpdate(self, frame, histories, s_frame, s_bits, 
-            #t_frame, t_bits, size):
+         #size):
 
-    @unittest.skip('')
     def test_ApplyUpdate_1(self):
-        self.template_ApplyUpdate(1, [0,0,0], 0, 0, [0,0,0], 0, [0,0,0], 64)
+        self.template_ApplyUpdate(1, [0,0,0], 0, [0,0,0], 64, [0,0,0])
 
-    @unittest.skip('')
     def test_ApplyUpdate_2(self):
-        self.template_ApplyUpdate(64, [0,0,0], 8, 72, [0,0,0], 10, 
-                [0,0,0], 64)
+        self.template_ApplyUpdate(64, [0,0,0], 72, [0,0,0], 64, [0,0,0])
+
+    def test_ApplyUpdate_3(self):
+        self.template_ApplyUpdate(64, [1,1,1], 72, [0,0,0], 64, [0,0,0])
+
+    def test_ApplyUpdate_4(self):
+        self.template_ApplyUpdate(64, [1<<8,0,0], 72, [0,0,0], 64, [1<<8,0,0])
+
+    def test_ApplyUpdate_5(self):
+        self.template_ApplyUpdate(64, [1<<8,1<<7,0], 72, [0,0,1], 64,
+                [1<<8,0,1])
 
     def test_IsAcked_1(self):
         self.template_IsAcked(0, int('0'*64,2), 0, 64, False)

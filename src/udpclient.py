@@ -224,9 +224,9 @@ class UDPClient:
             replay_from = update.frame
             rec.available = s.frame - update.frame
         else:
-            replay_from = max(max(s.frame, update.frame) - size, 0)
-        e.ApplyUpdate(s, histories, rec, replay_from, s.frame, histories,
-                update.frame, update.histories, size)
+            replay_from = s.frame - rec.available
+        e.ApplyUpdate(s, histories, rec, replay_from, update.frame,
+                update.histories, size)
 
     def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate, 
             buffer_delay, key_cool_down):
