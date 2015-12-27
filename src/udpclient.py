@@ -166,6 +166,50 @@ class UDPClient:
             elif evt.event_type == EventType.END_GAME:
                 e.HandleEndGameEvent(s, evt)
 
+    def ShouldApplyStateUpdate(self, e, frame, update_frame, update_history,
+            size):
+        '''
+        As a side-effect, self.unacked_1 and self.unacked_2 are modified when
+        they are acknowledged in update_histories or are deemed lost.
+
+        Arguments:
+        e                -- The GameEngine.
+        frame            -- The current frame.
+        update_frame     -- The frame of the update.
+        update_history   -- History of size-bits for e.player_id.
+        size             -- Size of histories.
+
+        Return value:
+        True if an update at update_frame should overwrite the GameRecord, and
+        False otherwise.
+        '''
+        assert e != None
+        assert isinstance(frame, int)
+        assert isinstance(update_frame, int)
+        assert isinstance(update_history, int)
+        assert isinstance(size, int)
+        # Update the ack status.
+        if self.unacked_1 >= 0 and e.IsAcked(self.unacked_1,
+                update_history, update_frame, size):
+            self.unacked_1 = self.unacked_2
+            self.unacked_2 = -1
+        if self.unacked_1 >= 0 and self.unacked_1 < update_frame - size:
+            # The event was lost, so revert to the server state.
+            # This will probably cause a hitch, but it's necessary to 
+            # keep the states consistent.
+            self.unacked_1 = self.unacked_2
+            self.unacked_2 = -1
+            return True
+        if frame > update_frame:
+            # The update is in the past.
+            if self.unacked_1 == -1:
+                # There are no unacked events.
+                return True
+            if frame > update_frame and self.unacked_1 >= frame:
+                # The unacked event hasn't triggered yet. 
+                return True
+        return False
+
     def ApplyStateUpdate(self, e, s, rec, histories, update, size):
         '''
         Updates the local state s, the record rec, and histories.
@@ -187,46 +231,33 @@ class UDPClient:
         histories -- A list of size-bit histories of s.
         update    -- The update GameState.
         size      -- The history size.
+        Return value:
+        0 on success and -1 if the update could not be performed.
         '''
         assert e != None
         assert s != None
         assert rec != None
         assert update != None
         assert rec.size == size
-        should_apply_state = False
-        # Update the ack status.
-        if self.unacked_1 >= 0 and e.IsAcked(self.unacked_1,
-                update.histories[self.player_id], update.frame):
-            self.unacked_1 = self.unacked_2
-            self.unacked_2 = -1
+        should_apply_state = self.ShouldApplyStateUpdate(e, s.frame,
+                update.frame, update.histories[e.player_id], size)
+        if s.frame == 0:
+            logger.debug('Impossible to rewind.')
+            return -1
         if s.frame - update.frame > rec.available:
-            # The update is too old.
-            return
-        if self.unacked_1 >= 0 and s.frame > update.frame:
-            # We copy the update directly into rec if it occurred in the past
-            # and either the unacked event hasn't triggered or the event was 
-            # lost.
-            if self.unacked_1 >= s.frame:
-                # The unacked event hasn't triggered yet. 
-                # It's safe to use the server state.
-                should_apply_state = True
-            elif self.unacked_1 < update.frame - size:
-                # The event was lost, so revert to the server state.
-                # This will probably cause a hitch, but it's necessary to 
-                # keep the states consistent.
-                self.unacked_1 = self.unacked_2
-                self.unacked_2 = -1
-                should_apply_state = True
+            logger.debug('The update is too old.')
+            return -1
         if should_apply_state:
             assert s.frame >= update.frame
             # Overwrite the record.
             update.Copy(rec.states[update.frame % rec.size])
             replay_from = update.frame
-            rec.available = s.frame - update.frame
+            rec.available = max(s.frame - update.frame, rec.size)
         else:
             replay_from = s.frame - rec.available
         e.ApplyUpdate(s, histories, rec, replay_from, update.frame,
                 update.histories, size)
+        return 0
 
     def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate, 
             buffer_delay, key_cool_down):

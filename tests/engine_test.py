@@ -1434,6 +1434,9 @@ class GameEngineTest(unittest.TestCase):
         self.template_ApplyUpdate(64, [1<<8,1<<7,0], 72, [0,0,1], 64,
                 [1<<8,0,1])
 
+    def test_ApplyUpdate_6(self):
+        self.template_ApplyUpdate(2, [0,0,0], 1, [1,1,1], 64, [1,1,1])
+
     def test_IsAcked_1(self):
         self.template_IsAcked(0, int('0'*64,2), 0, 64, False)
 

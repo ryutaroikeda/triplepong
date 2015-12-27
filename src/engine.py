@@ -735,10 +735,10 @@ class GameEngine(object):
         replay_from  -- The frame to rewind to and replay from.
         replay_to    -- The frame to play up to.
         size         -- The size of a history.
-
         '''
         assert rec != None
         assert replay_from >= 0
+        # state.frame is not in rec, so state.frame != replay_from
         assert state.frame > replay_from
         assert state.frame - replay_from <= rec.available
         assert replay_from <= replay_to
