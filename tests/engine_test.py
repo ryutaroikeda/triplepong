@@ -208,10 +208,10 @@ class GameEngineTest(unittest.TestCase):
 
     # UDP stuff BEGIN
 
-    def template_GetCurrentFrame(self, start, frame_rate, end_frame,
+    def template_GetCurrentFrame(self, start, frame_rate,
             now, expected_frame):
         e = GameEngine()
-        self.assertTrue(e.GetCurrentFrame(start, frame_rate, end_frame,
+        self.assertTrue(e.GetCurrentFrame(start, frame_rate, 
             now) == expected_frame)
 
     def template_RotateBits(self, bits, shift, size, expected_bits):
@@ -1304,16 +1304,13 @@ class GameEngineTest(unittest.TestCase):
         self.assertTrue(s.should_render_score == True)
 
     def test_GetCurrentFrame_1(self):
-        self.template_GetCurrentFrame(0,0,1,0,0)
+        self.template_GetCurrentFrame(0,0,0,0)
 
     def test_GetCurrentFrame_2(self):
-        self.template_GetCurrentFrame(0,30,60,1,30)
+        self.template_GetCurrentFrame(0,30,1,30)
 
     def test_GetCurrentFrame_3(self):
-        self.template_GetCurrentFrame(1,30,60,2,30)
-
-    def test_GetCurrentFrame_4(self):
-        self.template_GetCurrentFrame(1,30,10,2,10)
+        self.template_GetCurrentFrame(1,30,2,30)
 
     def test_RotateBits_1(self):
         self.template_RotateBits(int('0000',2), 0, 4, int('0000',2))

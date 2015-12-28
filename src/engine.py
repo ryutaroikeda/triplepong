@@ -639,16 +639,14 @@ class GameEngine(object):
         return target
 
     # UDP stuff BEGIN
-    def GetCurrentFrame(self, start_time, frame_rate, end_frame, now):
+    def GetCurrentFrame(self, start_time, frame_rate, now):
         '''Get the frame the server is on.
         Arguments:
         start_time -- Time at the start of game.
         frame_rate -- Frames per second.
-        end_frame  -- Frame to stop on.
         now        -- Current time.
         '''
-        target = int((now - start_time) * frame_rate)
-        return min(target, end_frame)
+        return int((now - start_time) * frame_rate)
 
     def RotateBits(self, bits, shift, size):
         '''

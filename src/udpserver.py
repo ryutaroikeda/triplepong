@@ -108,13 +108,45 @@ class UDPServer:
     def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate):
         '''
         Play max_frame frames.
+        TO DO: Discard events too far in the future.
         Arguments:
         e           -- The GameEngine.
         s           -- The GameState.
         r           -- The Renderer.
         rec         -- The GameRecord.
+        start_time  -- The time of start.
+        end_frame   -- The frame to play up to.
+        frame_rate  -- Frames per second.
+        send_rate   -- Updates per second.
+        size        -- Size of the history.
         '''
-        pass
+        end_time = (end_frame / frame_rate) + start_time
+        next_send = 0.0
+        while True:
+            now = time.time()
+            if end_time <= now:
+                break
+            for c in list(e.clients):
+                try:
+                    evt = c.ReadEvent()
+                except Exception as ex:
+                    logger.exception(ex)
+                    e.clients.remove(c)
+                if evt == None:
+                    continue
+                if evt.event_type != EventType.KEYBOARD:
+                    continue
+                e.ApplyUpdate(s, s.histories, rec, rewind_from, 
+                        evt.frame, evt.keybits, size)
+            # Send state to clients.
+            if next_send < now:
+                next_send = now + (1/send_rate)
+                for c in list(e.clients):
+                    try:
+                        c.WriteEvent(s)
+                    except Exception as ex:
+                        logger.exception(ex)
+                        e.clients.remove(c)
 
     def Run(self, sock, upnp, conf, tries, timeout):
         '''

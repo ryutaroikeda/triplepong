@@ -292,12 +292,8 @@ class UDPClient:
                 break
             buffer_idx = s.frame % buffer_size
             events = 0
-            # Get keyboard input and send to server.
-            if self.keyboard != None:
-                keys = self.keyboard.GetKeys()
-                if keys[key_binding]:
-                    key_buffer[player_id] |= (1 << buffer_idx)
-                    events |= key_event
+            # Get keyboard input, buffer, and send to server.
+            self.HandleKeyboardEvents()
             # Get server updates.
             self.HandleServerEvents(e, s, rec, histories, size)
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
