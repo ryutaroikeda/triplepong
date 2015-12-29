@@ -74,6 +74,7 @@ class UDPSocket:
         Return value:
         True if this method succeeded.
         '''
+        assert len(payload) <= UDPDatagram.MAX_PAYLOAD
         datagram = UDPDatagram()
         datagram.seq = self.seq
         datagram.ack = self.ack

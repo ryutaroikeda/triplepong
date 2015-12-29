@@ -6,36 +6,32 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from bitrecord import BitRecord
 from engine import GameEngine
 from eventtype import EventType
 from gamestate import GameState
 import tplogger
 from gameconfig import GameConfig
+from nullkeyboard import NullKeyboard
+from nullrenderer import NullRenderer
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpclient.log', logging.DEBUG)
 class UDPClient:
     def __init__(self):
-        self.keyboard = None
-        self.renderer = None
+        self.keyboard = NullKeyboard()
+        self.renderer = NullRenderer()
         self.conf = None
         self.unacked_1 = -1
         self.unacked_2 = -1
-
-    def _Handshake(self, n, tries):
-        for i in range(0, tries):
-            clients = []
-            while len(clients) < n:
-
-                pass
-
-        pass
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
         starting the game. This method sets self.conf to the game configuration 
         provided by the server.
+        self.conf.start_time is sent separately and set when the start of game
+        is confirmed.
         Argument:
         svr     -- A UDPEventSocket connected to the server.
         resend  -- Number of duplicate messages to send.
@@ -138,7 +134,7 @@ class UDPClient:
             e.renderer = renderer
             e.keyboard = keyboard
             # To do: Apply user_conf without overriding server config.
-            e.Play(e.state)
+            e.PlayAs(e.state, self, self.conf.start_time)
             logger.info('Game ended.')
             sock.Close()
             return True
@@ -146,8 +142,6 @@ class UDPClient:
         sock.Close()
         return False
 
-    def HandleKeyboardEvents(self):
-        pass
 
     def HandleServerEvents(self, e, s, rec, histories, size):
         '''
@@ -210,6 +204,7 @@ class UDPClient:
                 return True
         return False
 
+    #####DEPRECATE
     def ApplyStateUpdate(self, e, s, rec, histories, update, size):
         '''
         Updates the local state s, the record rec, and histories.
@@ -259,48 +254,93 @@ class UDPClient:
                 update.histories, size)
         return 0
 
-    def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate, 
-            buffer_delay, key_cool_down):
+    # rename
+    def ApplyKeyboard(self, bitrec, player_id, frame, delay, size):
+        '''
+        Arguments:
+        bitrec       -- The BitRecord to update.
+        player_id    -- The player to update.
+        frame        -- The frame of the key press.
+        delay        -- Frames of delay to add to frame.
+        size         -- The size of the record.
+        '''
+        assert bitrec != None
+        assert isinstance(player_id, int)
+        assert isinstance(frame, int)
+        assert isinstance(delay, int)
+        assert isinstance(size, int)
+        assert size > 0
+        assert delay <= size/2
+        # Update bitrec.
+        new_frame = frame + delay
+        if new_frame > bitrec.frame:
+            bitrec.frame = new_frame
+        bitrec[player_id] = e.SetBit(bitrec[player_id], new_frame % size)
+
+    def HandleKeyboardEvents(self, e, bitrec, frame, delay, size):
+        '''
+        Arguments:
+        bitrec       -- The BitRecord to update.
+        frame        -- The current frame.
+        delay        -- The number of frames of delay to apply.
+        '''
+        assert e != None
+        assert bitrec != None
+        assert isinstance(frame, int)
+        assert isinstance(delay, int)
+        assert isinstance(size, int)
+        keys = e.keyboard.GetKeys()
+        ESCAPE = 27
+        if keys[ESCAPE]:
+            raise Exception('Exited game.')
+        if not keys[self.key_binding]:
+            return 
+        # To do: cool down time
+        self.ApplyKeyboard(e, bitrec, e.player_id, frame, delay, size)
+
+    def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
         '''
         Arguments:
         e             -- The game engine.
         s             -- The game state.
-        r             -- The renderer.
-        rec           -- The GameRecord.
         start_time    -- The time of game start.
         max_frame     -- The number of frames to play.
         frame_rate    -- The number of frames to play per second.
-        buffer_delay  -- The number of frames of delay to apply.
-        key_cool_down -- The frames of delay between event triggers.
-
-        Variables:
-        key_binding   -- The key for the client. 32 is SPACE.
         '''
-        assert(frame_rate > 0)
-        assert(buffer_delay <= 16)
-        assert(key_cool_down <= 16)
-        assert(buffer_delay + key_cool_down <= 16)
+        assert e != None
+        assert s != None
+        assert isinstance(start_time, float)
+        assert isinstance(max_frame, int)
+        assert isinstance(frame_rate, int)
+        assert frame_rate > 0
+        assert frame_rate <= 32767
         start_frame = s.frame
         end_frame = start_frame + max_frame
+        end_time = (end_frame/frame_rate)+start_time
+        timeout = 0.0
         player_id = e.player_id
-        buffer_size = 64
-        histories = [0, 0, 0]
         key_binding = 32
-        key_event = e.RoleToEvent(e.roles[player_id])
+        key_event = e.RoleToEvent(s.roles[player_id])
         while True:
             if s.frame >= end_frame:
                 break
-            buffer_idx = s.frame % buffer_size
+            if time.time() >= end_time + timeout:
+                break
             events = 0
             # Get keyboard input, buffer, and send to server.
-            self.HandleKeyboardEvents()
+            #self.HandleKeyboardEvents(e, e.bitrec)
             # Get server updates.
-            self.HandleServerEvents(e, s, rec, histories, size)
+            #self.HandleServerEvents(e, s, e.rec, e.bitrec, )
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
-                    end_frame, time.time())
-            while s.frame < target_frame:
-                break
-            break
+                    time.time())
+            play_to = min(target_frame, end_frame)
+            e.bitrec.frame = max(play_to, e.bitrec.frame)
+            # Fix this in HandleServerEvents
+            if s.frame < e.bitrec.frame - e.buffer_size:
+                s.frame = e.bitrec.frame - e.buffer_size
+            if s.frame < play_to:
+                e.PlayFromState(s, e.bitrec, e.rec, play_to, e.buffer_size)
+            self.renderer.Render(s, s, 0, 0)
 
 if __name__ == '__main__':
     import argparse
@@ -311,11 +351,11 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=8090, help='The port.')
     parser.add_argument('-i', '--interpolate', action='store_true',
             default=False, help='Enable interpolation')
-    parser.add_argument('-b', '--buffersize', type=int, default=300,
+    parser.add_argument('-b', '--buffersize', type=int, default=64,
             help='A larger buffer increases responsiveness to the server.')
     parser.add_argument('--tries', type=int, default=60,
             help='The number of attempts to connect to the server.')
-    parse.add_argument('--resend', type=int, default=4,
+    parser.add_argument('--resend', type=int, default=4,
             help='The number of duplicate messages to send during handshake.')
     parser.add_argument('--timeout', type=int, default=1,
             help='The time allowed for each connection and handshake.')

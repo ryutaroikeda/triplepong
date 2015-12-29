@@ -16,6 +16,16 @@ from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 
 class UDPServer:
+    '''
+    Attributes:
+    send_rate      -- Number of updates to send per second.
+    buffer_time    -- The time between invitations and game start.
+    '''
+    def __init__(self):
+        self.game_start_time = 0.0
+        self.send_rate = 10
+        self.buffer_time = 5
+
     def AcceptN(self, svr, socks, n, timeout):
         '''Accept until socks has n UDPEventSocket clients.
         '''
@@ -85,12 +95,11 @@ class UDPServer:
         logger.info('Sending start message.')
         msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
-        buffer_time = 5
-        game_start_time = time.time() + buffer_time
+        self.game_start_time = time.time() + self.buffer_time
         did_lose_client = False
         for c in conns:
             try:
-                msg.timestamp = game_start_time + c.delta
+                msg.timestamp = self.game_start_time + c.delta
                 for i in range(0, resend):
                     c.WriteEvent(msg)
             except Exception as e:
@@ -105,47 +114,55 @@ class UDPServer:
             return 1
         return 0
 
-    def PlayFrames(self, e, s, r, rec, start_time, max_frame, frame_rate):
+    def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
         '''
         Play max_frame frames.
         TO DO: Discard events too far in the future.
         Arguments:
         e           -- The GameEngine.
         s           -- The GameState.
-        r           -- The Renderer.
-        rec         -- The GameRecord.
         start_time  -- The time of start.
         end_frame   -- The frame to play up to.
         frame_rate  -- Frames per second.
-        send_rate   -- Updates per second.
         size        -- Size of the history.
         '''
-        end_time = (end_frame / frame_rate) + start_time
+        assert isinstance(start_time, float)
+        assert isinstance(max_frame, int)
+        assert isinstance(frame_rate, int)
+        assert frame_rate > 0.0
+        start_frame = s.frame
+        end_frame = start_frame + max_frame
+        end_time = (end_frame/ frame_rate) + start_time
         next_send = 0.0
+        timeout = 0.0
         while True:
             now = time.time()
-            if end_time <= now:
+            if s.frame >= end_frame:
+                break
+            if now >= end_time + timeout:
                 break
             for c in list(e.clients):
                 try:
                     evt = c.ReadEvent()
                 except Exception as ex:
                     logger.exception(ex)
+                    c.Close()
                     e.clients.remove(c)
                 if evt == None:
                     continue
                 if evt.event_type != EventType.KEYBOARD:
                     continue
-                e.ApplyUpdate(s, s.histories, rec, rewind_from, 
+                e.ApplyUpdate(s, s.histories, e.rec, rewind_from, 
                         evt.frame, evt.keybits, size)
             # Send state to clients.
             if next_send < now:
-                next_send = now + (1/send_rate)
+                next_send = now + (1/self.send_rate)
                 for c in list(e.clients):
                     try:
                         c.WriteEvent(s)
                     except Exception as ex:
                         logger.exception(ex)
+                        c.Close()
                         e.clients.remove(c)
 
     def Run(self, sock, upnp, conf, tries, timeout):
@@ -177,14 +194,13 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
-
             logger.info('Starting game.')
             e = GameEngine()
             e.is_server = True
             e.is_client = False
             e.clients = clients
             conf.Apply(e)
-            e.Play(e.state)
+            e.PlayAs(e.state, self, self.game_start_time)
             logger.info('Game ended. Exiting.')
             sock.Close()
             for c in clients:

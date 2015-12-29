@@ -105,13 +105,14 @@ class UDPServerTest(unittest.TestCase):
         r = NullRenderer()
         conf = GameConfig()
         conf.player_size = n
-        conf.game_length = 0
-        # Prevent engine from running for 30 seconds after the end of game.
-        conf.frames_per_sec = 0
+        conf.frames_per_sec = 32767
+        conf.game_length = 0.05
+        conf.post_game_time = 0
         conf.do_sync = svr_do_sync
         conf.sync_timeout = 0.05
         conf.sync_rate = 100
-        # Try to avoid the case with a client dying at the end of handshake.
+        conf.buffer_size = 64
+        # Try to avoid clients dying at the end of handshake.
         test_tries = 20
         status = 0
         for i in range(0, test_tries):
@@ -142,6 +143,7 @@ class UDPServerTest(unittest.TestCase):
                 ps.append(p)
                 qs.append(q)
             svr = UDPServer()
+            svr.buffer_time = 0.0
             status = svr.Run(s, False, conf, server_tries, server_timeout)
             results = []
             for i in range(0, n):

@@ -5,17 +5,17 @@ sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 
 class GameConfig:
+    '''
+    post_game_time -- The number of seconds to run after end of game.
+    '''
 
-    FORMAT=   '!iiiiiiiiiiiiiiiiii'
-    SUBFORMAT='!iiiiiiiiiiiiiiiii'
+    FORMAT=   '!ihdhhhhhhhhhhhhhhhh'
+    SUBFORMAT='!hdhhhhhhhhhhhhhhhh'
 
     def __init__(self):
-        self.do_interpolate = False
-        self.player_id = 0
+        self.event_type = EventType.CONFIGURE
         self.player_size =3
         self.game_length = 120
-        self.rounds = 2
-        self.buffer_delay = 2
         self.frames_per_sec = 40
         self.screen_width = 640
         self.screen_height = 480
@@ -27,12 +27,16 @@ class GameConfig:
         self.paddle_height = 60
         self.ball_vel = 4
         self.ball_size = 16
-        self.event_type = EventType.CONFIGURE
+        self.rounds = 2
+        self.buffer_delay = 2
+        self.do_interpolate = False
+        self.player_id = 0
+        self.post_game_time = 30
         # These are not serialized.
         self.do_sync = False
         self.sync_timeout = 0.0
         self.sync_rate = 0.0
-        self.buffer_size = 300
+        self.buffer_size = 64
         self.start_time = 0.0
 
     def __repr__(self):
@@ -56,7 +60,8 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay, self.do_interpolate, self.player_id)
+                self.buffer_delay, self.do_interpolate, self.player_id,
+                self.post_game_time)
 
     def Deserialize(self, b):
         (self.player_size, self.game_length, self.frames_per_sec,
@@ -64,7 +69,8 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay, self.do_interpolate, self.player_id) = \
+                self.buffer_delay, self.do_interpolate, self.player_id,
+                self.post_game_time) = \
                         struct.unpack(self.SUBFORMAT, b)
         pass
 
@@ -86,7 +92,7 @@ class GameConfig:
         s.frames_per_sec = self.frames_per_sec
         s.rounds = self.rounds
         if s.rounds > 0:
-            s.rotation_length = ((s.game_length / s.rounds) * \
+            s.rotation_length = int((s.game_length / s.rounds) * \
                     s.frames_per_sec) 
             if s.player_size > 0:
                 s.rotation_length //= s.player_size
@@ -161,4 +167,6 @@ class GameConfig:
         e.key_bindings = [-1, -1, -1]
         e.key_bindings[e.player_id] = 32
         e.start_time = self.start_time
+        e.post_game_time = self.post_game_time
+        e.rec.SetSize(self.buffer_size)
         self.ApplyState(e.state)

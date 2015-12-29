@@ -175,7 +175,6 @@ class Renderer:
             self.RenderAll(self.state)
             if time.time() >= end_time:
                 break
-        pass
     
     def Render(self, prev, state, start_time, end_time):
         '''Render.

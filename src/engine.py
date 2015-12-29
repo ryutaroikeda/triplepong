@@ -8,6 +8,7 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from bitrecord import BitRecord
 from eventtype import EventType
 from eventsocket import EventSocket
 from endgameevent import EndGameEvent
@@ -130,6 +131,8 @@ class GameEngine(object):
         self.state = GameState()
         self.renderer = NullRenderer()
         self.keyboard = NullKeyboard()
+        self.rec = GameRecord()
+        self.bitrec = BitRecord()
         self.last_key_frames = [0, 0, 0]
         self.key_cool_down_time = 10
         self.player_id = 0
@@ -142,11 +145,12 @@ class GameEngine(object):
         self.buffer_delay = 0
         self.key_buffer = [0]*self.buffer_delay # to do: deprecate
         self.do_interpolate = False
-        self.buffer_size = 300
+        self.buffer_size = 64
         self.should_apply_gravity = True
         self.should_apply_collision = True
         self.paddle_flap_vel = -12
         self.ball_flap_vel = -8
+        self.post_game_time = 30
 
     def RoleToEvent(self, role):
         '''Convert role into its corresponding game event.
@@ -646,6 +650,8 @@ class GameEngine(object):
         frame_rate -- Frames per second.
         now        -- Current time.
         '''
+        assert 0 <= frame_rate
+        assert frame_rate <= 32767
         return int((now - start_time) * frame_rate)
 
     def RotateBits(self, bits, shift, size):
@@ -668,7 +674,7 @@ class GameEngine(object):
         [f - size, f) excluding f. If g is a frame in this range, the
         (g % size)th bit of the history represents the input at frame g.
 
-        update_frame must be less than frame.
+        update_frame must be less than or equal to frame.
 
         Arguments:
         frame        -- The frame associated with keybits.
@@ -693,7 +699,6 @@ class GameEngine(object):
         result = rot_keybits | (rot_update >> (frame - update_frame))
         return self.RotateBits(result, size - (frame % size), size)
 
-
     def BitsToEvent(self, state, bits):
         '''
         Arguments:
@@ -708,6 +713,14 @@ class GameEngine(object):
         for i in range(0, len(bits)):
             evt |= self.RoleToEvent(state.roles[i]) * bits[i]
         return evt
+
+    def SetBit(self, bits, n):
+        '''
+        Return value:
+        The result of setting the nth bit of bits to 1.
+        '''
+        assert n >= 0
+        return bits | (1 << n)
 
     def GetBit(self, bits, n):
         '''
@@ -789,6 +802,7 @@ class GameEngine(object):
         self.RewindAndReplayBits(s, histories, rec, rewind_from, new_frame, 
                 size)
 
+
     def IsAcked(self, frame, history, history_frame, size):
         '''
         Arguments:
@@ -815,6 +829,48 @@ class GameEngine(object):
             return False
         return self.GetBit(history, frame % size) == 1
 
+    ####################################
+
+    def PlayFromState(self, state, bitrec, rec, play_to, size):
+        '''
+        Play the game starting at state and using bitrec for events, up to 
+        frame play_to. Frames from state.frame inclusive to play_to exclusive
+        are put in rec.
+
+        Arguments:
+        state          -- The GameState to play from.
+        bitrec         -- The BitRecord of events.
+        rec            -- The GameRecord of game states.
+        play_to        -- Play up to this frame.
+        size           -- The size of bitrec and rec.
+        '''
+        assert state != None
+        assert bitrec != None
+        assert rec != None
+        assert isinstance(play_to, int)
+        assert isinstance(size, int)
+        assert state.frame <= play_to
+        assert play_to <= bitrec.frame
+        assert state.frame >= bitrec.frame - size
+        assert rec.size == size
+        for i in range(state.frame, play_to):
+            n = i % size
+            state.Copy(rec.states[n])
+            evt = self.BitsToEvent(state, [self.GetBit(bitrec.bits[0], n),
+                self.GetBit(bitrec.bits[1], n),
+                self.GetBit(bitrec.bits[2], n)])
+            self.PlayFrame(state, evt)
+
+    def UpdateBitRecord(self, b1, b2, size):
+        assert b1 != None
+        assert b2 != None
+        for i in range(0,3):
+            if b1.frame > b2.frame:
+                self.UpdateHistory(b1.frame, b1.bits[i], b2.frame,
+                        b2.bits[i], size)
+            else:
+                self.UpdateHistory(b2.frame, b2.bits[i],
+                        b1.frame, b1.bits[i], size)
 
     # UDP stuff END
 
@@ -829,6 +885,8 @@ class GameEngine(object):
         max_frame -- The number of frames to run the game for.
         frame_rate -- The number of frames to play per second.
         '''
+        assert 0 <= frame_rate
+        assert frame_rate <= 32767
         start_time = time.time()
         start_frame = s.frame
         end_frame = start_frame + max_frame
@@ -861,6 +919,11 @@ class GameEngine(object):
             self.renderer.Render(rec.states[(rec.idx - 2)%rec.size],
                     s, now, end_time)
 
+    def PlayFrames(self, e, s, start_game, max_frame, frame_rate):
+        '''To be used with PlayAs.
+        '''
+        e.RunGame(s, e.rec, max_frame, frame_rate)
+
     def RotateRoles(self, s):
         '''Rotate the roles of the players.
         Argument:
@@ -891,10 +954,10 @@ class GameEngine(object):
 
     def Play(self, s):
         '''
+        To do: Use PlayAs.
         Argument:
         s -- The game state.
         '''
-        #player_size = s.player_size
         rotation_length = s.rotation_length
         frame_rate = s.frames_per_sec 
         rounds = s.rounds
@@ -910,7 +973,32 @@ class GameEngine(object):
             self.SendEndGameEvent(self.clients, s)
         self.EndGame(s)
         # Keep the game running for a bit, to show the final score.   
-        self.RunGame(s, rec, frame_rate * 30, frame_rate)
+        self.RunGame(s, rec, frame_rate * self.post_game_time, frame_rate)
+
+    
+    def PlayAs(self, s, player, start_time):
+        '''
+        Play the game using player.
+        Arguments:
+        s          -- The GameState.
+        player     -- An object that implements PlayFrames.
+        '''
+        rotation_length = s.rotation_length
+        frame_rate = s.frames_per_sec 
+        rounds = s.rounds
+        for i in range(0, rounds):
+            logger.debug('starting round')
+            for i in range(0, 3):
+                logger.debug('starting rotation')
+                player.PlayFrames(self, s, float(start_time), rotation_length,
+                        frame_rate) 
+                self.RotateRoles(s)
+        if self.is_server:
+            self.SendEndGameEvent(self.clients, s)
+        self.EndGame(s)
+        # Keep the game running for a bit, to show the final score.   
+        player.PlayFrames(self, s, start_time, 
+                frame_rate * self.post_game_time, frame_rate)
 
 if __name__ == '__main__':
     import argparse

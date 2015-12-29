@@ -172,7 +172,7 @@ class GameEngineTest(unittest.TestCase):
         s = GameState()
         rec = GameRecord()
         rec.SetSize(1)
-        frame_rate = 10000000
+        frame_rate = 32767
         e.RunGame(s, rec, max_frame, frame_rate)
         self.assertTrue(s.frame == max_frame)
 
@@ -183,7 +183,7 @@ class GameEngineTest(unittest.TestCase):
         max_buffer -- The size of the buffer.
         keyboard -- The keyboard inputs for the client.
         '''
-        frame_rate = 100000000
+        frame_rate = 32767
         clt_e = GameEngine()
         clt_s = GameState()
         clt_rec = GameRecord()
@@ -202,7 +202,7 @@ class GameEngineTest(unittest.TestCase):
         s = GameState()
         rec = GameRecord()
         rec.SetSize(1)
-        frame_rate = 10000000
+        frame_rate = 32767
         e.PlayRound(s, rec, rots, rot_len, frame_rate)
         self.assertTrue(s.frame == rot_len * rots)
 
