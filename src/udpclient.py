@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath('src'))
 from bitrecord import BitRecord
 from engine import GameEngine
 from eventtype import EventType
+from gameevent import GameEvent
 from gamestate import GameState
 import tplogger
 from gameconfig import GameConfig
@@ -19,12 +20,19 @@ from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpclient.log', logging.DEBUG)
 class UDPClient:
+    '''
+    Attributes:
+    unacked_1           -- The first unacked frame.
+    unacked_2           -- The second unacked frame.
+    key_is_released     -- True if the key is not held down.
+    '''
     def __init__(self):
         self.keyboard = NullKeyboard()
         self.renderer = NullRenderer()
         self.conf = None
         self.unacked_1 = -1
         self.unacked_2 = -1
+        self.key_is_released = True
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
@@ -128,6 +136,8 @@ class UDPClient:
                 continue
             logger.info('Starting game.')
             self.conf.Apply(e)
+            logger.debug('delay={0}, cool_down={1}'.format(e.buffer_delay,
+                e.key_cool_down_time))
             e.server = svr
             e.is_client = True
             e.is_server = False
@@ -141,7 +151,6 @@ class UDPClient:
         logger.info('Failed to start game.')
         sock.Close()
         return False
-
 
     def HandleServerEvents(self, e, s, rec, histories, size):
         '''
@@ -254,49 +263,59 @@ class UDPClient:
                 update.histories, size)
         return 0
 
-    # rename
-    def ApplyKeyboard(self, bitrec, player_id, frame, delay, size):
-        '''
-        Arguments:
-        bitrec       -- The BitRecord to update.
-        player_id    -- The player to update.
-        frame        -- The frame of the key press.
-        delay        -- Frames of delay to add to frame.
-        size         -- The size of the record.
-        '''
-        assert bitrec != None
-        assert isinstance(player_id, int)
-        assert isinstance(frame, int)
-        assert isinstance(delay, int)
-        assert isinstance(size, int)
-        assert size > 0
-        assert delay <= size/2
-        # Update bitrec.
-        new_frame = frame + delay
-        if new_frame > bitrec.frame:
-            bitrec.frame = new_frame
-        bitrec[player_id] = e.SetBit(bitrec[player_id], new_frame % size)
-
-    def HandleKeyboardEvents(self, e, bitrec, frame, delay, size):
+    def HandleKeyboardEvents(self, e, bitrec, frame, delay, cool_down, size):
         '''
         Arguments:
         bitrec       -- The BitRecord to update.
         frame        -- The current frame.
         delay        -- The number of frames of delay to apply.
+        cool_down    -- The minimum frames between key events.
         '''
         assert e != None
         assert bitrec != None
         assert isinstance(frame, int)
         assert isinstance(delay, int)
         assert isinstance(size, int)
-        keys = e.keyboard.GetKeys()
+        assert 0 < size
+        assert 0 <= delay
+        assert 0 <= cool_down
+        # Don't stretch the record too far.
+        assert delay + cool_down <= size / 2
         ESCAPE = 27
+        SPACE = 32
+        keys = e.keyboard.GetKeys()
         if keys[ESCAPE]:
             raise Exception('Exited game.')
-        if not keys[self.key_binding]:
-            return 
-        # To do: cool down time
-        self.ApplyKeyboard(e, bitrec, e.player_id, frame, delay, size)
+        b = 0
+        if keys[SPACE] and self.key_is_released:
+            b = 1
+            self.key_is_released = False
+        if not keys[SPACE]:
+            self.key_is_released = True
+        evt_frame = frame + delay
+        if frame >= e.buffered_frame_1:
+            # Free the second buffer.
+            e.buffered_frame_1 = e.buffered_frame_2
+            e.buffered_frame_2 = 0
+        if frame < e.buffered_frame_1 and \
+                e.buffered_frame_1 < e.buffered_frame_2:
+            # Both bufferes are full. Nothing to do.
+            return
+        if b == 1 and e.buffered_frame_1 < frame:
+            # Fill the first buffer.
+            e.buffered_frame_1 = evt_frame
+        cool_down_frame = e.buffered_frame_1 + cool_down
+        if b == 1 and frame < e.buffered_frame_1 and \
+                frame < cool_down_frame:
+            # Fill the second buffer.
+            e.buffered_frame_2 = cool_down_frame
+            evt_frame = cool_down_frame
+        if evt_frame == e.buffered_frame_1:
+            # Keep the bit set.
+            b = 1
+        # Update the bit in the record.
+        bitrec.bits[e.player_id] = e.SetBit(bitrec.bits[e.player_id],
+                evt_frame % size, b, size)
 
     def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
         '''
@@ -318,29 +337,46 @@ class UDPClient:
         end_frame = start_frame + max_frame
         end_time = (end_frame/frame_rate)+start_time
         timeout = 0.0
-        player_id = e.player_id
-        key_binding = 32
-        key_event = e.RoleToEvent(s.roles[player_id])
+        key_event = e.RoleToEvent(s.roles[e.player_id])
+        send_rate = 10
+        next_send = 0.0
+        msg = GameEvent()
         while True:
             if s.frame >= end_frame:
                 break
-            if time.time() >= end_time + timeout:
+            now = time.time()
+            if now  >= end_time + timeout:
                 break
-            events = 0
-            # Get keyboard input, buffer, and send to server.
-            #self.HandleKeyboardEvents(e, e.bitrec)
-            # Get server updates.
-            #self.HandleServerEvents(e, s, e.rec, e.bitrec, )
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
                     time.time())
+            #events = 0
+            # Get keyboard input, buffer, and send to server.
+            self.HandleKeyboardEvents(e, e.bitrec, s.frame, e.buffer_delay,
+                    e.key_cool_down_time, e.buffer_size)
+            if now >= next_send:
+                msg.keybits = e.bitrec.bits[e.player_id]
+                msg.frame = e.bitrec.frame
+                next_send = now + (1/send_rate)
+                try:
+                    e.server.WriteEvent(msg)
+                except Exception as ex:
+                    logger.exception(ex)
+                    if e.server != None:
+                        e.server.Close()
+                        e.server = None
+                # to do: send
+            # Get server updates.
+            #self.HandleServerEvents(e, s, e.rec, e.bitrec, )
             play_to = min(target_frame, end_frame)
-            e.bitrec.frame = max(play_to, e.bitrec.frame)
+            e.bitrec.frame = target_frame
             # Fix this in HandleServerEvents
             if s.frame < e.bitrec.frame - e.buffer_size:
+                # bail out until server update.
+                # to do: reset unacked?
                 s.frame = e.bitrec.frame - e.buffer_size
             if s.frame < play_to:
                 e.PlayFromState(s, e.bitrec, e.rec, play_to, e.buffer_size)
-            self.renderer.Render(s, s, 0, 0)
+            e.renderer.Render(s, s, 0, 0)
 
 if __name__ == '__main__':
     import argparse

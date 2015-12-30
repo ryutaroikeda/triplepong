@@ -234,6 +234,10 @@ class GameEngineTest(unittest.TestCase):
     def template_GetBit(self, bits, n, expected_bit):
         e = GameEngine()
         self.assertTrue(e.GetBit(bits, n) == expected_bit)
+
+    def template_SetBit(self, bits, n, b, size, expected_bits):
+        e = GameEngine()
+        self.assertTrue(e.SetBit(bits, n, b, size) == expected_bits)
     
     def template_RewindAndReplayBits(self,
             plvy0, prvy0, bvx0, bvy0, plpy0, prpy0, bpx0, bpy0,
@@ -1381,6 +1385,18 @@ class GameEngineTest(unittest.TestCase):
 
     def test_GetBit_2(self):
         self.template_GetBit(int('1000',2), 3, 1)
+
+    def test_SetBit_1(self):
+        self.template_SetBit(int('0000',2), 0, 0, 4, int('0000',2))
+
+    def test_SetBit_2(self):
+        self.template_SetBit(int('0000', 2), 0, 1, 4, int ('0001',2))
+
+    def test_SetBit_3(self):
+        self.template_SetBit(int('0000', 2), 1, 1, 4, int ('0010',2))
+
+    def test_SetBit_4(self):
+        self.template_SetBit(int('1111',2), 1, 0, 4, int('1101',2))
 
     def test_RewindAndReplayBits_1(self):
         self.template_RewindAndReplayBits(0, 0, 0, 0, 0, 0, 100, 100, 

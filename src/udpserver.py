@@ -152,8 +152,8 @@ class UDPServer:
                     continue
                 if evt.event_type != EventType.KEYBOARD:
                     continue
-                e.ApplyUpdate(s, s.histories, e.rec, rewind_from, 
-                        evt.frame, evt.keybits, size)
+                #e.ApplyUpdate(s, s.histories, e.rec, rewind_from, 
+                #        evt.frame, evt.keybits, size)
             # Send state to clients.
             if next_send < now:
                 next_send = now + (1/self.send_rate)
@@ -226,7 +226,7 @@ if __name__ == '__main__':
             help='The number of rounds.')
     parser.add_argument('--fps', type=int, default=60,
             help='The frame rate in seconds')
-    parser.add_argument('--delay', type=int, default=0,
+    parser.add_argument('--delay', type=int, default=1,
             help='The frame of lag between key input and output.')
     parser.add_argument('--tries', type=int, default=100,
             help='The number of attempts to run the game.')
@@ -234,6 +234,10 @@ if __name__ == '__main__':
             help='The time allowed for connection and handshake.')
     parser.add_argument('--sync', default=False,
             help='Measure latency and clock of clients.')
+    parser.add_argument('--buffertime', type=int, default=2,
+            help='The time between invitation and game start.')
+    parser.add_argument('--cooldown', type=int, default=6,
+            help='Minimum frames between events.')
     args = parser.parse_args()
     s = UDPServer()
     conf = GameConfig()
@@ -244,6 +248,8 @@ if __name__ == '__main__':
     conf.frames_per_sec = args.fps
     conf.buffer_delay = args.delay
     conf.do_sync = args.sync
+    conf.cool_down = args.cooldown
+    s.buffer_time = args.buffertime
     sock = UDPSocket()
     sock.Open()
     # The empty string represents INADDR_ANY.

@@ -9,8 +9,8 @@ class GameConfig:
     post_game_time -- The number of seconds to run after end of game.
     '''
 
-    FORMAT=   '!ihdhhhhhhhhhhhhhhhh'
-    SUBFORMAT='!hdhhhhhhhhhhhhhhhh'
+    FORMAT=   '!ihdhhhhhhhhhhhhhhhhh'
+    SUBFORMAT='!hdhhhhhhhhhhhhhhhhh'
 
     def __init__(self):
         self.event_type = EventType.CONFIGURE
@@ -29,6 +29,7 @@ class GameConfig:
         self.ball_size = 16
         self.rounds = 2
         self.buffer_delay = 2
+        self.cool_down = 8
         self.do_interpolate = False
         self.player_id = 0
         self.post_game_time = 30
@@ -60,8 +61,8 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay, self.do_interpolate, self.player_id,
-                self.post_game_time)
+                self.buffer_delay, self.cool_down,  self.do_interpolate,
+                self.player_id, self.post_game_time)
 
     def Deserialize(self, b):
         (self.player_size, self.game_length, self.frames_per_sec,
@@ -69,10 +70,9 @@ class GameConfig:
                 self.ball_wall_offset_x, self.ball_wall_offset_y,
                 self.paddle_offset, self.paddle_width, self.paddle_height,
                 self.ball_vel, self.ball_size, self.rounds, 
-                self.buffer_delay, self.do_interpolate, self.player_id,
-                self.post_game_time) = \
+                self.buffer_delay, self.cool_down, self.do_interpolate,
+                self.player_id, self.post_game_time) = \
                         struct.unpack(self.SUBFORMAT, b)
-        pass
 
     def ApplyState(self, s):
         '''Apply the configuration to a game state.
@@ -162,6 +162,7 @@ class GameConfig:
         e -- The game engine to configure.
         '''
         e.buffer_delay = self.buffer_delay
+        e.key_cool_down_time = self.cool_down
         e.key_buffer = [0]*e.buffer_delay
         e.player_id = self.player_id
         e.key_bindings = [-1, -1, -1]

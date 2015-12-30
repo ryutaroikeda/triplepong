@@ -117,6 +117,7 @@ class GameEngine(object):
     key_bindings       -- The key to use for each player. A negative value
                           means the player has no key binding.
     buffer_delay-- The number of frames of delay to apply to key events.
+    buffered_frame     -- The frame of event buffered during delay or cool-down.
     key_buffer         -- A list of future key events. The events for the 
                           current frame is (frame % buffer_delay)
     do_interpolate     -- Set to True if the renderer should interpolate.
@@ -143,7 +144,9 @@ class GameEngine(object):
         self.server = None
         self.key_bindings = [32, -1, -1]
         self.buffer_delay = 0
-        self.key_buffer = [0]*self.buffer_delay # to do: deprecate
+        self.buffered_frame_1 = -1
+        self.buffered_frame_2 = -1
+        self.key_buffer = [0]*self.buffer_delay # deprecate
         self.do_interpolate = False
         self.buffer_size = 64
         self.should_apply_gravity = True
@@ -341,14 +344,10 @@ class GameEngine(object):
 
         if s.paddle_left.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_left.vel_y += 1
-            
         if s.paddle_right.vel_y < PADDLE_TERM_VELOCITY:
             s.paddle_right.vel_y += 1
-            
         if s.ball.vel_y < BALL_TERM_VELOCITY:
             s.ball.vel_y += 1
-            
-        
 
     def ApplyEvents(self, s, keys):
         '''Apply the effect of events to the game state.
@@ -377,9 +376,8 @@ class GameEngine(object):
         '''Update positions.
         
         Arguments:
-            s    -- the state of the game.'''
-
-        # update positions 
+            s    -- the state of the game.
+        '''
         s.ball.pos_x += s.ball.vel_x
         s.ball.pos_y += s.ball.vel_y
         s.paddle_left.pos_y += s.paddle_left.vel_y
@@ -429,7 +427,6 @@ class GameEngine(object):
             s.ball.vel_y = 0
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
-                s.scores[ s.players[ GameState.ROLE_RIGHT_PADDLE ] ] += 1
             
         if s.ball.IsCollidingWith(s.goal_right):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
@@ -439,7 +436,6 @@ class GameEngine(object):
             s.ball.vel_y = 0
             if not s.is_ended:
                 s.scores[s.players[GameState.ROLE_BALL]] += 1
-                s.scores[ s.players[ GameState.ROLE_LEFT_PADDLE ] ] += 1
 
     def PlayFrame(self, s, keys):
         '''Move the game forward by one frame.
@@ -450,9 +446,9 @@ class GameEngine(object):
         if self.should_apply_gravity:
             self.ApplyGravity(s)
         self.ApplyEvents(s, keys)
+        self.ApplyLogic(s)
         if self.should_apply_collision:
             self.ApplyCollision(s)
-        self.ApplyLogic(s)
         s.frame += 1
         
 
@@ -714,13 +710,15 @@ class GameEngine(object):
             evt |= self.RoleToEvent(state.roles[i]) * bits[i]
         return evt
 
-    def SetBit(self, bits, n):
+    def SetBit(self, bits, n, b, size):
         '''
         Return value:
-        The result of setting the nth bit of bits to 1.
+        The result of setting the nth bit of bits to b.
         '''
-        assert n >= 0
-        return bits | (1 << n)
+        assert 0 <= n and n < size
+        assert b == 0 or b == 1
+        x = (bits & (1 << n)) >> n
+        return bits ^ ((b ^ x) << n)
 
     def GetBit(self, bits, n):
         '''
@@ -768,6 +766,7 @@ class GameEngine(object):
             rec.AddRecord(s)
         s.Copy(state)
 
+    # DEPRECATE
     def ApplyUpdate(self, s, histories, rec, rewind_from, update_frame, 
             update_bits, size):
         '''
@@ -860,6 +859,7 @@ class GameEngine(object):
                 self.GetBit(bitrec.bits[1], n),
                 self.GetBit(bitrec.bits[2], n)])
             self.PlayFrame(state, evt)
+        assert state.frame == play_to
 
     def UpdateBitRecord(self, b1, b2, size):
         assert b1 != None

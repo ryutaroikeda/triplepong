@@ -63,9 +63,11 @@ class GameConfigTest(unittest.TestCase):
         conf.paddle_height = 50
         conf.ball_size = 100
         conf.player_id = 2
+        conf.cool_down = 5
         e = GameEngine()
         conf.Apply(e)
         self.assertTrue(e.player_id == conf.player_id)
+        self.assertTrue(e.key_cool_down_time == conf.cool_down)
         s = e.state
         self.assertTrue(s.frames_per_sec == conf.frames_per_sec)
         self.assertTrue(s.game_length == conf.game_length)
