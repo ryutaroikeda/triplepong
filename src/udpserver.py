@@ -165,7 +165,7 @@ class UDPServer:
                     e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
                             c.player_id, e.buffer_size)
                     e.UpdateBitRecordFrame(e.bitrec, 
-                            max(initial_frame, evt.frame+1), e.buffer_size)
+                            max(e.bitrec.frame, evt.frame+1), e.buffer_size)
                     # Rewind. Set s to be a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
                     e.rec.states[idx].Copy(s)
