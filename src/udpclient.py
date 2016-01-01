@@ -19,6 +19,15 @@ from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpclient.log', logging.DEBUG)
+'''
+Use 
+assert isinstance(x, (int, long)) 
+in Python 2.x
+and 
+assertisinstance(x, int) 
+in Python 3.x.
+For now, do neither.
+'''
 class UDPClient:
     '''
     Attributes:
@@ -134,8 +143,8 @@ class UDPClient:
                 sock.Close()
                 logger.info('Handshake failed.')
                 continue
-            logger.info('Starting game.')
             self.conf.Apply(e)
+            logger.info('Starting game as player {0}.'.format(e.player_id))
             logger.debug('delay={0}, cool_down={1}'.format(e.buffer_delay,
                 e.key_cool_down_time))
             e.server = svr
@@ -152,22 +161,6 @@ class UDPClient:
         sock.Close()
         return False
 
-    def HandleServerEvents(self, e, s, rec, histories, size):
-        '''
-        Arguments:
-        e      -- The GameEngine.
-        s      -- The GameState.
-        rec    -- The GameRecord.
-        '''
-        while True:
-            evt = self.server.ReadEvent()
-            if evt == None:
-                break
-            if evt.event_type == EventType.STATE_UPDATE:
-                # Update the history and rewind.
-                self.ApplyStateUpdate(e, s, rec, histories, evt, size)
-            elif evt.event_type == EventType.END_GAME:
-                e.HandleEndGameEvent(s, evt)
 
     def ShouldApplyStateUpdate(self, e, frame, update_frame, update_history,
             size):
@@ -187,9 +180,9 @@ class UDPClient:
         False otherwise.
         '''
         assert e != None
-        assert isinstance(frame, int)
-        assert isinstance(update_frame, int)
-        assert isinstance(update_history, int)
+        #assert isinstance(frame, (int, long))
+        #assert isinstance(update_frame, (int, long))
+        #assert isinstance(update_history, (int, long))
         assert isinstance(size, int)
         # Update the ack status.
         if self.unacked_1 >= 0 and e.IsAcked(self.unacked_1,
@@ -200,6 +193,7 @@ class UDPClient:
             # The event was lost, so revert to the server state.
             # This will probably cause a hitch, but it's necessary to 
             # keep the states consistent.
+            logger.debug('Event {0} was lost.'.format(self.unacked_1))
             self.unacked_1 = self.unacked_2
             self.unacked_2 = -1
             return True
@@ -213,6 +207,52 @@ class UDPClient:
                 return True
         return False
 
+    def HandleServerEvents(self, e, s, rec, size):
+        '''
+        Arguments:
+        e      -- The GameEngine.
+        s      -- The GameState.
+        rec    -- The GameRecord.
+        '''
+        if e.server == None:
+            return
+        while True:
+            try:
+                evt = e.server.ReadEvent()
+            except Exception as ex:
+                logger.exception(e)
+                logger.info('Disconnecting from server.')
+                e.server.Close()
+                e.server = None
+                break
+            if evt == None:
+                break
+            if evt.event_type == EventType.STATE_UPDATE:
+                logger.info('Received state update {0}.'.format(evt.frame))
+                logger.debug(('\nplayer 1: {0}\nplayer 2: {1}\n' + 
+                'player 3: {2}').format(bin(evt.bits[0]),
+                    bin(evt.bits[1]), bin(evt.bits[2])))
+                if evt.frame < e.bitrec.frame - e.buffer_size:
+                    logger.info('Update too old to be effective. ' + \
+                            '{0} < {1} - {2}'.format(evt.frame,
+                                e.bitrec.frame, e.buffer_size))
+
+                start_frame = s.frame
+                # Update the bit records.
+                # GameState evt is compatible with type BitRecord.
+                e.UpdateBitRecord(e.bitrec, evt, size)
+                should_apply_state = self.ShouldApplyStateUpdate(e, s.frame,
+                        evt.frame, evt.bits[e.player_id], size)
+                if should_apply_state:
+                    logger.info('Applying state update.')
+                    evt.Copy(s)
+                    rec.available = 0
+                else:
+                    # Set up rec for rewind from oldest available frame.
+                    n = start_frame - rec.available
+                    e.rec.states[n % e.buffer_size].Copy(s)
+            elif evt.event_type == EventType.END_GAME:
+                e.HandleEndGameEvent(s, evt)
     #####DEPRECATE
     def ApplyStateUpdate(self, e, s, rec, histories, update, size):
         '''
@@ -265,6 +305,8 @@ class UDPClient:
 
     def HandleKeyboardEvents(self, e, bitrec, frame, delay, cool_down, size):
         '''
+        This method is responsible for getting keyboard input, applying
+        delay, buffering, and setting bitrec.
         Arguments:
         bitrec       -- The BitRecord to update.
         frame        -- The current frame.
@@ -273,7 +315,7 @@ class UDPClient:
         '''
         assert e != None
         assert bitrec != None
-        assert isinstance(frame, int)
+        #assert isinstance(frame, (int, long))
         assert isinstance(delay, int)
         assert isinstance(size, int)
         assert 0 < size
@@ -296,24 +338,25 @@ class UDPClient:
         if frame >= e.buffered_frame_1:
             # Free the second buffer.
             e.buffered_frame_1 = e.buffered_frame_2
-            e.buffered_frame_2 = 0
+            e.buffered_frame_2 = -1
         if frame < e.buffered_frame_1 and \
                 e.buffered_frame_1 < e.buffered_frame_2:
-            # Both bufferes are full. Nothing to do.
+            # Both buffers are full.
             return
-        if b == 1 and e.buffered_frame_1 < frame:
+        if b == 0:
+            return
+        if e.buffered_frame_1 < frame:
             # Fill the first buffer.
             e.buffered_frame_1 = evt_frame
+            self.unacked_1 = evt_frame
         cool_down_frame = e.buffered_frame_1 + cool_down
-        if b == 1 and frame < e.buffered_frame_1 and \
-                frame < cool_down_frame:
+        if frame < e.buffered_frame_1 and frame < cool_down_frame:
             # Fill the second buffer.
             e.buffered_frame_2 = cool_down_frame
             evt_frame = cool_down_frame
-        if evt_frame == e.buffered_frame_1:
-            # Keep the bit set.
-            b = 1
+            self.unacked_2 = cool_down_frame
         # Update the bit in the record.
+        e.UpdateBitRecordFrame(bitrec, max(evt_frame+1, bitrec.frame), size)
         bitrec.bits[e.player_id] = e.SetBit(bitrec.bits[e.player_id],
                 evt_frame % size, b, size)
 
@@ -329,7 +372,7 @@ class UDPClient:
         assert e != None
         assert s != None
         assert isinstance(start_time, float)
-        assert isinstance(max_frame, int)
+        #assert isinstance(max_frame, (int, long))
         assert isinstance(frame_rate, int)
         assert frame_rate > 0
         assert frame_rate <= 32767
@@ -349,30 +392,32 @@ class UDPClient:
                 break
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
                     time.time())
-            #events = 0
-            # Get keyboard input, buffer, and send to server.
+            logger.debug('Playing from frome {0}, target {1}.'.format(s.frame,
+                target_frame))
             self.HandleKeyboardEvents(e, e.bitrec, s.frame, e.buffer_delay,
                     e.key_cool_down_time, e.buffer_size)
-            if now >= next_send:
+            # Send bitrec to server.
+            if e.server != None and now >= next_send:
                 msg.keybits = e.bitrec.bits[e.player_id]
                 msg.frame = e.bitrec.frame
                 next_send = now + (1/send_rate)
+                logger.debug('Sending key {0}, {1}'.format(msg.frame,
+                    bin(msg.keybits)))
                 try:
                     e.server.WriteEvent(msg)
                 except Exception as ex:
                     logger.exception(ex)
-                    if e.server != None:
-                        e.server.Close()
-                        e.server = None
-                # to do: send
-            # Get server updates.
-            #self.HandleServerEvents(e, s, e.rec, e.bitrec, )
-            play_to = min(target_frame, end_frame)
-            e.bitrec.frame = target_frame
-            # Fix this in HandleServerEvents
+                    logger.info('Disconnecting from server.')
+                    e.server.Close()
+                    e.server = None
+            self.HandleServerEvents(e, s, e.rec, e.buffer_size)
+            e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame, target_frame),
+                    e.buffer_size)
+            play_to = max(min(target_frame, end_frame, e.bitrec.frame), 0)
             if s.frame < e.bitrec.frame - e.buffer_size:
+                logger.debug('Bit records unavailable.')
                 # bail out until server update.
-                # to do: reset unacked?
+                # to do: reset unacked
                 s.frame = e.bitrec.frame - e.buffer_size
             if s.frame < play_to:
                 e.PlayFromState(s, e.bitrec, e.rec, play_to, e.buffer_size)

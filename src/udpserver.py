@@ -55,6 +55,7 @@ class UDPServer:
         for c in list(conns):
             try:
                 conf.player_id = player_id
+                c.player_id = player_id
                 for i in range(0, resend):
                     c.WriteEvent(conf)
             except Exception as e:
@@ -126,9 +127,13 @@ class UDPServer:
         frame_rate  -- Frames per second.
         size        -- Size of the history.
         '''
+        assert e != None
+        assert s != None
+        assert e.bitrec != None
+        assert e.rec != None
         assert isinstance(start_time, float)
-        assert isinstance(max_frame, int)
-        assert isinstance(frame_rate, int)
+        #assert isinstance(max_frame, (int, long))
+        #assert isinstance(frame_rate, (int, long))
         assert frame_rate > 0.0
         start_frame = s.frame
         end_frame = start_frame + max_frame
@@ -141,7 +146,9 @@ class UDPServer:
                 break
             if now >= end_time + timeout:
                 break
+            initial_frame = s.frame
             for c in list(e.clients):
+                evt = None
                 try:
                     evt = c.ReadEvent()
                 except Exception as ex:
@@ -150,15 +157,39 @@ class UDPServer:
                     e.clients.remove(c)
                 if evt == None:
                     continue
-                if evt.event_type != EventType.KEYBOARD:
-                    continue
-                #e.ApplyUpdate(s, s.histories, e.rec, rewind_from, 
-                #        evt.frame, evt.keybits, size)
-            # Send state to clients.
+                if evt.event_type == EventType.KEYBOARD:
+                    logger.debug('Received key event {0}.'.format(
+                        evt.frame))
+                    if evt.frame < initial_frame - e.buffer_size:
+                        logger.debug('Event too old to be effective.')
+                    e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
+                            c.player_id, e.buffer_size)
+                    e.UpdateBitRecordFrame(e.bitrec, 
+                            max(initial_frame, evt.frame+1), e.buffer_size)
+                    # Rewind. Set s to be a recorded state.
+                    idx = e.bitrec.frame % e.buffer_size
+                    e.rec.states[idx].Copy(s)
+            target_frame = e.GetCurrentFrame(start_time, frame_rate,
+                    time.time())
+            play_to = max(target_frame, e.bitrec.frame)
+            e.UpdateBitRecordFrame(e.bitrec,
+                    max(e.bitrec.frame, target_frame), e.buffer_size)
+            if s.frame < play_to:
+                if s.frame < e.bitrec.frame - e.buffer_size:
+                    # to do: This should be prevented from happening.
+                    logger.debug(
+                            'bitrec went too far ahead {0} < {1}-{2}'.format(
+                                s.frame, e.bitrec.frame, e.buffer_size))
+                    s.frame = e.bitrec.frame - e.buffer_size
+                e.PlayFromState(s, e.bitrec, e.rec, play_to, 
+                        e.buffer_size)
+            # Send state and bitrec to clients.
+            s.bits = e.bitrec.bits
             if next_send < now:
-                next_send = now + (1/self.send_rate)
+                next_send = time.time() + (1.0/self.send_rate)
                 for c in list(e.clients):
                     try:
+                        logger.debug('Sending frame {0}.'.format(s.frame))
                         c.WriteEvent(s)
                     except Exception as ex:
                         logger.exception(ex)

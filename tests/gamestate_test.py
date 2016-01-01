@@ -17,6 +17,7 @@ class GameStateTest(unittest.TestCase):
         s.paddle_right.vel_y = 87
         s.key_flags = 3
         s.frame = 112734590
+        s.keybits = 1 << 63
         # Ignore the EventType header.
         b = s.Serialize()[4:]
         t = GameState()

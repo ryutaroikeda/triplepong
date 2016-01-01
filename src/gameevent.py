@@ -24,8 +24,8 @@ class GameEvent:
     EVENT_FLAP_LEFT_PADDLE = 1
     EVENT_FLAP_RIGHT_PADDLE = 2
     EVENT_FLAP_BALL = 4
-    SUBFORMAT = '!iLL'
-    FORMAT = '!iiLL'
+    SUBFORMAT = '!iQQ'
+    FORMAT = '!iiQQ'
     def __init__(self):
         self.event_type = EventType.KEYBOARD
         self.keys = 0

@@ -305,6 +305,23 @@ class GameEngineTest(unittest.TestCase):
         result = e.IsAcked(frame, history, history_frame, size) 
         self.assertTrue(result == expected_result)
 
+    def template_UpdateBitRecordBit(self, bits, frame, update, 
+            update_frame, size, expected_bits):
+        e = GameEngine()
+        e.bitrec.bits = bits
+        e.bitrec.frame = frame
+        e.UpdateBitRecordBit(e.bitrec, update_frame, update, e.player_id,
+                size)
+        for i in range(0,3):
+            self.assertTrue(e.bitrec.bits[i] == expected_bits[i])
+
+    def template_UpdateBitRecordFrame(self, bits, frame, new_frame, size,
+            expected_bits):
+        e = GameEngine()
+        e.bitrec.bits = bits
+        e.bitrec.frame = frame
+        e.UpdateBitRecordFrame(e.bitrec, new_frame, size)
+        self.assertTrue(e.bitrec.bits == expected_bits)
     #UDP stuff END
 
     def test_init(self):
@@ -1461,3 +1478,28 @@ class GameEngineTest(unittest.TestCase):
 
     def test_IsAcked_4(self):
         self.template_IsAcked(100, int('0'*27+'1'+'0'*36,2), 150, 64, True)
+
+    #def template_UpdateBitRecordBit(self, bits, frame, update, 
+    #        update_frame, size, expected_bits):
+    def test_UpdateBitRecordBit_1(self):
+        self.template_UpdateBitRecordBit([0,0,0],0,0,0,64,[0,0,0])
+
+    def test_UpdateBitRecordBit_2(self):
+        self.template_UpdateBitRecordBit([1,1,1],2,8,3,64,[9,1,1])
+
+    def test_UpdateBitRecordBit_3(self):
+        self.template_UpdateBitRecordBit([0,0,0],5,int('0'*63+'1',2),10,
+                64,[int('0'*63+'1',2),0,0])
+
+    def test_UpdateBitRecordFrame_1(self):
+        self.template_UpdateBitRecordFrame([0,0,0], 0, 0, 64, [0,0,0])
+
+    def test_UpdateBitRecordFrame_2(self):
+        self.template_UpdateBitRecordFrame([1,1,1],0,0,64,[1,1,1])
+
+    def test_UpdateBitRecordFrame_3(self):
+        self.template_UpdateBitRecordFrame([1,2,1],64,65,64,[0,2,0])
+
+    def test_UpdateBitRecordFrame_4(self):
+        self.template_UpdateBitRecordFrame([int('1'*64,2),0,0],100,120,64,
+                [int('1'*8+'0'*20+'1'*36,2),0,0])

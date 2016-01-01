@@ -20,6 +20,7 @@ class UDPEventSocket:
     Attributes:
     should_ignore_old -- If True, ReadEvent ignores events with seq < sock.ack.
                          This does not affect buffered events.
+    player_id         -- The player id of the peer, if relevant.
     '''
     def __init__(self, sock):
         '''
@@ -32,6 +33,7 @@ class UDPEventSocket:
         self.latency = 0
         self.delta = 0
         self.should_ignore_old = False
+        self.player_id = 0
 
     def fileno(self):
         return self.sock.fileno()

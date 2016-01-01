@@ -10,6 +10,7 @@ from udpclient import UDPClient
 from udpeventsocket import UDPEventSocket
 from udpserver import UDPServer
 from udpsocket import UDPSocket
+from mockkeyboard import MockKeyboard
 from nullkeyboard import NullKeyboard
 from nullrenderer import NullRenderer
 logger = tplogger.getTPLogger('udpserver_test.log', logging.DEBUG)
@@ -101,7 +102,8 @@ class UDPServerTest(unittest.TestCase):
             self.assertTrue(res[i])
     
     def template_Run(self, n, svr_do_sync, user_do_sync):
-        k = NullKeyboard()
+        k = MockKeyboard()
+        k.inputs = [1]*30+[0]*100
         r = NullRenderer()
         conf = GameConfig()
         conf.player_size = n

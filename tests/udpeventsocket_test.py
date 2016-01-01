@@ -47,6 +47,7 @@ class UDPEventSocketTest(unittest.TestCase):
         evt = GameEvent()
         evt.keys = 1
         evt.frame = 1000
+        evt.keybits = (1 << 64)-1
         self.template_ReadAndWriteEvent(evt)
 
     def test_ReadAndWriteEvent_State_1(self):

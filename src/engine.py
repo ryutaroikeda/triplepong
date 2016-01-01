@@ -87,6 +87,11 @@ The renderer can linearly interpolate between the previous frame and the
 current frame for a smoother result. This allows us to lower the logic update
 rate of the engine (which in turn lowers the server buffer size) without 
 sacrificing smoothness.
+
+Fix me:
+- Make datagrams smaller.
+-- Use frame numbers that wrap around.
+
 '''
 
 class GameEngine(object):
@@ -648,6 +653,7 @@ class GameEngine(object):
         '''
         assert 0 <= frame_rate
         assert frame_rate <= 32767
+        assert start_time <= now
         return int((now - start_time) * frame_rate)
 
     def RotateBits(self, bits, shift, size):
@@ -657,9 +663,15 @@ class GameEngine(object):
         shift -- The bit positions to rotate right by.
         size  -- The length of bits.
         '''
+        #assert isinstance(bits, (int, long))
+        assert isinstance(shift, int)
+        assert isinstance(size, int)
+        assert 0 <= bits
+        assert 0 <= shift
         assert(shift <= size)
         valmax = 1 << size
-        return (bits >> shift) | ((bits << (size-shift)) % valmax)
+        result = (bits >> shift) | ((bits << (size-shift)) % valmax)
+        return result
 
     def UpdateHistory(self, frame, keybits, update_frame, update, size):
         '''
@@ -683,16 +695,17 @@ class GameEngine(object):
         Return value:
         An updated size-bit history of keys at frame.
         '''
-        assert isinstance(frame, int)
-        assert isinstance(keybits, int)
-        assert isinstance(update_frame, int)
-        assert isinstance(update, int)
+        #assert isinstance(frame, (int, long))
+        #assert isinstance(keybits, (int, long))
+        #assert isinstance(update_frame, (int, long))
+        #assert isinstance(update, (int, long))
         assert isinstance(size, int)
         assert update_frame <= frame
         # Rotate the oldest frame to the 0th bit.
         rot_keybits = self.RotateBits(keybits, frame % size, size)
         rot_update = self.RotateBits(update, update_frame % size, size)
         result = rot_keybits | (rot_update >> (frame - update_frame))
+        #assert isinstance(result, (int, long))
         return self.RotateBits(result, size - (frame % size), size)
 
     def BitsToEvent(self, state, bits):
@@ -728,6 +741,7 @@ class GameEngine(object):
         assert(n >= 0)
         return ((bits & (1 << n)) >> n)
 
+    #DEPRECATE -use PlayFromState instead.
     def RewindAndReplayBits(self, state, histories, rec, replay_from,
             replay_to, size):
         '''
@@ -766,7 +780,7 @@ class GameEngine(object):
             rec.AddRecord(s)
         s.Copy(state)
 
-    # DEPRECATE
+    # DEPRECATE -- use UpdateBitRecord() instead
     def ApplyUpdate(self, s, histories, rec, rewind_from, update_frame, 
             update_bits, size):
         '''
@@ -814,9 +828,9 @@ class GameEngine(object):
         True if the bit corresponding to frame in history is 1 and False
         otherwise.
         '''
-        assert isinstance(frame, int)
-        assert isinstance(history, int)
-        assert isinstance(history_frame, int)
+        #assert isinstance(frame, (int, long))
+        #assert isinstance(history, (int, long))
+        #assert isinstance(history_frame, (int, long))
         assert isinstance(size, int)
         assert frame >= 0
         assert history_frame >= 0
@@ -834,7 +848,7 @@ class GameEngine(object):
         '''
         Play the game starting at state and using bitrec for events, up to 
         frame play_to. Frames from state.frame inclusive to play_to exclusive
-        are put in rec.
+        are put in rec. rec.available is set.
 
         Arguments:
         state          -- The GameState to play from.
@@ -846,12 +860,13 @@ class GameEngine(object):
         assert state != None
         assert bitrec != None
         assert rec != None
-        assert isinstance(play_to, int)
+        #assert isinstance(play_to, (int, long))
         assert isinstance(size, int)
         assert state.frame <= play_to
         assert play_to <= bitrec.frame
         assert state.frame >= bitrec.frame - size
         assert rec.size == size
+        start_frame = state.frame
         for i in range(state.frame, play_to):
             n = i % size
             state.Copy(rec.states[n])
@@ -859,18 +874,59 @@ class GameEngine(object):
                 self.GetBit(bitrec.bits[1], n),
                 self.GetBit(bitrec.bits[2], n)])
             self.PlayFrame(state, evt)
+        rec.available = play_to - start_frame
         assert state.frame == play_to
+
+    def UpdateBitRecordBit(self, bitrec, frame, history, player_id, size):
+        '''
+        Update bits for player_id.
+        '''
+        assert bitrec != None
+        #assert isinstance(frame, (int, long))
+        #assert isinstance(history, (int, long))
+        assert isinstance(player_id, int)
+        assert isinstance(size, int)
+        #assert isinstance(bitrec.frame, (int, long))
+        #assert isinstance(bitrec.bits[player_id], (int, long))
+        assert frame >= 0
+        assert history >= 0
+        assert player_id >= 0
+        assert player_id < len(bitrec.bits)
+        assert size >= 0
+        if frame <= bitrec.frame:
+            bitrec.bits[player_id] = self.UpdateHistory(bitrec.frame,
+                    bitrec.bits[player_id], frame, history, size)
+        else:
+            bitrec.bits[player_id] = self.UpdateHistory(frame, history,
+                    bitrec.frame, bitrec.bits[player_id], size)
+            bitrec.frame = frame
 
     def UpdateBitRecord(self, b1, b2, size):
         assert b1 != None
         assert b2 != None
+        assert isinstance(size, int)
+        assert size > 0
         for i in range(0,3):
-            if b1.frame > b2.frame:
-                self.UpdateHistory(b1.frame, b1.bits[i], b2.frame,
-                        b2.bits[i], size)
-            else:
-                self.UpdateHistory(b2.frame, b2.bits[i],
-                        b1.frame, b1.bits[i], size)
+            self.UpdateBitRecordBit(b1, b2.frame, b2.bits[i], i, size)
+
+    def UpdateBitRecordFrame(self, bitrec, frame, size):
+        '''
+        Set bitrec.frame to frame and clears old bits to make way for the new.
+        '''
+        assert bitrec != None
+        assert isinstance(size, int)
+        assert 0 <= frame
+        assert bitrec.frame <= frame
+        assert 0 < size
+        MAX = 1 << size
+        for i in range(0,3):
+            r = frame % size
+            rot = self.RotateBits(bitrec.bits[i], r, size)
+            shift = frame - bitrec.frame
+            rot = (rot << shift) % MAX
+            bitrec.bits[i] = self.RotateBits(rot, (size - (r - shift)) % size,
+                    size)
+        bitrec.frame = frame
 
     # UDP stuff END
 
@@ -983,13 +1039,18 @@ class GameEngine(object):
         s          -- The GameState.
         player     -- An object that implements PlayFrames.
         '''
+        assert s != None
         rotation_length = s.rotation_length
         frame_rate = s.frames_per_sec 
         rounds = s.rounds
+        # Busy wait until start time
+        while time.time() < start_time:
+            pass
         for i in range(0, rounds):
             logger.debug('starting round')
             for i in range(0, 3):
-                logger.debug('starting rotation')
+                logger.debug('starting rotation, {0} frames.'.format(
+                    rotation_length))
                 player.PlayFrames(self, s, float(start_time), rotation_length,
                         frame_rate) 
                 self.RotateRoles(s)
