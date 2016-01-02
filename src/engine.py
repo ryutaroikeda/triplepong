@@ -88,6 +88,9 @@ current frame for a smoother result. This allows us to lower the logic update
 rate of the engine (which in turn lowers the server buffer size) without 
 sacrificing smoothness.
 
+Handling loss:
+Clear the bit records, copy the server state and bitrec, then replay.
+
 Fix me:
 - Make datagrams smaller.
 -- Use frame numbers that wrap around.

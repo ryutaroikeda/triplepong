@@ -23,7 +23,7 @@ class UDPServer:
     '''
     def __init__(self):
         self.game_start_time = 0.0
-        self.send_rate = 10
+        self.send_rate = 15
         self.buffer_time = 5
 
     def AcceptN(self, svr, socks, n, timeout):
@@ -132,8 +132,6 @@ class UDPServer:
         assert e.bitrec != None
         assert e.rec != None
         assert isinstance(start_time, float)
-        #assert isinstance(max_frame, (int, long))
-        #assert isinstance(frame_rate, (int, long))
         assert frame_rate > 0.0
         start_frame = s.frame
         end_frame = start_frame + max_frame
@@ -162,10 +160,10 @@ class UDPServer:
                         evt.frame))
                     if evt.frame < initial_frame - e.buffer_size:
                         logger.debug('Event too old to be effective.')
-                    e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
-                            c.player_id, e.buffer_size)
                     e.UpdateBitRecordFrame(e.bitrec, 
                             max(e.bitrec.frame, evt.frame+1), e.buffer_size)
+                    e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
+                            c.player_id, e.buffer_size)
                     # Rewind. Set s to be a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
                     e.rec.states[idx].Copy(s)

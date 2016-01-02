@@ -176,8 +176,10 @@ class UDPClient:
         size             -- Size of histories.
 
         Return value:
-        True if an update at update_frame should overwrite the GameRecord, and
-        False otherwise.
+        1 if we should use the server state,
+        2 if an event was lost and we should use the server state and copy the
+        server bitrec,
+        0 if shouldn't update with the server state.
         '''
         assert e != None
         #assert isinstance(frame, (int, long))
@@ -196,16 +198,16 @@ class UDPClient:
             logger.debug('Event {0} was lost.'.format(self.unacked_1))
             self.unacked_1 = self.unacked_2
             self.unacked_2 = -1
-            return True
+            return 2
         if frame > update_frame:
             # The update is in the past.
             if self.unacked_1 == -1:
                 # There are no unacked events.
-                return True
+                return 1 # This could be 2. Should be the same.
             if frame > update_frame and self.unacked_1 >= frame:
                 # The unacked event hasn't triggered yet. 
-                return True
-        return False
+                return 1
+        return 0
 
     def HandleServerEvents(self, e, s, rec, size):
         '''
@@ -240,9 +242,15 @@ class UDPClient:
                 start_frame = s.frame
                 # Update the bit records.
                 # GameState evt is compatible with type BitRecord.
+                e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame,
+                    evt.frame + 1), size)
                 e.UpdateBitRecord(e.bitrec, evt, size)
                 should_apply_state = self.ShouldApplyStateUpdate(e, s.frame,
                         evt.frame, evt.bits[e.player_id], size)
+                if should_apply_state == 2:
+                    logger.debug('Handling lost event. Clearing bitrec.')
+                    for i in range(0,3):
+                        e.bitrec.bits[i] = 0
                 if should_apply_state:
                     logger.info('Applying state update.')
                     evt.Copy(s)
@@ -440,13 +448,13 @@ if __name__ == '__main__':
             help='The number of duplicate messages to send during handshake.')
     parser.add_argument('--timeout', type=int, default=1,
             help='The time allowed for each connection and handshake.')
-    parser.add_argument('--sync', default=False, action='store_true',
+    parser.add_argument('--nosync', default=False, action='store_true',
             help='Allow the server to measure latency and clock.')
     args = parser.parse_args()
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
     conf.buffer_size = args.buffersize
-    conf.do_sync = args.sync
+    conf.do_sync = not args.nosync
     c = UDPClient()
     from renderer import Renderer
     r = Renderer()
