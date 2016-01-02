@@ -123,7 +123,6 @@ class UDPServer:
     def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
         '''
         Play max_frame frames.
-        TO DO: Discard events too far in the future.
         Arguments:
         e           -- The GameEngine.
         s           -- The GameState.
@@ -166,7 +165,7 @@ class UDPServer:
                     if evt.frame < initial_frame - e.buffer_size:
                         logger.debug('Event too old to be effective.')
                         continue
-                    if initial_frame + e.buffer_size < evt.frame:
+                    if initial_frame < evt.frame + 1 - e.buffer_size:
                         logger.info('Event too early. Ignoring.')
                         continue
                     e.UpdateBitRecordFrame(e.bitrec, 
@@ -178,16 +177,16 @@ class UDPServer:
                     e.rec.states[idx].Copy(s)
             target_frame = e.GetCurrentFrame(start_time, frame_rate,
                     time.time())
-            play_to = max(target_frame, e.bitrec.frame)
+            if s.frame < target_frame - e.buffer_size:
+                logger.debug(('Server behind. {0}, {1}. '
+                'Forcing catch-up.').format(
+                            s.frame, target_frame))
+                s.frame = target_frame - e.buffer_size
             e.UpdateBitRecordFrame(e.bitrec,
                     max(e.bitrec.frame, target_frame), e.buffer_size)
+            play_to = e.bitrec.frame
+            assert s.frame >= e.bitrec.frame - e.buffer_size
             if s.frame < play_to:
-                if s.frame < e.bitrec.frame - e.buffer_size:
-                    # to do: This should be prevented from happening.
-                    logger.debug(
-                            'bitrec went too far ahead {0} < {1}-{2}'.format(
-                                s.frame, e.bitrec.frame, e.buffer_size))
-                    s.frame = e.bitrec.frame - e.buffer_size
                 e.PlayFromState(s, e.bitrec, e.rec, play_to, 
                         e.buffer_size)
             # Send state and bitrec to clients.
