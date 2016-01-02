@@ -22,32 +22,6 @@ class UDPClientTest(unittest.TestCase):
         self.assertTrue(c.unacked_2 == expected_unacked_2)
         self.assertTrue(answer == expected_answer)
 
-    def template_ApplyStateUpdate(self, frame, histories, 
-            unacked_1, unacked_2,
-            update_frame, update_histories, size, expected_result,
-            expected_histories, expected_unacked_1, expected_unacked_2):
-        c = UDPClient()
-        c.unacked_1 = unacked_1
-        c.unacked_2 = unacked_2
-        e = GameEngine()
-        update = GameState()
-        update.frame = update_frame
-        update.histories = update_histories
-        s = GameState()
-        rec = GameRecord()
-        rec.SetSize(size)
-        for i in range(0, frame):
-            rec.AddRecord(s)
-            e.PlayFrame(s, 0)
-        result = c.ApplyStateUpdate(e, s, rec, histories, update, size)
-        self.assertTrue(result == expected_result)
-        for i in range(0,3):
-            self.assertTrue(histories[i] == expected_histories[i],
-                    '{0} != {1}'.format(bin(histories[i]),
-                        bin(expected_histories[i])))
-        self.assertTrue(c.unacked_1 == expected_unacked_1)
-        self.assertTrue(c.unacked_2 == expected_unacked_2)
-
     def test_ShouldApplyStateUpdate_1(self):
         self.template_ShouldApplyStateUpdate(-1, -1, 1, 
                 0, int('0'*64,2), 64, -1 ,-1, 1)
@@ -75,16 +49,4 @@ class UDPClientTest(unittest.TestCase):
         '''Ignore future update.'''
         self.template_ShouldApplyStateUpdate(-1, -1, 0,
                 64, int('1'*64,2), 64, -1, -1, 0)
-
-    def test_ApplyStateUpdate_1(self):
-        self.template_ApplyStateUpdate(0, [0,0,0], -1, -1, 0, [0,0,0],
-                64, -1, [0,0,0], -1, -1)
-
-    def test_ApplyStateUpdate_2(self):
-        self.template_ApplyStateUpdate(1, [0,0,0], -1, -1, 0, [0,0,0],
-                64, 0, [0,0,0], -1, -1)
-
-    def test_ApplyStateUpdate_3(self):
-        self.template_ApplyStateUpdate(2, [0,0,0], -1, -1, 1, [1,1,1],
-                64, 0, [1,1,1], -1, -1)
 

@@ -34,6 +34,9 @@ class UDPClient:
     unacked_1           -- The first unacked frame.
     unacked_2           -- The second unacked frame.
     key_is_released     -- True if the key is not held down.
+    loss_count          -- The number of event losses.
+    state_update_count  -- The number of times the server state was used.
+    old_count           -- The number of old events received.
     '''
     def __init__(self):
         self.keyboard = NullKeyboard()
@@ -42,6 +45,9 @@ class UDPClient:
         self.unacked_1 = -1
         self.unacked_2 = -1
         self.key_is_released = True
+        self.loss_count = 0
+        self.state_update_count = 0
+        self.old_count = 0
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
@@ -155,6 +161,9 @@ class UDPClient:
             # To do: Apply user_conf without overriding server config.
             e.PlayAs(e.state, self, self.conf.start_time)
             logger.info('Game ended.')
+            logger.info('\nOld events: {0}'.format(self.old_count)+\
+                    '\nLoss: {0}'.format(self.loss_count)+\
+                    '\nstate update {0}'.format(self.state_update_count))
             sock.Close()
             return True
         logger.info('Failed to start game.')
@@ -238,7 +247,7 @@ class UDPClient:
                     logger.info('Update too old to be effective. ' + \
                             '{0} < {1} - {2}'.format(evt.frame,
                                 e.bitrec.frame, e.buffer_size))
-
+                    self.old_count += 1
                 start_frame = s.frame
                 # Update the bit records.
                 # GameState evt is compatible with type BitRecord.
@@ -250,65 +259,18 @@ class UDPClient:
                 if should_apply_state == 2:
                     logger.debug('Handling lost event. Clearing bitrec.')
                     e.bitrec.Clear()
+                    self.loss_count += 1
                 if should_apply_state:
                     logger.info('Applying state update.')
                     evt.Copy(s)
                     rec.available = 0
+                    self.state_update_count += 1
                 else:
                     # Set up rec for rewind from oldest available frame.
                     n = start_frame - rec.available
                     e.rec.states[n % e.buffer_size].Copy(s)
             elif evt.event_type == EventType.END_GAME:
                 e.HandleEndGameEvent(s, evt)
-    #####DEPRECATE
-    def ApplyStateUpdate(self, e, s, rec, histories, update, size):
-        '''
-        Updates the local state s, the record rec, and histories.
-        This method is intended to be used by the client receiving a state
-        update.
-
-        If update.frame is earlier than the next buffered key event or
-        later than the previous event ack, overwrite rec at update.frame and 
-        rewind from there.
-        If update.frame is later than the key event but earlier than 
-        its ack, we don't overwrite rec at update.frame because doing so will
-        temporarily 'undo' the key. Instead, we only update histories
-        and rewind.
-
-        Arguments:
-        e         -- The GameEngine.
-        s         -- The GameState to update.
-        rec       -- The GameRecord.
-        histories -- A list of size-bit histories of s.
-        update    -- The update GameState.
-        size      -- The history size.
-        Return value:
-        0 on success and -1 if the update could not be performed.
-        '''
-        assert e != None
-        assert s != None
-        assert rec != None
-        assert update != None
-        assert rec.size == size
-        should_apply_state = self.ShouldApplyStateUpdate(e, s.frame,
-                update.frame, update.histories[e.player_id], size)
-        if s.frame == 0:
-            logger.debug('Impossible to rewind.')
-            return -1
-        if s.frame - update.frame > rec.available:
-            logger.debug('The update is too old.')
-            return -1
-        if should_apply_state:
-            assert s.frame >= update.frame
-            # Overwrite the record.
-            update.Copy(rec.states[update.frame % rec.size])
-            replay_from = update.frame
-            rec.available = max(s.frame - update.frame, rec.size)
-        else:
-            replay_from = s.frame - rec.available
-        e.ApplyUpdate(s, histories, rec, replay_from, update.frame,
-                update.histories, size)
-        return 0
 
     def HandleKeyboardEvents(self, e, bitrec, frame, delay, cool_down, size):
         '''
@@ -445,7 +407,7 @@ if __name__ == '__main__':
             help='The number of attempts to connect to the server.')
     parser.add_argument('--resend', type=int, default=4,
             help='The number of duplicate messages to send during handshake.')
-    parser.add_argument('--timeout', type=int, default=1,
+    parser.add_argument('--timeout', type=int, default=10,
             help='The time allowed for each connection and handshake.')
     parser.add_argument('--nosync', default=False, action='store_true',
             help='Allow the server to measure latency and clock.')
