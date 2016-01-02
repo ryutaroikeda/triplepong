@@ -35,7 +35,7 @@ class GameConfig:
         self.post_game_time = 30
         # These are not serialized.
         self.do_sync = False
-        self.sync_timeout = 0.0
+        self.sync_timeout = 1.0
         self.sync_rate = 10
         self.buffer_size = 64
         self.start_time = 0.0

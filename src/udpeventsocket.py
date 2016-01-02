@@ -144,7 +144,7 @@ class UDPEventSocket:
             except Exception as e:
                 logger.exception(e)
                 return -1
-        self.latency = average_rtt / 2
+        self.latency = average_rtt / 2.0
         self.delta = average_delta - self.latency
         return 0
 
