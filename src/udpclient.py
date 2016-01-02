@@ -144,6 +144,7 @@ class UDPClient:
             svr = UDPEventSocket(sock)
             # Allow server to make clock measurements.
             if user_conf.do_sync:
+                logger.info('Syncing clock with server.')
                 svr.RecvSync(user_conf.sync_timeout * 3)
             if not self.Handshake(svr, resend, timeout):
                 sock.Close()
@@ -417,7 +418,7 @@ if __name__ == '__main__':
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
     conf.buffer_size = args.buffersize
-    conf.sync = not args.nosync
+    conf.do_sync = not args.nosync
     conf.sync_timeout = args.synctimeout
     c = UDPClient()
     from renderer import Renderer
