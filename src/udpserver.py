@@ -228,6 +228,8 @@ class UDPServer:
             if conf.do_sync:
                 for c in clients:
                     c.Sync(conf.sync_timeout, conf.sync_rate)
+                    logger.info('client {0}: Latency {1} Delta {2}'.format(
+                        c.player_id, c.latency, c.delta))
             status = self.Handshake(clients, conf, timeout) 
             if status == -1:
                 for c in clients:
