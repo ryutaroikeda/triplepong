@@ -151,6 +151,8 @@ class UDPServer:
             if now >= end_time + timeout:
                 break
             initial_frame = s.frame
+            target_frame = e.GetCurrentFrame(start_time, frame_rate,
+                    time.time())
             for c in list(e.clients):
                 evt = None
                 try:
@@ -177,8 +179,6 @@ class UDPServer:
                     # Rewind. Set s to a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
                     e.rec.states[idx].Copy(s)
-            target_frame = e.GetCurrentFrame(start_time, frame_rate,
-                    time.time())
             if s.frame < target_frame - e.buffer_size:
                 logger.debug(('Server behind. {0}, {1}. '
                 'Forcing catch-up.').format(
