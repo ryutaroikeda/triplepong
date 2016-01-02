@@ -249,8 +249,7 @@ class UDPClient:
                         evt.frame, evt.bits[e.player_id], size)
                 if should_apply_state == 2:
                     logger.debug('Handling lost event. Clearing bitrec.')
-                    for i in range(0,3):
-                        e.bitrec.bits[i] = 0
+                    e.bitrec.Clear()
                 if should_apply_state:
                     logger.info('Applying state update.')
                     evt.Copy(s)

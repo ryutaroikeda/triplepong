@@ -3,12 +3,15 @@ TESTS=$(wildcard tests/*_test.py)
 
 default: test
 
-.PHONY: test clean coverage travis all stress
+.PHONY: test clean coverage travis all stress profile
 
 all: coverage travis
 
 test:
 	$(PYTHON) -m unittest discover --start-directory ./tests -p '*_test.py'
+
+profile:
+	$(PYTHON) tests/unittestprofile.py
 
 stress:
 	for ((i=0;i<10;i++)) do make test; done &> .tmp

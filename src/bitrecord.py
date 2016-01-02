@@ -6,4 +6,8 @@ class BitRecord:
         self.bits = [0,0,0]
         self.frame = 0
 
+    def Clear(self):
+        for i in range(0,3):
+            self.bits[i] = 0
+
 

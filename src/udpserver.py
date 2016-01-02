@@ -172,7 +172,7 @@ class UDPServer:
                             max(e.bitrec.frame, evt.frame+1), e.buffer_size)
                     e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
                             c.player_id, e.buffer_size)
-                    # Rewind. Set s to be a recorded state.
+                    # Rewind. Set s to a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
                     e.rec.states[idx].Copy(s)
             target_frame = e.GetCurrentFrame(start_time, frame_rate,
@@ -182,9 +182,9 @@ class UDPServer:
                 'Forcing catch-up.').format(
                             s.frame, target_frame))
                 s.frame = target_frame - e.buffer_size
-            e.UpdateBitRecordFrame(e.bitrec,
-                    max(e.bitrec.frame, target_frame), e.buffer_size)
-            play_to = e.bitrec.frame
+                e.bitrec.Clear()
+            play_to = max(e.bitrec.frame, target_frame)
+            e.UpdateBitRecordFrame(e.bitrec, play_to, e.buffer_size)
             assert s.frame >= e.bitrec.frame - e.buffer_size
             if s.frame < play_to:
                 e.PlayFromState(s, e.bitrec, e.rec, play_to, 
