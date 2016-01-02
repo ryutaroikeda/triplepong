@@ -210,3 +210,36 @@ class GameState:
         other.frame = self.frame
         pass
 
+    def PlayerToObject(self, roles, player_id):
+        '''
+        Get the object corresponding to a player's role.
+        '''
+        assert isinstance(roles, list)
+        assert isinstance(player_id, int)
+        assert 0 <= player_id and player_id < 3
+        if roles[player_id] == GameState.ROLE_LEFT_PADDLE:
+            return self.paddle_left
+        if roles[player_id] == GameState.ROLE_RIGHT_PADDLE:
+            return self.paddle_right
+        if roles[player_id] == GameState.ROLE_BALL:
+            return self.ball
+        return None
+
+    def CopyExceptPlayer(self, other, roles, player_id):
+        '''
+        Copy the state of GameObjects not controlled by player_id into other.
+        '''
+        assert other != None
+        assert isinstance(roles, list)
+        assert isinstance(player_id, int)
+        assert 0 <= player_id and player_id <= 2
+        o = other.PlayerToObject(roles, player_id)
+        pos_x = o.pos_x
+        pos_y = o.pos_y
+        vel_x = o.vel_x
+        vel_y = o.vel_y
+        self.Copy(other)
+        o.pos_x = pos_x
+        o.pos_y = pos_y
+        o.vel_x = vel_x
+        o.vel_y = vel_y

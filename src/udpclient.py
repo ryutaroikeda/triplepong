@@ -48,6 +48,8 @@ class UDPClient:
         self.loss_count = 0
         self.state_update_count = 0
         self.old_count = 0
+        self.other_update_count = 0
+        self.rewind_count = 0
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
@@ -164,7 +166,9 @@ class UDPClient:
             logger.info('Game ended.')
             logger.info('\nOld events: {0}'.format(self.old_count)+\
                     '\nLoss: {0}'.format(self.loss_count)+\
-                    '\nstate update {0}'.format(self.state_update_count))
+                    '\nstate update {0}'.format(self.state_update_count)+\
+                    '\nrewind update {0}'.format(self.rewind_count)+\
+                    '\nother update {0}'.format(self.other_update_count))
             sock.Close()
             return True
         logger.info('Failed to start game.')
@@ -245,20 +249,21 @@ class UDPClient:
                 'player 3: {2}').format(bin(evt.bits[0]),
                     bin(evt.bits[1]), bin(evt.bits[2])))
                 if evt.frame < e.bitrec.frame - e.buffer_size:
-                    logger.info('Update too old to be effective. ' + \
+                    logger.info('Update too old.' + \
                             '{0} < {1} - {2}'.format(evt.frame,
                                 e.bitrec.frame, e.buffer_size))
                     self.old_count += 1
+                    continue
                 start_frame = s.frame
                 # Update the bit records.
-                # GameState evt is compatible with type BitRecord.
                 e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame,
                     evt.frame + 1), size)
+                # GameState evt is compatible with type BitRecord.
                 e.UpdateBitRecord(e.bitrec, evt, size)
                 should_apply_state = self.ShouldApplyStateUpdate(e, s.frame,
                         evt.frame, evt.bits[e.player_id], size)
                 if should_apply_state == 2:
-                    logger.debug('Handling lost event. Clearing bitrec.')
+                    logger.info('Handling lost event. Clearing bitrec.')
                     e.bitrec.Clear()
                     self.loss_count += 1
                 if should_apply_state:
@@ -267,11 +272,23 @@ class UDPClient:
                     rec.available = 0
                     self.state_update_count += 1
                 else:
-                    # Set up rec for rewind from oldest available frame.
-                    n = start_frame - rec.available
-                    e.rec.states[n % e.buffer_size].Copy(s)
+                    if evt.frame < start_frame and \
+                            evt.frame >= start_frame - rec.available:
+                        logger.info('Applying update of other players only.')
+                        evt.CopyExceptPlayer(
+                                e.rec.states[evt.frame % e.buffer_size],
+                                s.roles, e.player_id)
+                        e.rec.states[evt.frame % e.buffer_size].Copy(s)
+                        rec.available = 0
+                        self.other_update_count += 1
+                    else:
+                        logger.info('Rewind to oldest available frame.')
+                        e.rec.states[(start_frame - rec.available) \
+                                % e.buffer_size].Copy(s)
+                        self.rewind_count += 1
             elif evt.event_type == EventType.END_GAME:
                 e.HandleEndGameEvent(s, evt)
+                break
 
     def HandleKeyboardEvents(self, e, bitrec, frame, delay, cool_down, size):
         '''

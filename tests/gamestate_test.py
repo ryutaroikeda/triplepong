@@ -5,6 +5,14 @@ from gamestate import GameState
 from gameobject import GameObject
 
 class GameStateTest(unittest.TestCase):
+    def template_PlayerToObject(self, s, player_id, expected_object):
+        roles = [GameState.ROLE_LEFT_PADDLE,
+                GameState.ROLE_RIGHT_PADDLE,
+                GameState.ROLE_BALL]
+        o = s.PlayerToObject(roles, player_id)
+        self.assertTrue(o == expected_object)
+
+
     def test_Serialize_and_Deserialize(self):
         s = GameState()
         s.ball.pos_x = 100
@@ -84,3 +92,31 @@ class GameStateTest(unittest.TestCase):
         pass
     pass
         
+    def test_PlayerToObject_1(self):
+        s = GameState()
+        self.template_PlayerToObject(s, 0, s.paddle_left)
+
+    def test_PlayerToObject_2(self):
+        s = GameState()
+        self.template_PlayerToObject(s, 1, s.paddle_right)
+
+    def test_PlayerToObject_3(self):
+        s = GameState()
+        self.template_PlayerToObject(s, 2, s.ball)
+
+    def test_CopyExceptPlayer_1(self):
+        s = GameState()
+        roles = [GameState.ROLE_LEFT_PADDLE,
+                GameState.ROLE_RIGHT_PADDLE,
+                GameState.ROLE_BALL]
+        s.paddle_left.pos_y = 500
+        s.paddle_right.vel_y = 1000
+        s.ball.vel_x = 2000
+        t = GameState()
+        t.paddle_left.pos_y = -500
+        t.paddle_right.vel_y = -1000
+        t.ball.vel_x = -2000
+        s.CopyExceptPlayer(t, roles, 0)
+        self.assertTrue(t.paddle_left.pos_y == -500)
+        self.assertTrue(t.paddle_right.vel_y == 1000)
+        self.assertTrue(t.ball.vel_x == 2000)
