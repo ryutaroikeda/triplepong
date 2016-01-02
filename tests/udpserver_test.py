@@ -36,7 +36,6 @@ def UDPServerTestPickleJar_Handshake(resend, timeout, client, svrsock, q):
 def UDPServerTestPickleJar_Run(tries, resend, timeout, c, svraddr, r, k, 
         conf, q):
     result = False
-    c.conf = conf
     try:
         result = c.Run(svraddr, r, k, conf, tries, resend, timeout)
     except Exception as e:
@@ -132,6 +131,8 @@ class UDPServerTest(unittest.TestCase):
             client_resend = 1
             client_timeout = 2.0
             user_conf = GameConfig()
+            user_conf.sync = user_do_sync
+            user_conf.sync_timeout = conf.sync_timeout * n
             for i in range(0, n):
                 q = multiprocessing.Queue()
                 c = UDPClient()
