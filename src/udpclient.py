@@ -143,8 +143,8 @@ class UDPClient:
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
             svr = UDPEventSocket(sock)
             # Allow server to make clock measurements.
-            if user_conf.do_sync:
-                svr.RecvSync(user_conf.sync_timeout)
+            if self.conf.do_sync:
+                svr.RecvSync(self.conf.sync_timeout * 3)
             if not self.Handshake(svr, resend, timeout):
                 sock.Close()
                 logger.info('Handshake failed.')
@@ -409,13 +409,10 @@ if __name__ == '__main__':
             help='The number of duplicate messages to send during handshake.')
     parser.add_argument('--timeout', type=int, default=10,
             help='The time allowed for each connection and handshake.')
-    parser.add_argument('--nosync', default=False, action='store_true',
-            help='Allow the server to measure latency and clock.')
     args = parser.parse_args()
     conf = GameConfig()
     conf.do_interpolate = args.interpolate
     conf.buffer_size = args.buffersize
-    conf.do_sync = not args.nosync
     c = UDPClient()
     from renderer import Renderer
     r = Renderer()
