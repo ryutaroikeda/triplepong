@@ -21,6 +21,8 @@ from nullrenderer import NullRenderer
 from nullkeyboard import NullKeyboard
 import tpsocket
 import tplogger
+#sys.path.append(os.path.abspath('profiling'))
+#import lineprofiler
 logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
 '''The gameengine module.
 

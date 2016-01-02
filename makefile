@@ -8,7 +8,8 @@ default: test
 all: coverage travis
 
 test:
-	$(PYTHON) -m unittest discover --start-directory ./tests -p '*_test.py'
+	$(PYTHON) -m unittest discover --start-directory ./tests -p \
+	       	'*_test.py' 1> unittest.log
 
 profile:
 	$(PYTHON) tests/unittestprofile.py

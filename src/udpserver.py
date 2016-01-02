@@ -13,6 +13,8 @@ import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
+#sys.path.append(os.path.abspath('profiling'))
+#import lineprofiler
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 
 '''
