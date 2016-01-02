@@ -15,6 +15,11 @@ from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 
+'''
+Handling events:
+Events older than size frames before bitrec.frame are ignored.
+Events newer than size frmes after state.frame are ignored.
+'''
 class UDPServer:
     '''
     Attributes:
@@ -160,6 +165,10 @@ class UDPServer:
                         evt.frame))
                     if evt.frame < initial_frame - e.buffer_size:
                         logger.debug('Event too old to be effective.')
+                        continue
+                    if initial_frame + e.buffer_size < evt.frame:
+                        logger.info('Event too early. Ignoring.')
+                        continue
                     e.UpdateBitRecordFrame(e.bitrec, 
                             max(e.bitrec.frame, evt.frame+1), e.buffer_size)
                     e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
