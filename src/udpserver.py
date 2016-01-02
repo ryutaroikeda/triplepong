@@ -6,6 +6,7 @@ import select
 import sys
 import time
 sys.path.append(os.path.abspath('src'))
+from endgameevent import EndGameEvent
 from eventtype import EventType
 from gameconfig import GameConfig
 from engine import GameEngine
