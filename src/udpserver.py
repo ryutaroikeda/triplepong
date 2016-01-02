@@ -235,6 +235,16 @@ class UDPServer:
                 for c in clients:
                     c.Close()
                 continue
+            if status == 1:
+                logger.info('Cancelling game.')
+                evt = EndGameEvent()
+                for c in clients:
+                    try:
+                        c.WriteEvent(evt)
+                    except Exception as ex:
+                        logger.exception(ex)
+                    c.Close()
+                continue
             logger.info('Starting game.')
             e = GameEngine()
             e.is_server = True
