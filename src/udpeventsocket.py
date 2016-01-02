@@ -94,6 +94,7 @@ class UDPEventSocket:
         n = 0
         average_rtt = 0
         average_delta = 0
+        max_wait = timeout / 10
         while time.time() < end_time:
             if time.time() - last_send < time_between_send:
                 continue
@@ -109,8 +110,7 @@ class UDPEventSocket:
                     continue
                 start_trip = time.time()
                 self.WriteEvent(msg)
-                (ready, _, _) = select.select([self], [], [],
-                        max(0, end_time - time.time()))
+                (ready, _, _) = select.select([self], [], [], max_wait)
                 # Read until we find the expected response.
                 while True:
                     reply = None
@@ -123,8 +123,8 @@ class UDPEventSocket:
                         continue
                     if reply.method != TPMessage.METHOD_SYNC:
                         continue
-                    # Ignore if the reply was for a different Sync message.
                     if reply.ack != expected_ack:
+                        logger.info('Reply was out of order')
                         continue
                     break
                 if reply == None:
