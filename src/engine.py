@@ -881,18 +881,30 @@ class GameEngine(object):
             self.PlayFrame(state, evt)
         rec.available = play_to - start_frame
         assert state.frame == play_to
+    
+    def PlayFromStateWithPlayer(self, state, bitrec, rec, play_to, player_id,
+            size):
+        '''During replay, if a frame is flagged, CopyEcceptPlayer() is called.
+        '''
+        rec.available = play_to - state.frame
+        for i in range(state.frame, play_to):
+            n = i % size
+            if self.GetBit(bitrec.bits[3], n):
+                rec.states[n].CopyExceptPlayer(state, state.roles, player_id)
+            state.Copy(rec.states[n])
+            evt = self.BitsToEvent(state, [self.GetBit(bitrec.bits[0], n),
+                self.GetBit(bitrec.bits[1], n),
+                self.GetBit(bitrec.bits[2], n)])
+            self.PlayFrame(state, evt)
+        assert state.frame == play_to
 
     def UpdateBitRecordBit(self, bitrec, frame, history, player_id, size):
         '''
         Update bits for player_id.
         '''
         assert bitrec != None
-        #assert isinstance(frame, (int, long))
-        #assert isinstance(history, (int, long))
         assert isinstance(player_id, int)
         assert isinstance(size, int)
-        #assert isinstance(bitrec.frame, (int, long))
-        #assert isinstance(bitrec.bits[player_id], (int, long))
         assert frame >= 0
         assert history >= 0
         assert player_id >= 0
@@ -907,6 +919,7 @@ class GameEngine(object):
             bitrec.frame = frame
 
     def UpdateBitRecord(self, b1, b2, size):
+        '''This does not update flags.'''
         assert b1 != None
         assert b2 != None
         assert isinstance(size, int)
@@ -924,7 +937,7 @@ class GameEngine(object):
         assert bitrec.frame <= frame
         assert 0 < size
         MAX = 1 << size
-        for i in range(0,3):
+        for i in range(0,4):
             r = frame % size
             rot = self.RotateBits(bitrec.bits[i], r, size)
             shift = frame - bitrec.frame
@@ -1062,6 +1075,7 @@ class GameEngine(object):
         if self.is_server:
             self.SendEndGameEvent(self.clients, s)
         self.EndGame(s)
+        player.PrintStats()
         # Keep the game running for a bit, to show the final score.   
         player.PlayFrames(self, s, start_time, 
                 frame_rate * self.post_game_time, frame_rate)

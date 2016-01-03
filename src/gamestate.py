@@ -135,8 +135,8 @@ class GameState:
         self.should_render_score = False
         self.is_ended = False
         self.player_id = 0
-        # 64 frames of input history for each player.
-        self.bits = [0, 0, 0]
+        # 64 frames of input history for each player (and flags)
+        self.bits = [0, 0, 0, 0]
 
     def __str__(self):
         return str(self.__dict__)

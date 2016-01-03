@@ -48,7 +48,6 @@ class UDPClient:
         self.loss_count = 0
         self.state_update_count = 0
         self.old_count = 0
-        self.other_update_count = 0
         self.rewind_count = 0
 
     def Handshake(self, svr, resend, timeout):
@@ -164,11 +163,6 @@ class UDPClient:
             # To do: Apply user_conf without overriding server config.
             e.PlayAs(e.state, self, self.conf.start_time)
             logger.info('Game ended.')
-            logger.info('\nOld events: {0}'.format(self.old_count)+\
-                    '\nLoss: {0}'.format(self.loss_count)+\
-                    '\nstate update {0}'.format(self.state_update_count)+\
-                    '\nrewind update {0}'.format(self.rewind_count)+\
-                    '\nother update {0}'.format(self.other_update_count))
             sock.Close()
             return True
         logger.info('Failed to start game.')
@@ -272,20 +266,14 @@ class UDPClient:
                     rec.available = 0
                     self.state_update_count += 1
                 else:
-                    if evt.frame < start_frame and \
-                            evt.frame >= start_frame - rec.available:
-                        logger.info('Applying update of other players only.')
-                        evt.CopyExceptPlayer(
-                                e.rec.states[evt.frame % e.buffer_size],
-                                s.roles, e.player_id)
-                        e.rec.states[evt.frame % e.buffer_size].Copy(s)
-                        rec.available = 0
-                        self.other_update_count += 1
-                    else:
-                        logger.info('Rewind to oldest available frame.')
-                        e.rec.states[(start_frame - rec.available) \
-                                % e.buffer_size].Copy(s)
-                        self.rewind_count += 1
+                    logger.info('Rewind to oldest available frame.')
+                    n = evt.frame % e.buffer_size
+                    rewind_from = (start_frame - rec.available) % e.buffer_size
+                    evt.CopyExceptPlayer(rec.states[n], s.roles, e.player_id)
+                    rec.states[rewind_from].Copy(s)
+                    e.bitrec.bits[3] = e.SetBit(e.bitrec.bits[3], n, 1,
+                            e.buffer_size)
+                    self.rewind_count += 1
             elif evt.event_type == EventType.END_GAME:
                 e.HandleEndGameEvent(s, evt)
                 break
@@ -407,8 +395,15 @@ class UDPClient:
                 # to do: reset unacked
                 s.frame = e.bitrec.frame - e.buffer_size
             if s.frame < play_to:
-                e.PlayFromState(s, e.bitrec, e.rec, play_to, e.buffer_size)
+                e.PlayFromStateWithPlayer(s, e.bitrec, e.rec, play_to,
+                        e.player_id, e.buffer_size)
             e.renderer.Render(s, s, 0, 0)
+
+    def PrintStats(self):
+        logger.info('\nOld events: {0}'.format(self.old_count)+\
+                '\nLoss: {0}'.format(self.loss_count)+\
+                '\nstate update {0}'.format(self.state_update_count)+\
+                '\nrewind update {0}'.format(self.rewind_count))
 
 if __name__ == '__main__':
     import argparse

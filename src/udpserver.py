@@ -205,6 +205,9 @@ class UDPServer:
                         c.Close()
                         e.clients.remove(c)
 
+    def PrintStats(self):
+        pass
+
     def Run(self, sock, upnp, conf, tries, timeout):
         '''
         Arguments:
@@ -290,6 +293,8 @@ if __name__ == '__main__':
             help='The time between invitation and game start.')
     parser.add_argument('--cooldown', type=int, default=6,
             help='Minimum frames between events.')
+    parser.add_argument('--ups', type=int, default=10,
+            help='The number of updates to send per second.')
     args = parser.parse_args()
     s = UDPServer()
     conf = GameConfig()
@@ -302,6 +307,7 @@ if __name__ == '__main__':
     conf.do_sync = not args.nosync
     conf.cool_down = args.cooldown
     s.buffer_time = args.buffertime
+    s.send_rate = args.ups
     sock = UDPSocket()
     sock.Open()
     # The empty string represents INADDR_ANY.

@@ -1492,14 +1492,14 @@ class GameEngineTest(unittest.TestCase):
                 64,[int('0'*63+'1',2),0,0])
 
     def test_UpdateBitRecordFrame_1(self):
-        self.template_UpdateBitRecordFrame([0,0,0], 0, 0, 64, [0,0,0])
+        self.template_UpdateBitRecordFrame([0,0,0,0], 0, 0, 64, [0,0,0,0])
 
     def test_UpdateBitRecordFrame_2(self):
-        self.template_UpdateBitRecordFrame([1,1,1],0,0,64,[1,1,1])
+        self.template_UpdateBitRecordFrame([1,1,1,0],0,0,64,[1,1,1,0])
 
     def test_UpdateBitRecordFrame_3(self):
-        self.template_UpdateBitRecordFrame([1,2,1],64,65,64,[0,2,0])
+        self.template_UpdateBitRecordFrame([1,2,1,0],64,65,64,[0,2,0,0])
 
     def test_UpdateBitRecordFrame_4(self):
-        self.template_UpdateBitRecordFrame([int('1'*64,2),0,0],100,120,64,
-                [int('1'*8+'0'*20+'1'*36,2),0,0])
+        self.template_UpdateBitRecordFrame([int('1'*64,2),0,0,0],100,120,64,
+                [int('1'*8+'0'*20+'1'*36,2),0,0,0])
