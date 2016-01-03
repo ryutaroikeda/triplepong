@@ -26,9 +26,6 @@ import tplogger
 logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
 '''The gameengine module.
 
-DEPRECATED. Use UDPGameEngine instead. This is left here in case we want to 
-compare with TCP.
-
 Notes on lag compensation.
 We want the user to experience as little  network latency as possible. To 
 achieve this, we can perform lag compensation on the server. The server and 
@@ -102,7 +99,7 @@ Fix me:
 
 '''
 
-class GameEngine(object):
+class UDPGameEngine(object):
     '''The game engine.
 
     This class contains the logic and interfaces for the game. When run as the 
@@ -116,8 +113,6 @@ class GameEngine(object):
                           which renders nothing.
     keyboard           -- The keyboard to get input from. The default is the
                           NullKeyboard which gets nothing.
-    last_key_frame     -- (Deprecate) The time of the last game event sent to 
-                          the server. 
     last_key_frames    -- The time of the last key. Used in local mode.
     key_cool_down_time -- The minimum frame between game events per player.
                           See above notes on lag compensation for details.
@@ -131,8 +126,6 @@ class GameEngine(object):
                           means the player has no key binding.
     buffer_delay-- The number of frames of delay to apply to key events.
     buffered_frame     -- The frame of event buffered during delay or cool-down.
-    key_buffer         -- A list of future key events. The events for the 
-                          current frame is (frame % buffer_delay)
     do_interpolate     -- Set to True if the renderer should interpolate.
     buffer_size        -- The size of the game state buffer.
     histories          -- N-bit record of key presses for each player.
@@ -159,7 +152,6 @@ class GameEngine(object):
         self.buffer_delay = 0
         self.buffered_frame_1 = -1
         self.buffered_frame_2 = -1
-        self.key_buffer = [0]*self.buffer_delay # deprecate
         self.do_interpolate = False
         self.buffer_size = 64
         self.should_apply_gravity = True
@@ -179,39 +171,6 @@ class GameEngine(object):
             return GameEvent.EVENT_FLAP_BALL
         return GameEvent.EVENT_NO_OP
 
-    def GetKeyboardEvents(self, keys, s):
-        '''Get the flag for the currently pressed keys.
-
-        The keyboard events are represented by key event codes, defined in 
-        gameevent.py.
-
-        Key presses during cool-down periods are suppressed.
-
-        Argument:
-        keys  -- The current state of the keyboard represented as a 323-tuple 
-                 of 0 and 1.
-        s     -- The game state.
-
-        Return value:
-        A flag of keyboard event codes.
-        '''
-        flag = 0
-        ESCAPE = 27
-        if keys[ESCAPE]:
-            raise Exception('Exited game.')
-        for i in range(0, 3):
-            if self.key_bindings[i] < 0:
-                continue
-            if not keys[self.key_bindings[i]]:
-                continue
-            if s.frame - self.last_key_frames[i] < self.key_cool_down_time:
-                logger.debug('suppressed un-cooled key')
-                continue
-            self.last_key_frames[i] = s.frame
-            flag |= self.RoleToEvent(s.roles[i])
-
-        return flag
-
     def EndGame(self, s):
         s.should_render_score = True
         s.should_render_crown = False
@@ -222,112 +181,6 @@ class GameEngine(object):
         s.scores[1] = evt.score_1
         s.scores[2] = evt.score_2
         self.EndGame(s)
-
-    def GetServerEvent(self, svr, s):
-        '''Get state update from the server.
-        Also handle end of game events.
-
-        Argument:
-        svr -- The socket connected to the server.
-        s   -- The game state.
-
-        Return value:
-        The game state sent by the server, or None if no update was 
-        available.
-        '''
-        if svr == None:
-            return None
-        evt = None
-        try:
-            evt = svr.ReadEvent()
-        except Exception as e:
-            logger.exception(e)
-            logger.info('Closing connection to server.')
-            self.server.Close()
-            self.server = None
-        if evt == None:
-            return None
-        if evt.event_type == EventType.STATE_UPDATE:
-            logger.debug('received update {0}'.format(evt.frame))
-            return evt
-        elif evt.event_type == EventType.END_GAME:
-            logger.debug('received end of game')
-            self.HandleEndGameEvent(s, evt)
-            return self.GetServerEvent(svr, s)
-
-    def GetClientEvents(self, clients, current_frame):
-        '''Read client sockets for keyboard events.
-
-        Arguments:
-        clients -- A list of client sockets.
-        current_frame -- The frame number of the server. If an event happens in 
-        the future, it should be put back.
-
-        Return value:
-        A list of game events.
-        '''
-        evts = []
-        for c in list(clients):
-            evt = None
-            try:
-                evt = c.ReadEvent()
-            except Exception as e:
-                logger.exception(e)
-                logger.info('closing connection to client {0}'.format( \
-                        c.GetPeerName()))
-                c.Close()
-                clients.remove(c)
-            # Check if the event happens in the future.
-            if evt == None:
-                continue
-            # Ignore non-key events.
-            if evt.event_type != EventType.KEYBOARD:
-                continue
-            if evt.frame > current_frame:
-                logger.debug('unreading future event')
-                c.UnreadEvent()
-                continue
-            evts.append(evt)
-            logger.debug('received key event {0}'.format(evt.frame))
-            
-        return evts
-
-    def SendStateUpdate(self, clients, s):
-        '''Send a partial state to the connected sockets in clients.
-
-        Arguments:
-        clients -- The clients to send to.
-        s      -- The game state to send.'''
-        logger.debug('sending state update {0}'.format(s.frame))
-        for c in list(clients):
-            try:
-                c.WriteEvent(s)
-            except:
-                logger.info('closing connection to client {0}'.format( \
-                        c.GetPeerName()))
-                c.Close()
-                clients.remove(c)
-        
-
-    def SendKeyboardEvents(self, svr, frame, keys):
-        '''Serialize a game event and send to the server.
-
-        Arguments:
-        svr  -- The server socket to send to.
-        frame -- The frame number of the event.
-        keys -- A flag of game event codes, defined in gameevent.py'''
-        if svr == None:
-            return
-        logger.debug('sending key event {0}'.format(frame))
-        evt = GameEvent()
-        evt.keys = keys
-        evt.frame = frame
-        try:
-            svr.WriteEvent(evt)
-        except:
-            logger.info('closing connection to server')
-            self.server.Close()
-            self.server = None
 
     def SendEndGameEvent(self, clients, s):
         '''Send the end of game event to each client.
@@ -438,7 +291,6 @@ class GameEngine(object):
                     s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = - s.ball.vel_x
             s.ball.vel_y = 0
-            s.scores[s.players[GameState.ROLE_BALL]] += 1
             
         if s.ball.IsCollidingWith(s.goal_right):
             s.ball.pos_x = ( s.goal_right.pos_x + s.goal_left.pos_x ) // 2
@@ -446,9 +298,22 @@ class GameEngine(object):
                     s.ball_wall_bottom.pos_y ) // 2
             s.ball.vel_x = - s.ball.vel_x
             s.ball.vel_y = 0
-            s.scores[s.players[GameState.ROLE_BALL]] += 1
 
-    def PlayFrame(self, s, keys):
+    def ApplyScoring(self, s, bitrec):
+        if self.GetBit(bitrec.bits[4], s.frame % self.buffer_size):
+            return 1
+        if s.ball.IsCollidingWith(s.goal_left):
+            s.scores[s.players[GameState.ROLE_BALL]] += 1
+            bitrec.bits[4] = self.SetBit(bitrec.bits[4],
+                    s.frame % self.buffer_size, 1, self.buffer_size)
+            
+        if s.ball.IsCollidingWith(s.goal_right):
+            s.scores[s.players[GameState.ROLE_BALL]] += 1
+            bitrec.bits[4] = self.SetBit(bitrec.bits[4],
+                    s.frame % self.buffer_size, 1, self.buffer_size)
+        return 0
+
+    def PlayFrame(self, s, keys, bitrec):
         '''Move the game forward by one frame.
 
         Arguments:
@@ -461,197 +326,12 @@ class GameEngine(object):
             self.ApplyGravity(s)
         self.ApplyEvents(s, keys)
         self.ApplyLogic(s)
+        if not s.is_ended:
+            self.ApplyScoring(s, bitrec)
         if self.should_apply_collision:
             self.ApplyCollision(s)
         s.frame += 1
-
-    def RewindAndReplayWithState(self, auth_state, current_frame, rec):
-        '''Rewind and replay the game from a given state.
-
-        This method rewinds the game to auth_state.frame and replays inputs 
-        starting from that frame until the current frame over auth_state. 
-        auth_state will be changed.
-        The inputs for the current frame are not handled here, so any events 
-        must be applied to the result of this method.
-        The inputs  are recorded in rec. 
-
-        This method is intended to be used by the client receiving an 
-        authoritative state auth_state from the server to correct the local 
-        game state.
-
-        Arguments:
-        auth_state    -- The state to replay from. 
-        current_frame -- The frame to replay to.
-        rec           -- A game record.
         
-        Return value:
-        The game state resulting from the rewind and replay or None if 
-        no rewind is possible.
-        '''
-        rewind = current_frame - auth_state.frame
-        if rewind < 0:
-            # The server is ahead of the client. Go to auth_state directly.
-            rec.available = 0
-            logger.debug('jumping to auth state')
-            return auth_state
-        if rewind > rec.available:
-            # The state is too old for rewind.
-            logger.debug('ignoring old state')
-            return None
-        rec.states[(rec.idx - rewind) % rec.size].key_flags |= \
-                auth_state.key_flags
-        for i in range(0, rewind):
-            self.PlayFrame(auth_state,
-                    rec.states[(rec.idx - rewind + i) % rec.size].key_flags)
-            
-        rec.available = rewind
-        auth_state.key_flags = 0
-        return auth_state
-    
-    def RewindAndReplayWithKey(self, s, evt, rec):
-        '''Rewind and replay the game based on events in the past.
-
-        This method is intended to be used by the server to correct its 
-        authoritative state in response to key events sent by the client.
-
-        This method updates the event records at frame evt.frame and updates
-        all later states up to s.frame.
-
-        s is set to the result of the rewind.
-
-        Arguments:
-        s             -- The game state of the server.
-        evt           -- A game event to play.
-        rec           -- A game record.
-
-        '''
-        rewind = s.frame - evt.frame
-        if rewind < 0:
-            # The client is ahead of the server. Ignore.
-            # This should never happen if we are unreading events in
-            # the method GetClientEvents().
-            logger.debug('client is ahead - ignoring')
-            return None
-        if rewind > rec.available:
-            # The event is too old to rewind. Ignore the event.
-            # fix me:
-            # The client needs to know the event was ignored, so return 
-            # the previous frame?
-            logger.debug('event too old to rewind')
-            return None
-        # Update the record
-        rec.states[(rec.idx - rewind) % rec.size].key_flags |= evt.keys
-        for i in range(0, rewind):
-            idx = (rec.idx - rewind + i) % rec.size
-            t = rec.states[(idx + 1) % rec.size]
-            key_flags = t.key_flags
-            rec.states[idx].Copy(t)
-            self.PlayFrame(t, t.key_flags)
-            t.key_flags = key_flags
-            
-        rec.states[rec.idx].Copy(s)
-        # reset key_flags (some tests rely on this feature).
-        s.key_flags = 0
-        return s
-
-    def RunFrameAsClient(self, s, rec):
-        '''
-        The main loop of the client.
-
-        The client checks for updates from the server. If there isn't an update 
-        available, the client plays a frame with the keys obtained from the 
-        keyboard.
-
-        If there is an update, it applies the rewind-replay. If the update 
-        is for the current frame, the key_flags are added to those from the 
-        keyboard. Then the frame is played.
-
-        '''
-        update = None
-        k = self.keyboard.GetKeys()
-        fresh_keys = self.GetKeyboardEvents(k, s)
-        # Send fresh key events to server.
-        if fresh_keys != 0:
-            self.SendKeyboardEvents(self.server,
-                    s.frame + self.buffer_delay, fresh_keys)
-        if self.buffer_delay > 0:
-            # Buffer delay.
-            # Read from the buffer. Then buffer the current keys.
-            buffer_idx = s.frame % self.buffer_delay
-            keys = self.key_buffer[buffer_idx]
-            self.key_buffer[buffer_idx] = fresh_keys
-        else:
-            # No delay.
-            keys = fresh_keys
-        # Get state update from the server.
-        update = self.GetServerEvent(self.server, s)
-        if update != None:
-            # if the update is for the current frame, set the keys.
-            if update.frame == s.frame:
-                keys |= update.key_flags
-            update = self.RewindAndReplayWithState(update, s.frame, rec)
-            # if update is None, we should ignore it. Otherwise, update.
-            if update != None:
-                update.Copy(s)
-            
-        rec.AddEntry(s, keys)
-        self.PlayFrame(s, keys)
-        s.player_id = self.player_id
-        
-
-    def RunFrameAsServer(self, s, rec):
-        '''
-        The main loop of the server.
-
-        The server first checks for events from the clients. If there isn't an 
-        event available, the server plays a frame.
-        
-        If there is an event, it applies the rewind-replay for correction.
-        The corrected state, along with any key events in the current frame,
-        are sent to each client. Finally, the current frame is played.
-
-        '''
-        s.key_flags = 0
-        keys = 0
-        key_evts = self.GetClientEvents(self.clients, s.frame)
-        # Amend the game record.
-        applied_evts = []
-        for evt in key_evts:
-            if evt.frame == s.frame:
-               keys |= evt.keys
-            # Update the record with the new event, if applicable.
-            if rec.ApplyEvent(s.frame, evt) == 0:
-                applied_evts.append(evt)
-            
-        if len(applied_evts) > 0:
-            # Sort the events by frame.
-            sorted(applied_evts, key=lambda x: x.frame, reverse=False)
-            # Call rewind using the earliest applicable event.
-            evt = key_evts[0]
-            self.RewindAndReplayWithKey(s, evt, rec)
-            # Send state to clients.
-            s.key_flags = keys
-            self.SendStateUpdate(self.clients, s)
-        
-        rec.AddEntry(s, keys)
-        self.PlayFrame(s, keys)
-
-    def GetTargetFrame(self, now, start_time, start_frame, end_frame, 
-            frame_rate):
-        '''Compute the frame we should be on.
-        This method is intended to be used in RunGame().
-        Arguments:
-        now -- The current time.
-        start_time -- The time at the start of the run.
-        start_frame -- The frame at the start of the run.
-        end_frame   -- The frame at the end of the run.
-        '''
-        target = int(((now - start_time) * frame_rate) + start_frame)
-        if target > end_frame:
-            target = end_frame
-        return target
-
-    # UDP stuff BEGIN
     def GetCurrentFrame(self, start_time, frame_rate, now):
         '''Get the frame the server is on.
         Arguments:
@@ -671,7 +351,6 @@ class GameEngine(object):
         shift -- The bit positions to rotate right by.
         size  -- The length of bits.
         '''
-        #assert isinstance(bits, (int, long))
         assert isinstance(shift, int)
         assert isinstance(size, int)
         assert 0 <= bits
@@ -703,17 +382,12 @@ class GameEngine(object):
         Return value:
         An updated size-bit history of keys at frame.
         '''
-        #assert isinstance(frame, (int, long))
-        #assert isinstance(keybits, (int, long))
-        #assert isinstance(update_frame, (int, long))
-        #assert isinstance(update, (int, long))
         assert isinstance(size, int)
         assert update_frame <= frame
         # Rotate the oldest frame to the 0th bit.
         rot_keybits = self.RotateBits(keybits, frame % size, size)
         rot_update = self.RotateBits(update, update_frame % size, size)
         result = rot_keybits | (rot_update >> (frame - update_frame))
-        #assert isinstance(result, (int, long))
         return self.RotateBits(result, size - (frame % size), size)
 
     def BitsToEvent(self, state, bits):
@@ -749,81 +423,6 @@ class GameEngine(object):
         assert(n >= 0)
         return ((bits & (1 << n)) >> n)
 
-    #DEPRECATE -use PlayFromState instead.
-    def RewindAndReplayBits(self, state, histories, rec, replay_from,
-            replay_to, size):
-        '''
-        This method uses the histories of key inputs of each player to 
-        compute the local game state. The game is played up to and 
-        excluding frame replay_to. state and the states in rec are updated.
-
-        replay_to is the frame associated with the entries in histories.
-
-        Arguments:
-        state        -- The GameState.
-        histories    -- A list of size-bit histories.
-        rec          -- The GameRecord.
-        replay_from  -- The frame to rewind to and replay from.
-        replay_to    -- The frame to play up to.
-        size         -- The size of a history.
-        '''
-        assert rec != None
-        assert replay_from >= 0
-        # state.frame is not in rec, so state.frame != replay_from
-        assert state.frame > replay_from
-        assert state.frame - replay_from <= rec.available
-        assert replay_from <= replay_to
-        assert replay_to - replay_from <= size
-        assert size > 0
-        assert rec.size == size
-        s = GameState()
-        rec.states[replay_from % rec.size].Copy(s)
-        assert(s.frame == replay_from)
-        for i in range(replay_from, replay_to):
-            n = i % size
-            evt = self.BitsToEvent(s, [self.GetBit(histories[0], n),
-                    self.GetBit(histories[1], n),
-                    self.GetBit(histories[2], n)])
-            self.PlayFrame(s, evt)
-            rec.AddRecord(s)
-        s.Copy(state)
-
-    # DEPRECATE -- use UpdateBitRecord() instead
-    def ApplyUpdate(self, s, histories, rec, rewind_from, update_frame, 
-            update_bits, size):
-        '''
-        Updates the GameState, GameRecord, and histories.
-
-        Arguments:
-        s         -- The GameState to update.
-        histories -- A list of size-bit records to update.
-        rec       -- The GameRecord.
-        rewind_from -- The frame to rewind from.
-        update_frame   -- The frame of update_bits.
-        update_bits    -- A history bit list.
-        size      -- Size of histories.
-        '''
-        assert s.frame >= 0 
-        assert update_frame >= 0 
-        assert len(histories) == len(update_bits) 
-        # Find the newer history.
-        old_frame = min(s.frame, update_frame)
-        new_frame = max(s.frame, update_frame)
-        if s.frame < update_frame:
-            old_bits = histories
-            new_bits = update_bits
-        else:
-            old_bits = update_bits
-            new_bits = histories
-        # Update histories.
-        for i in range(0, len(histories)):
-            histories[i] = self.UpdateHistory(new_frame, new_bits[i],
-                    old_frame, old_bits[i], size)
-        # Rewind and replay.
-        self.RewindAndReplayBits(s, histories, rec, rewind_from, new_frame, 
-                size)
-
-
     def IsAcked(self, frame, history, history_frame, size):
         '''
         Arguments:
@@ -836,9 +435,6 @@ class GameEngine(object):
         True if the bit corresponding to frame in history is 1 and False
         otherwise.
         '''
-        #assert isinstance(frame, (int, long))
-        #assert isinstance(history, (int, long))
-        #assert isinstance(history_frame, (int, long))
         assert isinstance(size, int)
         assert frame >= 0
         assert history_frame >= 0
@@ -849,8 +445,6 @@ class GameEngine(object):
             # Too old to tell.
             return False
         return self.GetBit(history, frame % size) == 1
-
-    ####################################
 
     def PlayFromState(self, state, bitrec, rec, play_to, size):
         '''
@@ -881,7 +475,7 @@ class GameEngine(object):
             evt = self.BitsToEvent(state, [self.GetBit(bitrec.bits[0], n),
                 self.GetBit(bitrec.bits[1], n),
                 self.GetBit(bitrec.bits[2], n)])
-            self.PlayFrame(state, evt)
+            self.PlayFrame(state, evt, bitrec)
         rec.available = play_to - start_frame
         assert state.frame == play_to
     
@@ -898,7 +492,7 @@ class GameEngine(object):
             evt = self.BitsToEvent(state, [self.GetBit(bitrec.bits[0], n),
                 self.GetBit(bitrec.bits[1], n),
                 self.GetBit(bitrec.bits[2], n)])
-            self.PlayFrame(state, evt)
+            self.PlayFrame(state, evt, bitrec)
         assert state.frame == play_to
 
     def UpdateBitRecordBit(self, bitrec, frame, history, player_id, size):
@@ -940,7 +534,7 @@ class GameEngine(object):
         assert bitrec.frame <= frame
         assert 0 < size
         MAX = 1 << size
-        for i in range(0,4):
+        for i in range(0,5):
             r = frame % size
             rot = self.RotateBits(bitrec.bits[i], r, size)
             shift = frame - bitrec.frame
@@ -948,58 +542,6 @@ class GameEngine(object):
             bitrec.bits[i] = self.RotateBits(rot, (size - (r - shift)) % size,
                     size)
         bitrec.frame = frame
-
-    # UDP stuff END
-
-    def RunGame(self, s, rec, max_frame, frame_rate):
-        '''Run the game.
-
-        This is the main game loop.
-
-        Arguments:
-        s       -- The game state to run the game from.
-        rec     -- The game record for saving state and events.
-        max_frame -- The number of frames to run the game for.
-        frame_rate -- The number of frames to play per second.
-        '''
-        assert 0 <= frame_rate
-        assert frame_rate <= 32767
-        start_time = time.time()
-        start_frame = s.frame
-        end_frame = start_frame + max_frame
-        logger.debug('playing {0} frames'.format(max_frame))
-        while True:
-            if s.frame >= end_frame:
-                break
-            # Compute the target current frame.
-            target_frame = self.GetTargetFrame(time.time(), start_time,
-                    start_frame, end_frame, frame_rate)
-            if target_frame == s.frame:
-                continue
-            # Play a frame.
-            if self.is_client:
-                self.RunFrameAsClient(s, rec)
-            elif self.is_server:
-                self.RunFrameAsServer(s, rec)
-            else:
-                # This feature is used for testing.
-                rec.AddEntry(s, 0)
-                self.PlayFrame(s, 0)
-            # Catch up.
-            if s.frame < target_frame:
-                continue
-            # Do the rendering
-            end_time = ((target_frame + 1 - start_frame) \
-                    / float(frame_rate)) + start_time
-            now = time.time()
-            # Minus two because rec.idx is pointing to the next frame.
-            self.renderer.Render(rec.states[(rec.idx - 2)%rec.size],
-                    s, now, end_time)
-
-    def PlayFrames(self, e, s, start_game, max_frame, frame_rate):
-        '''To be used with PlayAs.
-        '''
-        e.RunGame(s, e.rec, max_frame, frame_rate)
 
     def RotateRoles(self, s):
         '''Rotate the roles of the players.
@@ -1012,47 +554,6 @@ class GameEngine(object):
         for player_id in range(0, len(s.roles)):
             s.players[s.roles[player_id]] = player_id
 
-    def PlayRound(self, s, rec, rotations, rotation_length, frame_rate):
-        '''Play one round of the game, with each player playing every role.
-
-        Argument:
-        s -- The game state to start the round from.
-        rotations -- The number of rotations in the round.
-        rec -- The game record to record the game on.
-        rotation_length -- The number of frames to play for each rotation.
-        frame_rate -- The number of frames to play per second.
-        '''
-
-        logger.debug('starting round')
-        for i in range(0, rotations):
-            logger.debug('starting rotation')
-            self.RunGame(s, rec, rotation_length, frame_rate)
-            self.RotateRoles(s)
-
-    def Play(self, s):
-        '''
-        To do: Use PlayAs.
-        Argument:
-        s -- The game state.
-        '''
-        rotation_length = s.rotation_length
-        frame_rate = s.frames_per_sec 
-        rounds = s.rounds
-        rec = GameRecord()
-        # Pick an estimate for a value greater than 2L.
-        rec.SetSize(self.buffer_size)
-
-        for i in range(0, rounds):
-            self.PlayRound(s, rec, 3, rotation_length, 
-                    frame_rate)
-            
-        if self.is_server:
-            self.SendEndGameEvent(self.clients, s)
-        self.EndGame(s)
-        # Keep the game running for a bit, to show the final score.   
-        self.RunGame(s, rec, frame_rate * self.post_game_time, frame_rate)
-
-    
     def PlayAs(self, s, player, start_time):
         '''
         Play the game using player.
@@ -1090,7 +591,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--interpolate', action='store_true',
             default=False, help='Turn on renderer interpolation.')
     args = parser.parse_args()
-    e = GameEngine()
+    e = UDPGameEngine()
     e.is_client = True
     e.is_server = False
     conf = GameConfig()

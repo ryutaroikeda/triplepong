@@ -7,7 +7,7 @@ import sys
 import time
 sys.path.append(os.path.abspath('src'))
 from bitrecord import BitRecord
-from engine import GameEngine
+from udpgameengine import UDPGameEngine
 from eventtype import EventType
 from gameevent import GameEvent
 from gamestate import GameState
@@ -133,7 +133,7 @@ class UDPClient:
         timeout   -- The timeout for socket IO.
         Return value: True if a game was completed successfully.
         '''
-        e = GameEngine()
+        e = UDPGameEngine()
         for i in range(0, tries):
             sock = UDPSocket()
             sock.Open()

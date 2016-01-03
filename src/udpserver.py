@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath('src'))
 from endgameevent import EndGameEvent
 from eventtype import EventType
 from gameconfig import GameConfig
-from engine import GameEngine
+from udpgameengine import UDPGameEngine
 import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
@@ -253,7 +253,7 @@ class UDPServer:
                     c.Close()
                 continue
             logger.info('Starting game.')
-            e = GameEngine()
+            e = UDPGameEngine()
             e.is_server = True
             e.is_client = False
             e.clients = clients

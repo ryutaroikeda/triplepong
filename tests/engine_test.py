@@ -17,6 +17,9 @@ logger = tplogger.getTPLogger('engine_test.log', logging.DEBUG)
 sys.path.append(os.path.abspath('tests'))
 from mockkeyboard import MockKeyboard
 from mockeventsocket import MockEventSocket
+
+raise unittest.SkipTest('Deprecated module.')
+
 class GameEngineTest(unittest.TestCase):
     def template_GetKeyboardEvents(self, key_cool_down_time,
             last, frame, do_press_key, role, player_key, evt):
