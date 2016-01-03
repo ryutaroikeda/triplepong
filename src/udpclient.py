@@ -49,6 +49,7 @@ class UDPClient:
         self.state_update_count = 0
         self.old_count = 0
         self.rewind_count = 0
+        self.unavailable_count = 0
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
@@ -395,6 +396,7 @@ class UDPClient:
                 # bail out until server update.
                 # to do: reset unacked
                 s.frame = e.bitrec.frame - e.buffer_size
+                self.unavailable_count += 1
             if s.frame < play_to:
                 e.PlayFromStateWithPlayer(s, e.bitrec, e.rec, play_to,
                         e.player_id, e.buffer_size)
@@ -404,7 +406,8 @@ class UDPClient:
         logger.info('\nOld events: {0}'.format(self.old_count)+\
                 '\nLoss: {0}'.format(self.loss_count)+\
                 '\nstate update {0}'.format(self.state_update_count)+\
-                '\nrewind update {0}'.format(self.rewind_count))
+                '\nrewind update {0}'.format(self.rewind_count)+\
+                '\nbitrec unavailable {0}'.format(self.unavailable_count))
 
 if __name__ == '__main__':
     import argparse
