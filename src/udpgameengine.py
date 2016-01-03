@@ -558,7 +558,7 @@ class UDPGameEngine(object):
         Play the game using player.
         Arguments:
         s          -- The GameState.
-        player     -- An object that implements PlayFrames.
+        player     -- An object that implements PlayFrames and PrintStats
         '''
         assert s != None
         rotation_length = s.rotation_length
@@ -583,10 +583,20 @@ class UDPGameEngine(object):
         player.PlayFrames(self, s, start_time, 
                 frame_rate * self.post_game_time, frame_rate)
 
+    def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
+        '''
+        For testing.
+        '''
+        self.renderer.Render(s, s, 0, 0)
+        time.sleep(5)
+
+    def PrintStats(self):
+        pass
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='The triplepong game \
-            engine.')
+            engine. Use the command line interface for testing.')
     parser.add_argument('-i', '--interpolate', action='store_true',
             default=False, help='Turn on renderer interpolation.')
     args = parser.parse_args()
@@ -603,5 +613,5 @@ if __name__ == '__main__':
     conf.ApplyRenderer(r)
     e.renderer = r
     e.keyboard = r
-    e.Play(e.state)
+    e.PlayAs(e.state, e, 0)
     

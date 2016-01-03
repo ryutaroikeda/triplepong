@@ -32,20 +32,32 @@ class Renderer:
         self.background_color = (0xFF, 0xA9, 0x07)
         self.default_color = (0xFF, 0xCF, 0x74)
         self.your_color = (0xFF, 0xF1, 0xD7)
+        self.background_colors = [(0xFF,0xAA,0xAA),(0x66,0x99,0x99),
+                (0x88,0xCC,0x88)]
+        self.player_colors = [(0xAA,0x39,0x39),(0x22,0x66,0x66),
+                (0x2D,0x88,0x2D)]
+        self.wall_colors = [(0xD4,0x6A,0x6A),(0x40,0x7F,0x7F),
+                (0x55,0xAA,0x55)]
         self.state = GameState()
         self.do_interpolate = False
-        pass
+
     def GetRect(self, obj):
         '''Returns a tuple (x, y, w, h) representing a rect from the given 
         GameObject.'''
         return (obj.pos_x - obj.half_width, obj.pos_y - obj.half_height,
                 2 * obj.half_width, 2 * obj.half_height)
-    def RenderBackground(self, surface):
-        '''Fills the background with one color.'''
-
-        pygame.draw.rect(surface, self.background_color,
+    def RenderBackground(self, surface, state):
+        '''Fills the background with one color.
+        '''
+        player_id = state.players[GameState.ROLE_BALL]
+        bkgd = self.background_colors[player_id]
+        wall_color = self.wall_colors[player_id]
+        pygame.draw.rect(surface, bkgd,
                 (0, 0, self.screen_width, self.screen_height))
-        pass
+        ball_wall_top = self.GetRect(state.ball_wall_top)
+        ball_wall_bottom = self.GetRect(state.ball_wall_bottom)
+        pygame.draw.rect(surface, wall_color, ball_wall_top)
+        pygame.draw.rect(surface, wall_color, ball_wall_bottom)
     
     def RenderScore(self, surface, state):
         '''Render the score of all players.
@@ -95,33 +107,17 @@ class Renderer:
         Arguments:
         surface -- The pygame surface to render to.
         state   -- The game state to render.'''
-
-        paddle_left = self.GetRect(state.paddle_left)
-        paddle_right = self.GetRect(state.paddle_right)
-        ball = self.GetRect(state.ball)
-        ball_wall_top = self.GetRect(state.ball_wall_top)
-        ball_wall_bottom = self.GetRect(state.ball_wall_bottom)
-        default_color = self.default_color
-        pygame.draw.rect(surface, default_color, paddle_left)
-        pygame.draw.rect(surface, default_color, paddle_right)
-        pygame.draw.rect(surface, default_color, ball)
-        pygame.draw.rect(surface, default_color, ball_wall_top)
-        pygame.draw.rect(surface, default_color, ball_wall_bottom)
-        your_color = self.your_color
-        if state.roles[state.player_id] == GameState.ROLE_LEFT_PADDLE:
-            pygame.draw.rect(surface, your_color, paddle_left)
-        if state.roles[state.player_id] == GameState.ROLE_RIGHT_PADDLE:
-            pygame.draw.rect(surface, your_color, paddle_right)
-        if state.roles[state.player_id] == GameState.ROLE_BALL:
-            pygame.draw.rect(surface, your_color, ball)
-        pass
+        for i in range(0, 3):
+            o = state.PlayerToObject(state.roles, i)
+            rect = self.GetRect(o)
+            pygame.draw.rect(surface, self.player_colors[i], rect)
 
     def RenderAll(self, state):
         '''Render the screen.
         
         Argument:
         state -- The game state to render.'''
-        self.RenderBackground(self.surface)
+        self.RenderBackground(self.surface, state)
         self.RenderScore(self.surface, state)
         self.RenderCrown(self.surface, state)
         self.RenderState(self.surface, state)
