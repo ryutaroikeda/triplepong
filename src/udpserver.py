@@ -21,7 +21,7 @@ logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 '''
 Handling events:
 Events older than size frames before bitrec.frame are ignored.
-Events newer than size frmes after state.frame are ignored.
+Events newer than size frames after state.frame are ignored.
 '''
 class UDPServer:
     '''
@@ -33,6 +33,7 @@ class UDPServer:
         self.game_start_time = 0.0
         self.send_rate = 15
         self.buffer_time = 5
+        self.server_behind_count = 0
 
     def AcceptN(self, svr, socks, n, timeout):
         '''Accept until socks has n UDPEventSocket clients.
@@ -152,8 +153,7 @@ class UDPServer:
             if now >= end_time + timeout:
                 break
             initial_frame = s.frame
-            target_frame = e.GetCurrentFrame(start_time, frame_rate,
-                    time.time())
+            target_frame = e.GetCurrentFrame(start_time, frame_rate, now) 
             for c in list(e.clients):
                 evt = None
                 try:
@@ -180,17 +180,20 @@ class UDPServer:
                     # Rewind. Set s to a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
                     e.rec.states[idx].Copy(s)
-            if s.frame < target_frame - e.buffer_size:
-                logger.debug(('Server behind. {0}, {1}. '
-                'Forcing catch-up.').format(
-                            s.frame, target_frame))
-                s.frame = target_frame - e.buffer_size
-                e.bitrec.Clear()
-            play_to = max(e.bitrec.frame, target_frame)
-            e.UpdateBitRecordFrame(e.bitrec, play_to, e.buffer_size)
             assert s.frame >= e.bitrec.frame - e.buffer_size
-            if s.frame < play_to:
-                e.PlayFromState(s, e.bitrec, e.rec, play_to, 
+            if s.frame < e.bitrec.frame:
+                e.PlayFromState(s, e.bitrec, e.rec, e.bitrec.frame, 
+                        e.buffer_size)
+            if s.frame < target_frame:
+                e.UpdateBitRecordFrame(e.bitrec, target_frame, e.buffer_size)
+                if s.frame < target_frame - e.buffer_size:
+                    logger.debug(('Server too far behind. {0}, {1}. '
+                    'Forcing catch-up.').format(
+                                s.frame, target_frame))
+                    s.frame = target_frame - e.buffer_size
+                    e.bitrec.Clear()
+                    self.server_behind_count += 1
+                e.PlayFromState(s, e.bitrec, e.rec, target_frame, 
                         e.buffer_size)
             # Send state and bitrec to clients.
             s.bits = e.bitrec.bits
@@ -206,7 +209,7 @@ class UDPServer:
                         e.clients.remove(c)
 
     def PrintStats(self):
-        pass
+        logger.info('\nServer behind {0}'.format(self.server_behind_count))
 
     def Run(self, sock, upnp, conf, tries, timeout):
         '''

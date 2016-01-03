@@ -302,6 +302,7 @@ class UDPClient:
         SPACE = 32
         keys = e.keyboard.GetKeys()
         if keys[ESCAPE]:
+            self.PrintStats()
             raise Exception('Exited game.')
         b = 0
         if keys[SPACE] and self.key_is_released:
