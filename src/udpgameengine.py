@@ -321,7 +321,6 @@ class UDPGameEngine(object):
         keys -- The flag for key events.
         bitrec -- Used for score double-count avoidance.
         '''
-        assert isinstance(keys, int)
         if self.should_apply_gravity:
             self.ApplyGravity(s)
         self.ApplyEvents(s, keys)
