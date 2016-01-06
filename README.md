@@ -1,26 +1,32 @@
-Triple pong
+#Triple pong
 
 
-A pong game for three players. And flappy birds!
+##A pong game for three players. And flappy birds!
 
 [![Build Status](https://travis-ci.org/ryutaroikeda/triplepong.svg?branch=master)](https://travis-ci.org/ryutaroikeda/triplepong)
 [![Coverage Status](https://coveralls.io/repos/ryutaroikeda/triplepong/badge.svg?branch=master&service=github)](https://coveralls.io/github/ryutaroikeda/triplepong?branch=master)
 
-To do:
+##Running the server
+`src/udpserver.py'
 
-Engine:
+##Running the client
+`src/udpclient.py --ip address`
+
+##To do:
+
+##Engine:
 * Color-coding or label for each player.
 
-Testing:
+##Testing:
 * Profiling 
 
-Networking:
+##Networking:
 * UDP
 
-Graphics and User Interface:
+##Graphics and User Interface:
 * Sound effects.
 * Music.
 
-Extensions:
+##Extensions:
 * AI player.
 * Official website. 
