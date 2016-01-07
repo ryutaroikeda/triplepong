@@ -128,8 +128,8 @@ class UDPServerTest(unittest.TestCase):
             server_tries = 100
             server_timeout = 60
             client_tries = 60
-            client_resend = 1
-            client_timeout = 2.0
+            client_resend = 4
+            client_timeout = 10.0
             user_conf = GameConfig()
             user_conf.sync = user_do_sync
             user_conf.sync_timeout = conf.sync_timeout * n
