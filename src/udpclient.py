@@ -19,15 +19,6 @@ from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpclient.log', logging.DEBUG)
-'''
-Use 
-assert isinstance(x, (int, long)) 
-in Python 2.x
-and 
-assertisinstance(x, int) 
-in Python 3.x.
-For now, do neither.
-'''
 class UDPClient:
     '''
     Attributes:
@@ -158,7 +149,7 @@ class UDPClient:
                 e.key_cool_down_time))
             e.server = svr
             e.is_client = True
-            e.is_server = False
+            e.is_server = True
             e.renderer = renderer
             e.keyboard = keyboard
             # To do: Apply user_conf without overriding server config.
