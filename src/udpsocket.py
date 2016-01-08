@@ -181,6 +181,9 @@ class UDPSocket:
         except Exception as e:
             logger.exception(e)
             return None
+        if buf != UDPSocket.GUID_1:
+            logger.info("Incorrect GUID_1 received")
+            return None
         logger.info('Initiating handshake with ({0})'.format(addr))
         s = UDPSocket()
         try:
