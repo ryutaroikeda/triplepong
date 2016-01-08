@@ -128,7 +128,9 @@ class UDPServerTest(unittest.TestCase):
             server_tries = 55
             server_timeout = 10
             client_tries = 55
-            client_resend = 4
+            # Send only once. To keep tests short, games run only briefly.
+            # The game might have ended during resend, which will cause failure.
+            client_resend = 1
             client_timeout = 10
             user_conf = GameConfig()
             user_conf.sync = user_do_sync
