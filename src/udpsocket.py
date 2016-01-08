@@ -154,11 +154,12 @@ class UDPSocket:
             self.sock.connect(peer_addr)
         except Exception as e:
             if e.errno != 56:
-                raise e
+                logger.exception(e)
+                return False
             logger.info('Already connected.')
         (_, ready, _) = select.select([], [self.sock], [], timeout)
         if ready == []:
-            logger.info('Connection timed out (3).')
+            logger.info('Connect timed out (3).')
             return False
         self.sock.send(UDPSocket.GUID_3)
         logger.info('Handshake succeeded.')
@@ -180,6 +181,7 @@ class UDPSocket:
         except Exception as e:
             logger.exception(e)
             return None
+        logger.info('Initiating handshake with ({0})'.format(addr))
         s = UDPSocket()
         try:
             s.Open()
