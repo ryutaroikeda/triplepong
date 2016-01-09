@@ -152,7 +152,9 @@ class UDPServer:
                 break
             if now >= end_time + timeout:
                 break
-            initial_frame = e.bitrec.frame
+            # Check incoming event frame with current frame to make sure
+            # we don't get too far ahead.
+            initial_frame = s.frame
             target_frame = e.GetCurrentFrame(start_time, frame_rate, now) 
             for c in list(e.clients):
                 evt = None
@@ -165,8 +167,7 @@ class UDPServer:
                 if evt == None:
                     continue
                 if evt.event_type == EventType.KEYBOARD:
-                    logger.debug('Received key event {0}.'.format(
-                        evt.frame))
+                    logger.debug('Received key event {0}.'.format( evt.frame))
                     if evt.frame < initial_frame - e.buffer_size:
                         logger.debug('Event too old to be effective.')
                         continue
@@ -184,14 +185,14 @@ class UDPServer:
                     e.rec.states[idx].Copy(s)
             assert s.frame >= e.bitrec.frame - e.buffer_size
             if s.frame < e.bitrec.frame:
+                # Play everything up to the record.
                 e.PlayFromState(s, e.bitrec, e.rec, e.bitrec.frame, 
                         e.buffer_size)
             if s.frame < target_frame:
                 e.UpdateBitRecordFrame(e.bitrec, target_frame, e.buffer_size)
                 if s.frame < target_frame - e.buffer_size:
                     logger.debug(('Server too far behind. {0}, {1}. '
-                    'Forcing catch-up.').format(
-                                s.frame, target_frame))
+                    'Forcing catch-up.').format( s.frame, target_frame))
                     s.frame = target_frame - e.buffer_size
                     e.bitrec.Clear()
                     self.server_behind_count += 1
