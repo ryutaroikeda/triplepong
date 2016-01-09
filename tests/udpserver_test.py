@@ -108,7 +108,7 @@ class UDPServerTest(unittest.TestCase):
         conf = GameConfig()
         conf.player_size = n
         conf.frames_per_sec = 32767
-        conf.game_length = 0.05
+        conf.game_length = 0.5
         conf.post_game_time = 0
         conf.do_sync = svr_do_sync
         conf.sync_timeout = 0.05
