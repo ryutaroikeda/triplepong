@@ -2,6 +2,7 @@ import logging
 import os
 import select
 import socket
+import struct
 import sys
 sys.path.append(os.path.abspath('src'))
 import tplogger
@@ -11,7 +12,7 @@ class UDPSocket:
     '''
     Constants:
     GUID_1    -- The bytes sent when initiating a handshake.
-    GUID_2    -- The bytes sent when completing a handshake.
+    GUID_3    -- The bytes sent when completing a handshake.
     Attributes:
     sock      -- A socket object.
     ttl       -- The time-to-live for the connection.
@@ -22,7 +23,6 @@ class UDPSocket:
     '''
     MAX_TIME_TO_LIVE = 60
     GUID_1 = b'0e27b7418ee54d648b20dd82dc53905b'
-    GUID_2 = b'b02dda09a088482bb8fe88df6e5268fe'
     GUID_3 = b'4200150f5d5a46a283483cc501f395e4'
     def __init__(self):
         self.sock = None
@@ -137,34 +137,38 @@ class UDPSocket:
         Accept().
         Return value: True if the handshake succeeded.
         '''
-        (_, ready, _) = select.select([], [self.sock], [], timeout)
-        if ready == []:
-            logger.info('Connect timed out (1).')
-            return False
-        self.sock.sendto(UDPSocket.GUID_1, addr)
-        (ready, _, _) = select.select([self.sock], [], [], timeout)
-        if ready == []:
-            logger.info('Connect timed out. (2)')
-            return False
-        (buf, peer_addr) = self.sock.recvfrom(len(UDPSocket.GUID_2))
-        if buf != UDPSocket.GUID_2:
-            logger.info('Incorrect GUID received.')
-            return False
         try:
-            self.sock.connect(peer_addr)
-        except Exception as e:
-            if e.errno != 56:
-                logger.exception(e)
+            (_, ready, _) = select.select([], [self.sock], [], timeout)
+            if ready == []:
+                logger.info('Connect timed out (1).')
                 return False
-            logger.info('Already connected.')
-        (_, ready, _) = select.select([], [self.sock], [], timeout)
-        if ready == []:
-            logger.info('Connect timed out (3).')
+            self.sock.sendto(UDPSocket.GUID_1, addr)
+            (ready, _, _) = select.select([self.sock], [], [], timeout)
+            if ready == []:
+                logger.info('Connect timed out. (2)')
+                return False
+            (buf, _) = self.sock.recvfrom(struct.calcsize('!H'))
+            # Connect to the port provided by the peer.
+            port = struct.unpack('!H', buf)[0]
+            logger.info('Connecting to ({0}, {1})'.format(addr[0], port))
+            try:
+                self.sock.connect((addr[0], port))
+            except Exception as e:
+                if e.errno != 56:
+                    logger.exception(e)
+                    return False
+                logger.info('Already connected.')
+            (_, ready, _) = select.select([], [self.sock], [], timeout)
+            if ready == []:
+                logger.info('Connect timed out (3).')
+                return False
+            self.sock.send(UDPSocket.GUID_3)
+            logger.info('Handshake succeeded.')
+            self.ttl = UDPSocket.MAX_TIME_TO_LIVE
+            return True
+        except Exception as e:
+            logger.exception(e)
             return False
-        self.sock.send(UDPSocket.GUID_3)
-        logger.info('Handshake succeeded.')
-        self.ttl = UDPSocket.MAX_TIME_TO_LIVE
-        return True
 
     def Accept(self, timeout):
         '''Try to accept a connection.
@@ -172,11 +176,11 @@ class UDPSocket:
         A UDPSocket with the address of a peer, or None if the handshake 
         failed.
         '''
-        (ready, _, _) = select.select([self.sock], [], [], timeout)
-        if ready == []:
-            logger.info('Accept timed out.')
-            return None
         try:
+            (ready, _, _) = select.select([self.sock], [], [], timeout)
+            if ready == []:
+                logger.info('Accept timed out.')
+                return None
             (buf, addr) = self.sock.recvfrom(UDPDatagram.MAX_DATAGRAM)
         except Exception as e:
             logger.exception(e)
@@ -184,24 +188,23 @@ class UDPSocket:
         if buf != UDPSocket.GUID_1:
             logger.info("Incorrect GUID_1 received")
             return None
-        logger.info('Initiating handshake with ({0})'.format(addr))
-        s = UDPSocket()
+        logger.info('Initiating handshake with {0}'.format(addr))
         try:
+            s = UDPSocket()
             s.Open()
             s.Bind(('', 0))
-            s.sock.connect(addr)
-            (_, ready, _) = select.select([], [s.sock], [], timeout)
-            if ready == []:
-                s.Close()
-                logger.info('Accept timed out (2).')
-                return None
-            s.sock.send(UDPSocket.GUID_2)
+            (_, port) = s.sock.getsockname()
+            logger.info('Opening port {0}'.format(port))
+            # Tell the client to use this port.
+            self.sock.sendto(struct.pack('!H', port), addr)
             (ready, _, _) = select.select([s.sock], [], [], timeout)
             if ready == []:
                 s.Close()
                 logger.info('Timed out while waiting for reply.')
                 return None
-            buf = s.sock.recv(len(UDPSocket.GUID_3))
+            # Depending on the NAT method, the client port might change.
+            (buf, addr_2) = s.sock.recvfrom(len(UDPSocket.GUID_3))
+            s.sock.connect(addr_2)
             if buf != UDPSocket.GUID_3:
                 s.Close()
                 logger.info('Incorrect GUID received.')
