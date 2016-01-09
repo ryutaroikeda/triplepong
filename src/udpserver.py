@@ -152,7 +152,7 @@ class UDPServer:
                 break
             if now >= end_time + timeout:
                 break
-            initial_frame = s.frame
+            initial_frame = e.bitrec.frame
             target_frame = e.GetCurrentFrame(start_time, frame_rate, now) 
             for c in list(e.clients):
                 evt = None
