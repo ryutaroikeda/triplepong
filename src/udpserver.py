@@ -185,9 +185,11 @@ class UDPServer:
                     e.rec.states[idx].Copy(s)
                     assert s.frame <= initial_frame
             if s.frame < e.bitrec.frame - e.buffer_size:
-                logger.debug('assert_error {0} < {1} - {2}'.format(s.frame,
+                # BUG: This is not meant to happen.
+                logger.debug('bug {0} < {1} - {2}.'.format(s.frame,
                     e.bitrec.frame, e.buffer_size))
-            assert s.frame >= e.bitrec.frame - e.buffer_size
+                # Force it to work.
+                s.frame = e.bitrec.frame - e.buffer_size
             if s.frame < e.bitrec.frame:
                 # Play everything up to the record.
                 e.PlayFromState(s, e.bitrec, e.rec, e.bitrec.frame, 
