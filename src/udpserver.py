@@ -179,6 +179,8 @@ class UDPServer:
                             c.player_id, e.buffer_size)
                     # Rewind. Set s to a recorded state.
                     idx = e.bitrec.frame % e.buffer_size
+                    if e.bitrec.frame < e.buffer_size:
+                        idx = 0
                     e.rec.states[idx].Copy(s)
             assert s.frame >= e.bitrec.frame - e.buffer_size
             if s.frame < e.bitrec.frame:
