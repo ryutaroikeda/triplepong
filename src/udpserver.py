@@ -178,11 +178,12 @@ class UDPServer:
                             max(e.bitrec.frame, evt.frame+1), e.buffer_size)
                     e.UpdateBitRecordBit(e.bitrec, evt.frame, evt.keybits,
                             c.player_id, e.buffer_size)
-                    # Rewind. Set s to a recorded state.
+                    # Rewind. Set s back buffer_size frames.
                     idx = e.bitrec.frame % e.buffer_size
                     if e.bitrec.frame < e.buffer_size:
                         idx = 0
                     e.rec.states[idx].Copy(s)
+                    assert s.frame <= initial_frame
             assert s.frame >= e.bitrec.frame - e.buffer_size
             if s.frame < e.bitrec.frame:
                 # Play everything up to the record.
