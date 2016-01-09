@@ -196,7 +196,7 @@ class UDPServer:
                 e.UpdateBitRecordFrame(e.bitrec, target_frame, e.buffer_size)
                 if s.frame < target_frame - e.buffer_size:
                     logger.debug(('Server too far behind. {0}, {1}. '
-                    'Forcing catch-up.').format( s.frame, target_frame))
+                    'Forcing catch-up.').format(s.frame, target_frame))
                     s.frame = target_frame - e.buffer_size
                     e.bitrec.Clear()
                     self.server_behind_count += 1
@@ -214,6 +214,7 @@ class UDPServer:
                         logger.exception(ex)
                         c.Close()
                         e.clients.remove(c)
+            assert s.frame >= e.bitrec.frame - e.buffer_size
 
     def PrintStats(self):
         logger.info('\nServer behind {0}'.format(self.server_behind_count))

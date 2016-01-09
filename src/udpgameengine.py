@@ -376,7 +376,6 @@ class UDPGameEngine(object):
         assert state != None
         assert bitrec != None
         assert rec != None
-        #assert isinstance(play_to, (int, long))
         assert isinstance(size, int)
         assert state.frame <= play_to
         assert play_to <= bitrec.frame
