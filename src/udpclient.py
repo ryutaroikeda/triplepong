@@ -88,6 +88,7 @@ class UDPClient:
                 return False           
         logger.info('Waiting for start of game.')
         did_receive_start = False
+        end_time = time.time() + timeout
         while time.time() < end_time:
             try:
                 (ready, _, _) = select.select([svr], [], [], 
