@@ -56,7 +56,6 @@ class UDPServer:
         0 if the handshake succeeded. -1 if the handshake failed. 1 if at least 
         one client died after the start of game.
         '''
-        assert isinstance(self.buffer_time, int)
         start_time = time.time()
         end_time = start_time + timeout
         logger.info('Starting handshake.')
@@ -106,11 +105,11 @@ class UDPServer:
         logger.info('Sending start message.')
         msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
-        self.game_start_time = int(time.time() * 1000) + self.buffer_time
+        self.game_start_time = int(time.time() * 1000 + self.buffer_time)
         did_lose_client = False
         for c in conns:
             try:
-                msg.timestamp = self.game_start_time + c.delta
+                msg.timestamp = int(self.game_start_time + c.delta)
                 logger.info('Telling client {0} to start at {1}'.format(
                     c.player_id, msg.timestamp))
                 for i in range(0, resend):
