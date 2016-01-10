@@ -145,8 +145,8 @@ class UDPEventSocket:
             except Exception as e:
                 logger.exception(e)
                 return -1
-        self.latency = average_rtt // 2
-        self.delta = average_delta - self.latency
+        self.latency = int(average_rtt // 2)
+        self.delta = int(average_delta - self.latency)
         return 0
 
     def RecvSync(self, timeout):
