@@ -302,7 +302,7 @@ if __name__ == '__main__':
             help='The number of attempts to run the game.')
     parser.add_argument('--timeout', type=int, default=60,
             help='The time allowed for connection and handshake.')
-    parser.add_argument('--resend'. type=int, default=5,
+    parser.add_argument('--resend', type=int, default=5,
             help='Number of duplicates to send in handshake')
     parser.add_argument('--nosync', default=False, action='store_true',
             help='Measure latency and clock of clients.')
@@ -321,7 +321,7 @@ if __name__ == '__main__':
     conf.rounds = args.rounds
     conf.frames_per_sec = args.fps
     conf.buffer_delay = args.delay
-    conf.resend = resend
+    conf.resend = args.resend
     conf.do_sync = not args.nosync
     conf.cool_down = args.cooldown
     s.buffer_time = args.buffertime
