@@ -39,6 +39,7 @@ class GameConfig:
         self.sync_rate = 15
         self.buffer_size = 64
         self.start_time = 0.0
+        self.resend = 5
 
     def __repr__(self):
         return str(self.__dict__)
