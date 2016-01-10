@@ -310,6 +310,8 @@ if __name__ == '__main__':
             help='Number of duplicates to send in handshake')
     parser.add_argument('--nosync', default=False, action='store_true',
             help='Measure latency and clock of clients.')
+    parser.add_argument('--synctimeout', type=int, default=3,
+            help='Duration of sampling for Sync()')
     parser.add_argument('--buffertime', type=int, default=2,
             help='The time between invitation and game start.')
     parser.add_argument('--cooldown', type=int, default=6,
@@ -327,6 +329,7 @@ if __name__ == '__main__':
     conf.buffer_delay = args.delay
     conf.resend = args.resend
     conf.do_sync = not args.nosync
+    conf.sync_timeout = args.synctimeout
     conf.cool_down = args.cooldown
     s.buffer_time = args.buffertime
     s.send_rate = args.ups
