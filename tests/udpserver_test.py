@@ -10,6 +10,7 @@ from udpclient import UDPClient
 from udpeventsocket import UDPEventSocket
 from udpserver import UDPServer
 from udpsocket import UDPSocket
+sys.path.append(os.path.abspath('tests'))
 from mockkeyboard import MockKeyboard
 from nullkeyboard import NullKeyboard
 from nullrenderer import NullRenderer
@@ -146,13 +147,18 @@ class UDPServerTest(unittest.TestCase):
                 ps.append(p)
                 qs.append(q)
             svr = UDPServer()
-            svr.buffer_time = 0.0
-            status = svr.Run(s, False, conf, server_tries, server_timeout)
+            svr.buffer_time = 0
+            try:
+                status = svr.Run(s, False, conf, server_tries, server_timeout)
+            except Exception as ex:
+                logger.exception(e)
+                status = 100 # Error in the server, stop the test
             results = []
             for i in range(0, n):
                 results.append(qs[i].get())
                 ps[i].join()
             s.Close()
+            self.assertTrue(status != 100)
             if status == 0:
                 break
         self.assertTrue(status == 0,

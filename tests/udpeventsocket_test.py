@@ -88,6 +88,7 @@ class UDPEventSocketTest(unittest.TestCase):
     def test_ReadAndWriteEvent_Handshake_2(self):
         evt = TPMessage()
         evt.method = 4
+        evt.timestamp = 40000000
         self.template_ReadAndWriteEvent(evt)
 
     def test_RecvSync_1(self):
@@ -123,7 +124,5 @@ class UDPEventSocketTest(unittest.TestCase):
         f.Close()
         self.assertTrue(status == 0)
         self.assertTrue(other_status == 0)
-        self.assertTrue(e.latency <= timeout/2)
-        # The delta should be small because we are using the same clock.
-        self.assertTrue(e.delta <= timeout/2)
+        self.assertTrue(e.latency <= (timeout * 1000) // 2)
 

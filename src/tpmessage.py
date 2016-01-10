@@ -13,15 +13,15 @@ class TPMessage(object):
     METHOD_CONFIRM = 2
     METHOD_STARTGAME = 3
     METHOD_SYNC = 4
-    FORMAT = '!iiiiid'
-    SUBFORMAT = '!iiiid'
+    FORMAT = '!iiiiiQ'
+    SUBFORMAT = '!iiiiQ'
     def __init__(self):
         self.method = self.METHOD_NONE
         self.player_id = GameState.ROLE_NONE
         self.event_type = EventType.HANDSHAKE
         self.seq = 0
         self.ack = 0
-        self.timestamp = 0.0
+        self.timestamp = 0
 
     def __eq__(self, other):
         if other == None:

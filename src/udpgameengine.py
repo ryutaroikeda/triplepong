@@ -473,12 +473,15 @@ class UDPGameEngine(object):
         Arguments:
         s          -- The GameState.
         player     -- An object that implements PlayFrames and PrintStats
+        start_time -- Time to start the game, in seconds since the epoch.
         '''
         assert s != None
         rotation_length = s.rotation_length
         frame_rate = s.frames_per_sec 
         rounds = s.rounds
         # Busy wait until start time
+        logger.info('Starting game at {0}: Now {1}'.format(start_time, 
+            time.time()))
         while time.time() < start_time:
             pass
         for i in range(0, rounds):

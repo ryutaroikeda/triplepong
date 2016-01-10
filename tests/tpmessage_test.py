@@ -22,5 +22,5 @@ class TPMessageTest(unittest.TestCase):
 
     def test_SerializeAndDeserialize_2(self):
         msg = TPMessage()
-        msg.timestamp = 1.0
+        msg.timestamp = 10
         self.template_SerializeAndDeserialize(msg)

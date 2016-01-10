@@ -27,12 +27,12 @@ class UDPServer:
     '''
     Attributes:
     send_rate      -- Number of updates to send per second.
-    buffer_time    -- The time between invitations and game start.
+    buffer_time    -- The time in msec between invitations and game start.
     '''
     def __init__(self):
         self.game_start_time = 0.0
         self.send_rate = 15
-        self.buffer_time = 5
+        self.buffer_time = 5000
         self.server_behind_count = 0
 
     def AcceptN(self, svr, socks, n, timeout):
@@ -56,6 +56,7 @@ class UDPServer:
         0 if the handshake succeeded. -1 if the handshake failed. 1 if at least 
         one client died after the start of game.
         '''
+        assert isinstance(self.buffer_time, int)
         start_time = time.time()
         end_time = start_time + timeout
         logger.info('Starting handshake.')
@@ -105,11 +106,13 @@ class UDPServer:
         logger.info('Sending start message.')
         msg = TPMessage()
         msg.method = TPMessage.METHOD_STARTGAME
-        self.game_start_time = time.time() + self.buffer_time
+        self.game_start_time = int(time.time() * 1000) + self.buffer_time
         did_lose_client = False
         for c in conns:
             try:
                 msg.timestamp = self.game_start_time + c.delta
+                logger.info('Telling client {0} to start at {1}'.format(
+                    c.player_id, msg.timestamp))
                 for i in range(0, resend):
                     c.WriteEvent(msg)
             except Exception as e:
@@ -130,7 +133,7 @@ class UDPServer:
         Arguments:
         e           -- The GameEngine.
         s           -- The GameState.
-        start_time  -- The time of start.
+        start_time  -- The time of start in seconds since the epoch
         end_frame   -- The frame to play up to.
         frame_rate  -- Frames per second.
         size        -- Size of the history.
@@ -245,8 +248,8 @@ class UDPServer:
             if conf.do_sync:
                 for c in clients:
                     c.Sync(conf.sync_timeout, conf.sync_rate)
-                    logger.info('client {0}: Latency {1} Delta {2}'.format(
-                        c.player_id, c.latency, c.delta))
+                    logger.info('client ?: Latency {0} Delta {1}'.format(
+                        c.latency, c.delta))
             status = self.Handshake(clients, conf, timeout) 
             if status == -1:
                 for c in clients:
@@ -268,7 +271,7 @@ class UDPServer:
             e.is_client = False
             e.clients = clients
             conf.Apply(e)
-            e.PlayAs(e.state, self, self.game_start_time)
+            e.PlayAs(e.state, self, self.game_start_time / 1000)
             logger.info('Game ended. Exiting.')
             sock.Close()
             for c in clients:

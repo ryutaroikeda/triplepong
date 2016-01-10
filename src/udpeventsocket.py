@@ -83,6 +83,8 @@ class UDPEventSocket:
         '''Find the average difference between this system clock and the peer.
         We measure the average latency and compare time stamps.
         This UDPSocket must be 'connected' to a peer.
+        latency and delta will be set.
+        Time is measured in milliseconds.
         Argument:
         timeout -- The time to run this for.
         Return value: 0 on success and -1 on error.
@@ -108,7 +110,7 @@ class UDPEventSocket:
                         max(0, end_time - time.time()))
                 if ready == []:
                     continue
-                start_trip = time.time()
+                start_trip = time.time() 
                 self.WriteEvent(msg)
                 (ready, _, _) = select.select([self], [], [], max_wait)
                 # Read until we find the expected response.
@@ -130,21 +132,20 @@ class UDPEventSocket:
                 if reply == None:
                     continue
                 logger.info('Received sync response.')
-                average_rtt = (average_rtt * n + (end_trip - start_trip)) / \
-                        (n + 1)
-                average_delta = (average_delta * n + \
-                        (reply.timestamp - start_trip)) / (n + 1)
+                rtt = int((end_trip - start_trip) * 1000)
+                delta = reply.timestamp - int(start_trip * 1000)
+                average_rtt = (average_rtt * n + rtt) / (n + 1)
+                average_delta = (average_delta * n + delta) / (n + 1)
                 logger.info(\
                     'timestamp={0}, start={1}, delta={2}, end={3}'.format( \
                         reply.timestamp, start_trip,
-                        reply.timestamp - start_trip,
-                        end_trip))
+                        delta, end_trip))
                 n += 1
                 last_send = end_trip
             except Exception as e:
                 logger.exception(e)
                 return -1
-        self.latency = average_rtt / 2.0
+        self.latency = average_rtt // 2
         self.delta = average_delta - self.latency
         return 0
 
@@ -162,7 +163,8 @@ class UDPEventSocket:
                 if ready == []:
                     continue
                 msg = self.ReadEvent()
-                reply.timestamp = time.time()
+                recv_time = time.time()
+                reply.timestamp = int(recv_time * 1000)
                 if msg.event_type != EventType.HANDSHAKE:
                     break
                 if msg.method != TPMessage.METHOD_SYNC:

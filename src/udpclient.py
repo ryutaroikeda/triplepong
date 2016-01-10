@@ -153,7 +153,7 @@ class UDPClient:
             e.renderer = renderer
             e.keyboard = keyboard
             # To do: Apply user_conf without overriding server config.
-            e.PlayAs(e.state, self, self.conf.start_time)
+            e.PlayAs(e.state, self, self.conf.start_time / 1000)
             logger.info('Game ended.')
             sock.Close()
             return True
