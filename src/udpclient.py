@@ -183,9 +183,6 @@ class UDPClient:
         0 if shouldn't update with the server state.
         '''
         assert e != None
-        #assert isinstance(frame, (int, long))
-        #assert isinstance(update_frame, (int, long))
-        #assert isinstance(update_history, (int, long))
         assert isinstance(size, int)
         # Update the ack status.
         if self.unacked_1 >= 0 and e.IsAcked(self.unacked_1,
@@ -283,7 +280,6 @@ class UDPClient:
         '''
         assert e != None
         assert bitrec != None
-        #assert isinstance(frame, (int, long))
         assert isinstance(delay, int)
         assert isinstance(size, int)
         assert 0 < size
@@ -340,8 +336,6 @@ class UDPClient:
         '''
         assert e != None
         assert s != None
-        assert isinstance(start_time, float)
-        #assert isinstance(max_frame, (int, long))
         assert isinstance(frame_rate, int)
         assert frame_rate > 0
         assert frame_rate <= 32767
