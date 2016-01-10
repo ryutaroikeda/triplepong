@@ -245,8 +245,12 @@ class UDPServer:
                 continue
             # Make clock measurements for each client.
             if conf.do_sync:
+                logger.info('Syncing')
                 for c in clients:
-                    c.Sync(conf.sync_timeout, conf.sync_rate)
+                    status = c.Sync(conf.sync_timeout, conf.sync_rate)
+                    if status != 0:
+                        c.Close()
+                        continue
                     logger.info('client ?: Latency {0} Delta {1}'.format(
                         c.latency, c.delta))
             status = self.Handshake(clients, conf, timeout) 

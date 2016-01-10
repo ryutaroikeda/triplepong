@@ -103,16 +103,17 @@ class UDPServerTest(unittest.TestCase):
             self.assertTrue(res[i])
     
     def template_Run(self, n, svr_do_sync, user_do_sync):
+        assert svr_do_sync == user_do_sync
         k = MockKeyboard()
         k.inputs = [1]*30+[0]*100
         r = NullRenderer()
         conf = GameConfig()
         conf.player_size = n
         conf.frames_per_sec = 32767
-        conf.game_length = 0.5
+        conf.game_length = 0.25
         conf.post_game_time = 0
         conf.do_sync = svr_do_sync
-        conf.sync_timeout = 0.05
+        conf.sync_timeout = 0.1
         conf.sync_rate = 100
         conf.buffer_size = 64
         # Try to avoid clients dying at the end of handshake.
@@ -134,7 +135,7 @@ class UDPServerTest(unittest.TestCase):
             client_resend = 1
             client_timeout = 10
             user_conf = GameConfig()
-            user_conf.sync = user_do_sync
+            user_conf.do_sync = user_do_sync
             user_conf.sync_timeout = conf.sync_timeout * n
             for i in range(0, n):
                 q = multiprocessing.Queue()
@@ -203,19 +204,10 @@ class UDPServerTest(unittest.TestCase):
         self.template_Run(3, False, False)
 
     def test_Run_5(self):
-        self.template_Run(0, True, False)
-
-    def test_Run_6(self):
-        self.template_Run(1, True, False)
-
-    def test_Run_7(self):
-        self.template_Run(1, False, True)
-
-    def test_Run_8(self):
         self.template_Run(1, True, True)
 
-    def test_Run_9(self):
+    def test_Run_6(self):
         self.template_Run(2, True, True)
 
-    def test_Run_10(self):
+    def test_Run_7(self):
         self.template_Run(3, True, True)

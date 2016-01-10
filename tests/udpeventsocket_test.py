@@ -105,7 +105,7 @@ class UDPEventSocketTest(unittest.TestCase):
         status = e.Sync(0.01, 200)
         s.Close()
         t.Close()
-        self.assertTrue(status == 0)
+        self.assertTrue(status == -1) # No data received
 
     def test_SyncAndRecvSync_1(self):
         s, t = UDPSocket.Pair()

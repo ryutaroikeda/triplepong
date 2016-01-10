@@ -147,6 +147,9 @@ class UDPEventSocket:
                 return -1
         self.latency = int(average_rtt // 2)
         self.delta = int(average_delta - self.latency)
+        if n == 0:
+            logger.info('Failed to get any sync data')
+            return -1
         return 0
 
     def RecvSync(self, timeout):
