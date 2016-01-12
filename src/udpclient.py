@@ -405,7 +405,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--interpolate', action='store_true',
             default=False, help='Enable interpolation')
     parser.add_argument('-b', '--buffersize', type=int, default=64,
-            help='A larger buffer increases responsiveness to the server.')
+            help='Number of records to keep.')
     parser.add_argument('--tries', type=int, default=60,
             help='The number of attempts to connect to the server.')
     parser.add_argument('--resend', type=int, default=4,

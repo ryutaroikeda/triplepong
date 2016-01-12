@@ -7,7 +7,7 @@
 [![Coverage Status](https://coveralls.io/repos/ryutaroikeda/triplepong/badge.svg?branch=master&service=github)](https://coveralls.io/github/ryutaroikeda/triplepong?branch=master)
 
 ##Running the server
-`src/udpserver.py'
+`src/udpserver.py`
 
 ##Running the client
 `src/udpclient.py --ip address`

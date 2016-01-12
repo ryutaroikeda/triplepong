@@ -117,8 +117,7 @@ class UDPServer:
             except Exception as e:
                 did_lose_client = True
                 logger.exception(e)
-                logger.warning('A client died just before the start. '
-                        + 'It is too late to stop.')
+                logger.warning('A client died just before the start')
                 c.Close()
                 conns.remove(c)
         logger.info('Handshake succeeded.')
@@ -133,9 +132,9 @@ class UDPServer:
         e           -- The GameEngine.
         s           -- The GameState.
         start_time  -- The time of start in seconds since the epoch
-        end_frame   -- The frame to play up to.
+        max_frame   -- The number of frames to play.
         frame_rate  -- Frames per second.
-        size        -- Size of the history.
+        size        -- Number of records in e.bitrec and bit.rec.
         '''
         assert e != None
         assert s != None
@@ -145,7 +144,7 @@ class UDPServer:
         assert frame_rate > 0.0
         start_frame = s.frame
         end_frame = start_frame + max_frame
-        end_time = (end_frame/ frame_rate) + start_time
+        end_time = (end_frame / frame_rate) + start_time
         next_send = 0.0
         timeout = 0.0
         while True:
@@ -154,9 +153,8 @@ class UDPServer:
                 break
             if now >= end_time + timeout:
                 break
-            # Check incoming event frame with current frame to make sure
-            # we don't get too far ahead.
             initial_frame = s.frame
+            # The minimum frame of s at the end of this iteration.
             target_frame = e.GetCurrentFrame(start_time, frame_rate, now) 
             for c in list(e.clients):
                 evt = None
@@ -256,7 +254,7 @@ class UDPServer:
                 if status == -1:
                     logger.info('Sync failed.')
                     continue
-            status = self.Handshake(clients, conf, timeout) 
+            status = self.Handshake(clients, conf, 1.0) 
             if status == -1:
                 for c in clients:
                     c.Close()
@@ -308,7 +306,7 @@ if __name__ == '__main__':
     parser.add_argument('--tries', type=int, default=100,
             help='The number of attempts to run the game.')
     parser.add_argument('--timeout', type=int, default=60,
-            help='The time allowed for connection and handshake.')
+            help='The time allowed for AcceptN.')
     parser.add_argument('--resend', type=int, default=5,
             help='Number of duplicates to send in handshake')
     parser.add_argument('--nosync', default=False, action='store_true',
