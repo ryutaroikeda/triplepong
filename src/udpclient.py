@@ -115,6 +115,7 @@ class UDPClient:
     def Run(self, svraddr, renderer, keyboard, user_conf, tries, resend,
             timeout):
         '''Run the game as a client.
+        Fix me: Pass a socket instead of the svraddr, to improve tests.
         Argument:
         svradr    -- The address of the server.
         renderer  -- The renderer to use.
@@ -122,7 +123,7 @@ class UDPClient:
         user_conf -- A GameConfig provided by the user.
         tries     -- Number of tries before failing.
         resend    -- The number of duplicate messages to send.
-        timeout   -- The timeout for socket IO.
+        timeout   -- The timeout for Handshake().
         Return value: True if a game was completed successfully.
         '''
         e = UDPGameEngine()

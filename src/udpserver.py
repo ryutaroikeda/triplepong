@@ -56,8 +56,6 @@ class UDPServer:
         0 if the handshake succeeded. -1 if the handshake failed. 1 if at least 
         one client died after the start of game.
         '''
-        start_time = time.time()
-        end_time = start_time + timeout
         logger.info('Starting handshake.')
         resend = conf.resend
         player_id = 0
@@ -74,6 +72,8 @@ class UDPServer:
                 return -1
             player_id += 1
         logger.info('Waiting for confirmation.')
+        start_time = time.time()
+        end_time = start_time + timeout
         waiting = list(conns)
         while time.time() < end_time:
             if waiting == []:
@@ -243,7 +243,8 @@ class UDPServer:
                 continue
             # Make clock measurements for each client.
             if conf.do_sync:
-                logger.info('Syncing')
+                logger.info('Syncing for {0} sec at rate {1}'.format(
+                    conf.sync_timeout, conf.sync_rate))
                 for c in clients:
                     status = c.Sync(conf.sync_timeout, conf.sync_rate)
                     if status != 0:
@@ -254,7 +255,7 @@ class UDPServer:
                 if status == -1:
                     logger.info('Sync failed.')
                     continue
-            status = self.Handshake(clients, conf, 1.0) 
+            status = self.Handshake(clients, conf, 2.0) 
             if status == -1:
                 for c in clients:
                     c.Close()
@@ -313,6 +314,8 @@ if __name__ == '__main__':
             help='Measure latency and clock of clients.')
     parser.add_argument('--synctimeout', type=int, default=3,
             help='Duration of sampling for Sync()')
+    parser.add_argument('--syncrate', type=int, default=5,
+            help='Sync messages to send per second.')
     parser.add_argument('--buffertime', type=int, default=2,
             help='The time between invitation and game start.')
     parser.add_argument('--cooldown', type=int, default=6,
@@ -331,6 +334,7 @@ if __name__ == '__main__':
     conf.resend = args.resend
     conf.do_sync = not args.nosync
     conf.sync_timeout = args.synctimeout
+    conf.sync_rate = args.syncrate
     conf.cool_down = args.cooldown
     s.buffer_time = args.buffertime
     s.send_rate = args.ups

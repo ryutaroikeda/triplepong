@@ -12,7 +12,7 @@ import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
-logger = tplogger.getTPLogger('engine.log', logging.DEBUG)
+logger = tplogger.getTPLogger('udpeventsocket_test.log', logging.DEBUG)
 def UDPEventSocketJar_RecvSync(e, timeout, q):
     try:
         status = e.RecvSync(timeout)
@@ -26,14 +26,20 @@ class UDPEventSocketTest(unittest.TestCase):
         s, t = UDPSocket.Pair()
         e = UDPEventSocket(s)
         f = UDPEventSocket(t)
-        for i in range(0, 20):
-            e.WriteEvent(evt)
-        for i in range(0, 20):
-            received = f.ReadEvent()
-            if received != None:
-                break
+        status = 0
+        try:
+            for i in range(0, 20):
+                e.WriteEvent(evt)
+            for i in range(0, 20):
+                received = f.ReadEvent()
+                if received != None:
+                    break
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         s.Close()
         t.Close()
+        self.assertTrue(status == 0)
         self.assertTrue(evt == received)
     
     def test_ReadAndWriteEvent_None(self):
@@ -94,18 +100,26 @@ class UDPEventSocketTest(unittest.TestCase):
     def test_RecvSync_1(self):
         s, t = UDPSocket.Pair()
         e = UDPEventSocket(s)
-        status = e.RecvSync(0.01)
+        try:
+            status = e.RecvSync(0.01)
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         s.Close()
         t.Close()
         self.assertTrue(status == 0)
 
     def test_Sync_1(self):
-        s, t = UDPSocket.Pair()
+        s, t = UDPSocket.Pair() # t does not RecvSync()
         e = UDPEventSocket(s)
-        status = e.Sync(0.01, 200)
+        try:
+            status = e.Sync(0.01, 200)
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1 # test failure dur to error
         s.Close()
         t.Close()
-        self.assertTrue(status == -1) # No data received
+        self.assertTrue(status == -1) # Expect no data to be received
 
     def test_SyncAndRecvSync_1(self):
         s, t = UDPSocket.Pair()
@@ -117,7 +131,12 @@ class UDPEventSocketTest(unittest.TestCase):
         p = multiprocessing.Process(target=UDPEventSocketJar_RecvSync,
                 args=(f, timeout, q,))
         p.start()
-        status = e.Sync(timeout, sync_rate)
+        status = 0
+        try:
+            status = e.Sync(timeout, sync_rate)
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         other_status = q.get()
         p.join()
         e.Close()

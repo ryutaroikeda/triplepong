@@ -55,11 +55,14 @@ class UDPServerTest(unittest.TestCase):
         p = multiprocessing.Process(target=UDPServerTestPickleJar_AcceptN,
                 args=(timeout, svr, ssock, n, q))
         p.start()
-        for i in range(0, n):
-            c = UDPSocket()
-            c.Open()
-            c.Connect(svr_addr, 1)
-            c.Close()
+        try:
+            for i in range(0, n):
+                c = UDPSocket()
+                c.Open()
+                c.Connect(svr_addr, 1)
+                c.Close()
+        except Exception as ex:
+            logger.exception(ex)
         connected = q.get()
         p.join()
         ssock.Close()
@@ -90,7 +93,11 @@ class UDPServerTest(unittest.TestCase):
             svrs.append(sesock)
         conf = GameConfig()
         server = UDPServer()
-        status = server.Handshake(clients, conf, timeout)
+        try:
+            status = server.Handshake(clients, conf, timeout)
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         res = []
         for i in range(0, n):
             res.append(qs[i].get())
@@ -99,6 +106,7 @@ class UDPServerTest(unittest.TestCase):
             s.Close()
         for c in clients:
             c.Close()
+        self.assertTrue(status == 0)
         for i in range(0, n):
             self.assertTrue(res[i])
     
@@ -127,9 +135,9 @@ class UDPServerTest(unittest.TestCase):
             ps = []
             qs = []
             clients = []
-            server_tries = 55
+            server_tries = 5
             server_timeout = 10
-            client_tries = 55
+            client_tries = 5
             # Send only once. To keep tests short, games run only briefly.
             # The game might have ended during resend, which will cause failure.
             client_resend = 1
@@ -152,7 +160,7 @@ class UDPServerTest(unittest.TestCase):
             try:
                 status = svr.Run(s, False, conf, server_tries, server_timeout)
             except Exception as ex:
-                logger.exception(e)
+                logger.exception(ex)
                 status = 100 # Error in the server, stop the test
             results = []
             for i in range(0, n):
@@ -162,8 +170,7 @@ class UDPServerTest(unittest.TestCase):
             self.assertTrue(status != 100)
             if status == 0:
                 break
-        self.assertTrue(status == 0,
-                'Handshake did not complete with all clients alive.')
+        self.assertTrue(status == 0)
         for i in range(0, n):
             self.assertTrue(results[i])
 

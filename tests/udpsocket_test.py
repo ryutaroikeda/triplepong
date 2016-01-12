@@ -47,15 +47,21 @@ class UDPSocketTest(unittest.TestCase):
         s.seq = seq
         t.ack = ack
         t.ackbits = ackbits
-        s.Send(payload)
-        self.assertTrue(s.seq == seq + 1)
-        for i in range(0, 1000):
-            d = t.Recv()
-            if d != None:
-                break
-        self.assertTrue(d != None)
+        status = 0
+        try:
+            s.Send(payload)
+            for i in range(0, 1000):
+                d = t.Recv()
+                if d != None:
+                    break
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         s.Close()
         t.Close()
+        self.assertTrue(status == 0)
+        self.assertTrue(s.seq == seq + 1)
+        self.assertTrue(d != None)
         self.assertTrue(d.seq == seq)
         self.assertTrue(d.ackbits == ackbits)
         self.assertTrue(d.payload == payload)
@@ -127,15 +133,21 @@ class UDPSocketTest(unittest.TestCase):
         tries = 20
         count = 0
         t.should_ignore_old = True
-        for i in range(0, tries):
-            s.seq = 1
-            s.Send(b'')
-        for i in range(0, tries):
-            e = t.Recv()
-            if e != None:
-                count += 1
+        status = 0
+        try:
+            for i in range(0, tries):
+                s.seq = 1
+                s.Send(b'')
+            for i in range(0, tries):
+                e = t.Recv()
+                if e != None:
+                    count += 1
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         s.Close()
         t.Close()
+        self.assertTrue(status == 0)
         self.assertTrue(count == 1, 'Counted {0}'.format(count))
 
     def test_ConnectAndAccept(self):
@@ -146,21 +158,37 @@ class UDPSocketTest(unittest.TestCase):
         p = multiprocessing.Process(target=UDPSocketTestPickleJar_Accept,
                 args=(sock, q))
         p.start()
-        client = UDPSocket()
-        client.Open()
-        client.Connect(('127.0.0.1', 10000), 1)
+        status = 0
+        try:
+            client = UDPSocket()
+            client.Open()
+            client.Connect(('127.0.0.1', 10000), 1)
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         client_name = q.get()
+        expected_sock_name = client.sock.getsockname()
         p.join()
         sock.Close()
-        self.assertTrue(client.sock.getsockname() == client_name)
         client.Close()
+        self.assertTrue(expected_sock_name == client_name)
 
     def test_Pair_1(self):
         p, q = UDPSocket.Pair()
-        self.assertTrue(p.sock.getsockname() == q.sock.getpeername())
-        self.assertTrue(p.sock.getpeername() == q.sock.getsockname())
-        self.assertTrue(p.ttl == UDPSocket.MAX_TIME_TO_LIVE)
-        self.assertTrue(q.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+        status = 0
+        try:
+            p_name = p.sock.getsockname()
+            p_peer = p.sock.getpeername()
+            q_name = q.sock.getsockname()
+            q_peer = q.sock.getpeername()
+        except Exception as ex:
+            logger.exception(ex)
+            status = 1
         p.Close()
         q.Close()
+        self.assertTrue(status == 0)
+        self.assertTrue(p_name == q_peer)
+        self.assertTrue(p_peer == q_name)
+        self.assertTrue(p.ttl == UDPSocket.MAX_TIME_TO_LIVE)
+        self.assertTrue(q.ttl == UDPSocket.MAX_TIME_TO_LIVE)
 

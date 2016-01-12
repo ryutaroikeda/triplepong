@@ -80,16 +80,19 @@ class UDPEventSocket:
         return self.sock.sock.getpeername()
 
     def Sync(self, timeout, sync_rate):
-        '''Find the average difference between this system clock and the peer.
-        We measure the average latency and compare time stamps.
+        '''Measure the latency and clock-difference to the peer.
         This UDPSocket must be 'connected' to a peer.
-        latency and delta will be set.
-        Time is measured in milliseconds.
-        Argument:
-        timeout -- The time to run this for.
+        self.latency will be set to half the average round-trip-time in msec.
+        self.delta will be set to the estimated clock-difference in msec.
+
+        Arguments:
+        timeout   -- The time allocated to this method.
+        sync_rate -- The maximum number of messages to send per second.
         Return value: 0 on success and -1 on error.
         '''
-        assert(sync_rate != 0)
+        assert timeout >= 0
+        assert sync_rate > 0 
+        initial_seq = self.sock.seq
         time_between_send = 1.0 / sync_rate
         last_send = 0.0
         end_time = time.time() + timeout
@@ -100,17 +103,20 @@ class UDPEventSocket:
         while time.time() < end_time:
             if time.time() - last_send < time_between_send:
                 continue
+            # Expect up to time_between_send * sync_rate + 1 messages
+            assert self.sock.seq - initial_seq <= timeout * sync_rate
             expected_ack = self.sock.seq
             msg = TPMessage()
             msg.method = TPMessage.METHOD_SYNC
             msg.seq = self.sock.seq
-            logger.debug('Sending seq {0}.'.format(msg.seq))
             try:
                 (_, ready, _) = select.select([], [self], [], 
                         max(0, end_time - time.time()))
                 if ready == []:
                     continue
+                logger.debug('Sending seq {0}.'.format(msg.seq))
                 start_trip = time.time() 
+                last_send = start_trip
                 self.WriteEvent(msg)
                 (ready, _, _) = select.select([self], [], [], max_wait)
                 # Read until we find the expected response.
@@ -141,7 +147,6 @@ class UDPEventSocket:
                         reply.timestamp, start_trip,
                         delta, end_trip))
                 n += 1
-                last_send = end_trip
             except Exception as e:
                 logger.exception(e)
                 return -1
