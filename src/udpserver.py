@@ -250,9 +250,12 @@ class UDPServer:
                     status = c.Sync(conf.sync_timeout, conf.sync_rate)
                     if status != 0:
                         c.Close()
-                        continue
+                        break
                     logger.info('client ?: Latency {0} Delta {1}'.format(
                         c.latency, c.delta))
+                if status == -1:
+                    logger.info('Sync failed.')
+                    continue
             status = self.Handshake(clients, conf, timeout) 
             if status == -1:
                 for c in clients:
