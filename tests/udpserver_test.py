@@ -125,7 +125,7 @@ class UDPServerTest(unittest.TestCase):
         conf.sync_rate = 100
         conf.buffer_size = 64
         # Try to avoid clients dying at the end of handshake.
-        test_tries = 20
+        test_tries = 40
         status = 0
         for i in range(0, test_tries):
             s = UDPSocket()
@@ -138,12 +138,12 @@ class UDPServerTest(unittest.TestCase):
             # Try only once here. In case of server failure and client success,
             # we must re-run the test as a whole.
             server_tries = 1
-            server_timeout = 1
+            server_timeout = 0.5
             client_tries = 1
             # Send only once. To keep tests short, games run only briefly.
             # If the resend happens after the game is ended, the test fails.
             client_resend = 1
-            client_timeout = 1
+            client_timeout = 0.5
             user_conf = GameConfig()
             user_conf.do_sync = user_do_sync
             user_conf.sync_timeout = conf.sync_timeout * n

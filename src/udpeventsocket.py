@@ -21,6 +21,8 @@ class UDPEventSocket:
     should_ignore_old -- If True, ReadEvent ignores events with seq < sock.ack.
                          This does not affect buffered events.
     player_id         -- The player id of the peer, if relevant.
+    errlim            -- Number of consecutive send errors to suppress.
+    errc              -- Number of consecutive send errors.
     '''
     def __init__(self, sock):
         '''
@@ -34,15 +36,17 @@ class UDPEventSocket:
         self.delta = 0
         self.should_ignore_old = False
         self.player_id = 0
+        self.errlim = 5
+        self.errc = 0
 
     def fileno(self):
         return self.sock.fileno()
 
-    def ReadEvent(self):
+    def ReadEvent(self, timeout=0):
         if self.should_read_buffer:
             self.should_read_buffer = False
             return self.buffered_event
-        (ready, _, _) = select.select([self.sock.sock], [], [], 0)
+        (ready, _, _) = select.select([self.sock.sock], [], [], timeout)
         if ready == []:
             return None
         datagram = self.sock.Recv()
@@ -67,11 +71,26 @@ class UDPEventSocket:
     def UnreadEvent(self):
         self.should_read_buffer = True
 
-    def WriteEvent(self, evt):
+    def WriteEvent(self, evt, timeout=0):
+        '''Send the evt.
+        Return value:
+        On success, return 0. On failure, return -1.
+        '''
         if evt == None:
-            return
+            return -1
         b = evt.Serialize()
-        self.sock.Send(b)
+        (_, ready, _) = select.select([], [self.sock.sock], [], timeout)
+        if len(ready) == 0:
+            return -1
+        try:
+            self.sock.Send(b)
+            self.errc = 0
+        except Exception as ex:
+            self.errc += 1
+            if self.errc > self.errlim:
+                raise ex
+            return -1
+        return 0
 
     def Close(self):
         self.sock.Close()

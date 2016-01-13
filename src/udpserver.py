@@ -57,29 +57,37 @@ class UDPServer:
         one client died after the start of game.
         '''
         logger.info('Starting handshake.')
-        resend = conf.resend
-        player_id = 0
-        for c in list(conns):
-            try:
-                conf.player_id = player_id
-                c.player_id = player_id
-                for i in range(0, resend):
-                    c.WriteEvent(conf)
-            except Exception as e:
-                c.Close()
-                conns.remove(c)
-                logger.exception(e)
-                return -1
-            player_id += 1
-        logger.info('Waiting for confirmation.')
         start_time = time.time()
         end_time = start_time + timeout
+        resend = conf.resend
+        try:
+            player_id = 0
+            for c in list(conns):
+                conf.player_id = player_id
+                c.player_id = player_id
+                sent_successfully = False
+                for i in range(0, resend):
+                    time_left = max(end_time - time.time(), 0)
+                    status = c.WriteEvent(conf, time_left)
+                    if not status == 0:
+                        continue
+                    sent_successfully = True
+                if not sent_successfully:
+                    conns.remove(c)
+                    logger.error('Failed to send config to {0}'.format(
+                        c.player_id))
+                    return -1
+                player_id += 1
+        except Exception as e:
+            c.Close()
+            conns.remove(c)
+            logger.exception(e)
+            return -1
+        logger.info('Waiting for confirmation.')
         waiting = list(conns)
-        while time.time() < end_time:
-            if waiting == []:
-                break
-            (ready, [], []) = select.select(waiting, [], [], 
-                    end_time - time.time())
+        while time.time() < end_time and len(waiting) > 0:
+            time_left = max(end_time - time.time(), 0)
+            (ready, [], []) = select.select(waiting, [], [], time_left)
             if ready == []:
                 continue
             for c in ready:
@@ -96,7 +104,7 @@ class UDPServer:
                 if reply.event_type == EventType.HANDSHAKE and \
                         reply.method == TPMessage.METHOD_CONFIRM:
                     waiting.remove(c)
-        if waiting != []:
+        if len(waiting) > 0:
             logger.info('Did not get confirmation from all. Failing.')
             for c in waiting:
                 c.Close()
@@ -112,8 +120,14 @@ class UDPServer:
                 msg.timestamp = int(self.game_start_time + c.delta)
                 logger.info('Telling client {0} to start at {1}'.format(
                     c.player_id, msg.timestamp))
+                did_send = False
                 for i in range(0, resend):
-                    c.WriteEvent(msg)
+                    time_left = max(end_time - time.time(), 0)
+                    status = c.WriteEvent(msg, time_left)
+                    if status == 0:
+                        did_send = True
+                if not did_send:
+                    raise Exception('send to {0} failed'.format(c.player_id))
             except Exception as e:
                 did_lose_client = True
                 logger.exception(e)
