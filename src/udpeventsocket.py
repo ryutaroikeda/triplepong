@@ -85,6 +85,8 @@ class UDPEventSocket:
         self.latency will be set to half the average round-trip-time in msec.
         self.delta will be set to the estimated clock-difference in msec.
 
+        We use Cristian's algorithm to estimate the clock difference.
+        We assume clock drift is negligible over the course of the game.
         Arguments:
         timeout   -- The time allocated to this method.
         sync_rate -- The maximum number of messages to send per second.
@@ -98,7 +100,7 @@ class UDPEventSocket:
         end_time = time.time() + timeout
         n = 0
         average_rtt = 0
-        average_delta = 0
+        min_rtt = 1000000
         while time.time() < end_time:
             if time.time() - last_send < time_between_send:
                 continue
@@ -117,14 +119,12 @@ class UDPEventSocket:
                 start_trip = time.time() 
                 last_send = start_trip
                 self.WriteEvent(msg)
-		seq_end_time = start_trip + time_between_send
+                seq_end_time = start_trip + time_between_send
                 # Wait and read until we find the expected response or timeout.
                 while True:
                     reply = None
-		    remaining_time = seq_end_time - time.time()
-                    (ready, _, _) = 
-		    	select.select([self], [], [],
-			start_trip + time_between_send - time.time())
+                    remaining = seq_end_time - time.time()
+                    (ready, _, _) = select.select([self], [], [], remaining)
                     if ready == []:
                         break
                     reply = self.ReadEvent()
@@ -142,9 +142,10 @@ class UDPEventSocket:
                 logger.info('Received sync response.')
                 rtt = int((end_trip - start_trip) * 1000)
                 delta = reply.timestamp - int(start_trip * 1000)
+                if rtt < min_rtt:
+                    min_rtt = rtt
+                    self.delta = int(delta - (min_rtt / 2))
                 average_rtt = (average_rtt * n + rtt) / (n + 1)
-                average_delta = (average_delta * n + delta) / (n + 1)
-		# Update waiting time with new rtt over-estimate
                 logger.info(\
                     'timestamp={0}, start={1}, delta={2}, end={3}'.format( \
                         reply.timestamp, start_trip,
@@ -154,7 +155,6 @@ class UDPEventSocket:
                 logger.exception(e)
                 return -1
         self.latency = int(average_rtt // 2)
-        self.delta = int(average_delta - self.latency)
         if n == 0:
             logger.info('Failed to get any sync data')
             return -1
