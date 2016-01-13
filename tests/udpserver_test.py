@@ -118,7 +118,7 @@ class UDPServerTest(unittest.TestCase):
         conf = GameConfig()
         conf.player_size = n
         conf.frames_per_sec = 32767
-        conf.game_length = 0.25
+        conf.game_length = 0.05
         conf.post_game_time = 0
         conf.do_sync = svr_do_sync
         conf.sync_timeout = 0.1
@@ -135,13 +135,15 @@ class UDPServerTest(unittest.TestCase):
             ps = []
             qs = []
             clients = []
-            server_tries = 5
-            server_timeout = 10
-            client_tries = 5
+            # Try only once here. In case of server failure and client success,
+            # we must re-run the test as a whole.
+            server_tries = 1
+            server_timeout = 1
+            client_tries = 1
             # Send only once. To keep tests short, games run only briefly.
-            # The game might have ended during resend, which will cause failure.
+            # If the resend happens after the game is ended, the test fails.
             client_resend = 1
-            client_timeout = 10
+            client_timeout = 1
             user_conf = GameConfig()
             user_conf.do_sync = user_do_sync
             user_conf.sync_timeout = conf.sync_timeout * n
@@ -198,30 +200,23 @@ class UDPServerTest(unittest.TestCase):
     def test_Handshake_4(self):
         self.template_Handshake(3)
 
-    @unittest.skip('hanging')
     def test_Run_1(self):
         self.template_Run(0, False, False)
 
-    @unittest.skip('hanging')
     def test_Run_2(self):
         self.template_Run(1, False, False)
 
-    @unittest.skip('hanging')
     def test_Run_3(self):
         self.template_Run(2, False, False)
 
-    @unittest.skip('hanging')
     def test_Run_4(self):
         self.template_Run(3, False, False)
 
-    @unittest.skip('hanging')
     def test_Run_5(self):
         self.template_Run(1, True, True)
 
-    @unittest.skip('hanging')
     def test_Run_6(self):
         self.template_Run(2, True, True)
 
-    @unittest.skip('hanging')
     def test_Run_7(self):
         self.template_Run(3, True, True)

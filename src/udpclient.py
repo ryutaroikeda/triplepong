@@ -222,9 +222,10 @@ class UDPClient:
                 evt = e.server.ReadEvent()
             except Exception as ex:
                 logger.exception(e)
-                logger.info('Disconnecting from server.')
+                logger.info('Disconnecting from server and ending.')
                 e.server.Close()
                 e.server = None
+                e.EndGame(s)
                 break
             if evt == None:
                 break
@@ -371,9 +372,10 @@ class UDPClient:
                     e.server.WriteEvent(msg)
                 except Exception as ex:
                     logger.exception(ex)
-                    logger.info('Disconnecting from server.')
+                    logger.info('Disconnecting from server and ending.')
                     e.server.Close()
                     e.server = None
+                    e.EndGame(s)
             self.HandleServerEvents(e, s, e.rec, e.buffer_size)
             e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame, target_frame),
                     e.buffer_size)
