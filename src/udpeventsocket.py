@@ -99,7 +99,6 @@ class UDPEventSocket:
         n = 0
         average_rtt = 0
         average_delta = 0
-        max_wait = timeout / 10
         while time.time() < end_time:
             if time.time() - last_send < time_between_send:
                 continue
@@ -118,11 +117,14 @@ class UDPEventSocket:
                 start_trip = time.time() 
                 last_send = start_trip
                 self.WriteEvent(msg)
-                (ready, _, _) = select.select([self], [], [], max_wait)
-                # Read until we find the expected response.
+		seq_end_time = start_trip + time_between_send
+                # Wait and read until we find the expected response or timeout.
                 while True:
                     reply = None
-                    (ready, _, _) = select.select([self], [], [], 0)
+		    remaining_time = seq_end_time - time.time()
+                    (ready, _, _) = 
+		    	select.select([self], [], [],
+			start_trip + time_between_send - time.time())
                     if ready == []:
                         break
                     reply = self.ReadEvent()
@@ -142,6 +144,7 @@ class UDPEventSocket:
                 delta = reply.timestamp - int(start_trip * 1000)
                 average_rtt = (average_rtt * n + rtt) / (n + 1)
                 average_delta = (average_delta * n + delta) / (n + 1)
+		# Update waiting time with new rtt over-estimate
                 logger.info(\
                     'timestamp={0}, start={1}, delta={2}, end={3}'.format( \
                         reply.timestamp, start_trip,
