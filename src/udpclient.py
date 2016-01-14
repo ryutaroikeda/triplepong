@@ -40,7 +40,7 @@ class UDPClient:
         self.state_update_count = 0
         self.old_count = 0
         self.rewind_count = 0
-        self.unavailable_count = 0
+        self.behind_count = 0
         self.past_count = 0
 
     def Handshake(self, svr, resend, timeout):
@@ -385,13 +385,13 @@ class UDPClient:
             self.HandleServerEvents(e, s, e.rec, e.buffer_size)
             e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame, target_frame),
                     e.buffer_size)
-            play_to = max(min(target_frame, end_frame, e.bitrec.frame), 0)
+            play_to = min(target_frame, end_frame, e.bitrec.frame)
             if s.frame < e.bitrec.frame - e.buffer_size:
-                logger.debug('Bit records unavailable.')
+                logger.debug('Client is behind.')
                 # bail out until server update.
                 # to do: reset unacked
                 s.frame = e.bitrec.frame - e.buffer_size
-                self.unavailable_count += 1
+                self.behind_count += 1
             if s.frame < play_to:
                 e.PlayFromStateWithPlayer(s, e.bitrec, e.rec, play_to,
                         e.player_id, e.buffer_size)
@@ -399,9 +399,9 @@ class UDPClient:
 
     def PrintStats(self):
         logger.info(('old: {0} loss: {1} overwrite: {2} normal: {3} '
-            'rec unavailable: {4} past: {5}').format(self.old_count,
+            'behind: {4} past: {5}').format(self.old_count,
                 self.loss_count, self.state_update_count, self.rewind_count,
-                self.unavailable_count, self.past_count))
+                self.behind_count, self.past_count))
 
 if __name__ == '__main__':
     import argparse

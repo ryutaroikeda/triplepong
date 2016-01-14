@@ -165,7 +165,7 @@ class UDPEventSocket:
                 delta = reply.timestamp - int(start_trip * 1000)
                 if rtt < min_rtt:
                     min_rtt = rtt
-                    self.delta = int(delta - (min_rtt / 2))
+                    self.delta = int(delta - (min_rtt // 2))
                 average_rtt = (average_rtt * n + rtt) / (n + 1)
                 logger.info(\
                     'timestamp={0}, start={1}, delta={2}, end={3}'.format( \

@@ -327,7 +327,7 @@ if __name__ == '__main__':
             help='Measure latency and clock of clients.')
     parser.add_argument('--synctimeout', type=int, default=3,
             help='Duration of sampling for Sync()')
-    parser.add_argument('--syncrate', type=int, default=10,
+    parser.add_argument('--syncrate', type=int, default=5,
             help='Sync messages to send per second.')
     parser.add_argument('--buffertime', type=int, default=2,
             help='The time between invitation and game start.')
