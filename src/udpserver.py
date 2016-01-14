@@ -329,8 +329,8 @@ if __name__ == '__main__':
             help='Duration of sampling for Sync()')
     parser.add_argument('--syncrate', type=int, default=10,
             help='Sync messages to send per second.')
-    parser.add_argument('--buffertime', type=int, default=2,
-            help='The time between invitation and game start.')
+    parser.add_argument('--buffertime', type=int, default=2000,
+            help='The time between invitation and game start in msec.')
     parser.add_argument('--cooldown', type=int, default=6,
             help='Minimum frames between events.')
     parser.add_argument('--ups', type=int, default=10,
