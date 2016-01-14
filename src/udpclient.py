@@ -41,6 +41,7 @@ class UDPClient:
         self.old_count = 0
         self.rewind_count = 0
         self.unavailable_count = 0
+        self.past_count = 0
 
     def Handshake(self, svr, resend, timeout):
         '''Perform a handshake with the server. This must be done prior to 
@@ -246,6 +247,8 @@ class UDPClient:
                                 e.bitrec.frame, e.buffer_size))
                     self.old_count += 1
                     continue
+                if evt.frame < s.frame:
+                    self.past_count += 1
                 start_frame = s.frame
                 # Update the bit records.
                 e.UpdateBitRecordFrame(e.bitrec, max(e.bitrec.frame,
@@ -352,14 +355,14 @@ class UDPClient:
         timeout = 0.0
         key_event = e.RoleToEvent(s.roles[e.player_id])
         send_rate = 10
+        time_between_send = 1.0 / send_rate
         next_send = 0.0
         msg = GameEvent()
         while True:
             if s.frame >= end_frame:
                 break
             now = time.time()
-            target_frame = e.GetCurrentFrame(start_time, frame_rate, 
-                    time.time())
+            target_frame = e.GetCurrentFrame(start_time, frame_rate, now)
             logger.debug('Playing from frome {0}, target {1}.'.format(s.frame,
                 target_frame))
             self.HandleKeyboardEvents(e, e.bitrec, s.frame, e.buffer_delay,
@@ -368,7 +371,7 @@ class UDPClient:
             if e.server != None and now >= next_send:
                 msg.keybits = e.bitrec.bits[e.player_id]
                 msg.frame = e.bitrec.frame
-                next_send = now + (1/send_rate)
+                next_send = now + time_between_send
                 logger.debug('Sending key {0}, {1}'.format(msg.frame,
                     bin(msg.keybits)))
                 try:
@@ -395,11 +398,10 @@ class UDPClient:
             e.renderer.Render(s, s, 0, 0)
 
     def PrintStats(self):
-        logger.info('\nOld events: {0}'.format(self.old_count)+\
-                '\nLoss: {0}'.format(self.loss_count)+\
-                '\nstate update {0}'.format(self.state_update_count)+\
-                '\nrewind update {0}'.format(self.rewind_count)+\
-                '\nbitrec unavailable {0}'.format(self.unavailable_count))
+        logger.info(('old: {0} loss: {1} overwrite: {2} normal: {3} '
+            'rec unavailable: {4} past: {5}').format(self.old_count,
+                self.loss_count, self.state_update_count, self.rewind_count,
+                self.unavailable_count, self.past_count))
 
 if __name__ == '__main__':
     import argparse
