@@ -80,12 +80,18 @@ class UDPClient:
         logger.info('Sending confirmation.')
         reply = TPMessage()
         reply.method = TPMessage.METHOD_CONFIRM
+        did_send = False
         for i in range(0, resend):
             try:
-                svr.WriteEvent(reply)
+                status = svr.WriteEvent(reply)
+                if status == 0:
+                    did_send = True
             except Exception as e:
                 logger.exception(e)
                 return False           
+        if not did_send:
+            logger.error('Failed to send confirmation.')
+            return False
         logger.info('Waiting for start of game.')
         did_receive_start = False
         end_time = time.time() + timeout
@@ -343,7 +349,6 @@ class UDPClient:
         assert frame_rate <= 32767
         start_frame = s.frame
         end_frame = start_frame + max_frame
-        end_time = (end_frame/frame_rate)+start_time
         timeout = 0.0
         key_event = e.RoleToEvent(s.roles[e.player_id])
         send_rate = 10
@@ -353,8 +358,6 @@ class UDPClient:
             if s.frame >= end_frame:
                 break
             now = time.time()
-            if now  >= end_time + timeout:
-                break
             target_frame = e.GetCurrentFrame(start_time, frame_rate, 
                     time.time())
             logger.debug('Playing from frome {0}, target {1}.'.format(s.frame,
@@ -411,7 +414,7 @@ if __name__ == '__main__':
             help='Number of records to keep.')
     parser.add_argument('--tries', type=int, default=60,
             help='The number of attempts to connect to the server.')
-    parser.add_argument('--resend', type=int, default=4,
+    parser.add_argument('--resend', type=int, default=9,
             help='The number of duplicate messages to send during handshake.')
     parser.add_argument('--timeout', type=int, default=10,
             help='The time allowed for each connection and handshake.')

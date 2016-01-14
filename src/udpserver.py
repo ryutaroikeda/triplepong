@@ -88,7 +88,7 @@ class UDPServer:
         while time.time() < end_time and len(waiting) > 0:
             time_left = max(end_time - time.time(), 0)
             (ready, [], []) = select.select(waiting, [], [], time_left)
-            if ready == []:
+            if len(ready) == 0:
                 continue
             for c in ready:
                 try:
@@ -104,6 +104,8 @@ class UDPServer:
                 if reply.event_type == EventType.HANDSHAKE and \
                         reply.method == TPMessage.METHOD_CONFIRM:
                     waiting.remove(c)
+                else:
+                    logger.info('Incorrect message received.')
         if len(waiting) > 0:
             logger.info('Did not get confirmation from all. Failing.')
             for c in waiting:
@@ -158,18 +160,16 @@ class UDPServer:
         assert frame_rate > 0.0
         start_frame = s.frame
         end_frame = start_frame + max_frame
-        end_time = (end_frame / frame_rate) + start_time
         next_send = 0.0
         timeout = 0.0
         while True:
             now = time.time()
             if s.frame >= end_frame:
                 break
-            if now >= end_time + timeout:
-                break
             initial_frame = s.frame
             # The minimum frame of s at the end of this iteration.
-            target_frame = e.GetCurrentFrame(start_time, frame_rate, now) 
+            target_frame = min(e.GetCurrentFrame(start_time, frame_rate, now),
+                    end_frame)
             for c in list(e.clients):
                 evt = None
                 try:
@@ -202,7 +202,7 @@ class UDPServer:
                 # BUG: This is not meant to happen.
                 logger.debug('bug {0} < {1} - {2}.'.format(s.frame,
                     e.bitrec.frame, e.buffer_size))
-                # Force it to work.
+                # Forcefully set the frame to allow PlayFromState to work. 
                 s.frame = e.bitrec.frame - e.buffer_size
             if s.frame < e.bitrec.frame:
                 # Play everything up to the record.
@@ -230,7 +230,6 @@ class UDPServer:
                         logger.exception(ex)
                         c.Close()
                         e.clients.remove(c)
-            assert s.frame >= e.bitrec.frame - e.buffer_size
 
     def PrintStats(self):
         logger.info('\nServer behind {0}'.format(self.server_behind_count))
@@ -328,7 +327,7 @@ if __name__ == '__main__':
             help='Measure latency and clock of clients.')
     parser.add_argument('--synctimeout', type=int, default=3,
             help='Duration of sampling for Sync()')
-    parser.add_argument('--syncrate', type=int, default=5,
+    parser.add_argument('--syncrate', type=int, default=10,
             help='Sync messages to send per second.')
     parser.add_argument('--buffertime', type=int, default=2,
             help='The time between invitation and game start.')

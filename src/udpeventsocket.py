@@ -89,6 +89,8 @@ class UDPEventSocket:
             self.errc += 1
             if self.errc > self.errlim:
                 raise ex
+            logger.info('Suppressing error')
+            logger.exception(ex)
             return -1
         return 0
 
