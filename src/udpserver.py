@@ -289,7 +289,7 @@ class UDPServer:
             e.is_client = False
             e.clients = clients
             conf.Apply(e)
-            e.PlayAs(e.state, self, self.game_start_time / 1000)
+            e.PlayAs(e.state, self, self.game_start_time / 1000.0)
             logger.info('Game ended. Exiting.')
             sock.Close()
             for c in clients:
