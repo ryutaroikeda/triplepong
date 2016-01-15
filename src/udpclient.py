@@ -118,9 +118,8 @@ class UDPClient:
     def Run(self, svraddr, renderer, keyboard, user_conf, tries, resend,
             timeout):
         '''Run the game as a client.
-        Fix me: Pass a socket instead of the svraddr, to improve tests.
         Argument:
-        svradr    -- The address of the server.
+        svraddr    -- The address of the server.
         renderer  -- The renderer to use.
         keyboard  -- The keyboard to use.
         user_conf -- A GameConfig provided by the user.
@@ -130,9 +129,9 @@ class UDPClient:
         Return value: True if a game was completed successfully.
         '''
         e = UDPGameEngine()
+        sock = UDPSocket()
+        sock.Open()
         for i in range(0, tries):
-            sock = UDPSocket()
-            sock.Open()
             logger.info('Connecting to server.')
             if not sock.Connect(svraddr, 1):
                 sock.Close()

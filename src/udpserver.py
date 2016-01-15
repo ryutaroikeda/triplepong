@@ -237,9 +237,9 @@ class UDPServer:
         Return value: 0 if the game ran normally, 1 if a client died during 
         handshake, and -1 on failure.
         '''
+        clients = []
         for i in range(0, tries):
             logger.info('Accepting clients.')
-            clients = []
             self.AcceptN(sock, clients, conf.player_size, timeout)
             if len(clients) < conf.player_size:
                 logger.info('Not enough clients.')
