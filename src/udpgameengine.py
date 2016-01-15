@@ -10,7 +10,6 @@ import time
 sys.path.append(os.path.abspath('src'))
 from bitrecord import BitRecord
 from eventtype import EventType
-from eventsocket import EventSocket
 from endgameevent import EndGameEvent
 from gameconfig import GameConfig
 from gameobject import GameObject
@@ -19,7 +18,6 @@ from gameevent import GameEvent
 from gamerecord import GameRecord
 from nullrenderer import NullRenderer
 from nullkeyboard import NullKeyboard
-import tpsocket
 import tplogger
 logger = tplogger.getTPLogger('udpgameengine.log', logging.DEBUG)
 
@@ -215,6 +213,11 @@ class UDPGameEngine(object):
             s.ball.vel_y = 0
 
     def ApplyScoring(self, s, bitrec):
+        '''This method updates the score and sets bitrec.bits[4] if a score
+        is made and the bit was not set before.
+        BUG: We don't handle the case where a score is made but is
+        subsequently unmade due to an update.
+        '''
         if self.GetBit(bitrec.bits[4], s.frame % self.buffer_size):
             return 1
         if s.ball.IsCollidingWith(s.goal_left):
@@ -259,7 +262,7 @@ class UDPGameEngine(object):
         return int((now - start_time) * frame_rate)
 
     def RotateBits(self, bits, shift, size):
-        '''
+        '''Perform a cyclic rotation on bits.
         Arguments:
         bits  -- Bits of length size.
         shift -- The bit positions to rotate right by.
@@ -275,8 +278,7 @@ class UDPGameEngine(object):
         return result
 
     def UpdateHistory(self, frame, keybits, update_frame, update, size):
-        '''
-        This method is intended to be used by a peer receiving key input 
+        ''' This method is intended to be used by a peer receiving key input 
         history to update its local state. The history is represented by a
         size-bit integer keybits and a frame number f. 
         The history represents inputs that occurred in frames 
@@ -305,7 +307,7 @@ class UDPGameEngine(object):
         return self.RotateBits(result, size - (frame % size), size)
 
     def BitsToEvent(self, state, bits):
-        '''
+        '''Convert bits to a game event.
         Arguments:
         state -- The GameState.
         bits  -- A list of bits, one for each player.
@@ -394,7 +396,8 @@ class UDPGameEngine(object):
     
     def PlayFromStateWithPlayer(self, state, bitrec, rec, play_to, player_id,
             size):
-        '''During replay, if a frame is flagged, CopyEcceptPlayer() is called.
+        '''Same as PlayFromState, except if a frame is flagged in bits[4],
+        the state of player_id is not overwritten by the record.
         '''
         rec.available = play_to - state.frame
         for i in range(state.frame, play_to):
@@ -429,7 +432,9 @@ class UDPGameEngine(object):
             bitrec.frame = frame
 
     def UpdateBitRecord(self, b1, b2, size):
-        '''This does not update flags.'''
+        '''Update bitrec b1 with bitrec b2.
+        Only bits[0], bits[1], and bits[2] are updated.
+        '''
         assert b1 != None
         assert b2 != None
         assert isinstance(size, int)

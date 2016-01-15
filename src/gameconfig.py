@@ -5,7 +5,9 @@ sys.path.append(os.path.abspath('src'))
 from eventtype import EventType
 
 class GameConfig:
-    '''
+    '''This class is used to configure the game. 
+    This can be sent as an event using UDPEventSocket.
+    Attributes:
     post_game_time -- The number of seconds to run after end of game.
     '''
 

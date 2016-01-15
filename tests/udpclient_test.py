@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
-from engine import GameEngine
+from udpgameengine import UDPGameEngine
 from gamerecord import GameRecord
 from gamestate import GameState
 from udpclient import UDPClient
@@ -15,7 +15,7 @@ class UDPClientTest(unittest.TestCase):
         c = UDPClient()
         c.unacked_1 = unacked_1
         c.unacked_2 = unacked_2
-        e = GameEngine()
+        e = UDPGameEngine()
         answer = c.ShouldApplyStateUpdate(e, frame, update_frame,
                 update_history, size)
         self.assertTrue(c.unacked_1 == expected_unacked_1)

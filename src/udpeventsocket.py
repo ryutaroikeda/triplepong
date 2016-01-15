@@ -16,13 +16,15 @@ from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpeventsocket.log', logging.DEBUG)
 
 class UDPEventSocket:
-    '''
+    '''This class provides ReadEvent() and WriteEvent() for sending events
+    over UDP.
     Attributes:
-    should_ignore_old -- If True, ReadEvent ignores events with seq < sock.ack.
-                         This does not affect buffered events.
-    player_id         -- The player id of the peer, if relevant.
-    errlim            -- Number of consecutive send errors to suppress.
-    errc              -- Number of consecutive send errors.
+    sock               -- A UDPSocket.
+    buffered_event   
+    should_read_buffer -- Used internally by ReadEvent() and UnreadEvent().
+    player_id          -- The player id of the peer if any.
+    errlim             -- Number of consecutive send errors to suppress.
+    errc               -- Number of consecutive send errors.
     '''
     def __init__(self, sock):
         '''
@@ -34,15 +36,21 @@ class UDPEventSocket:
         self.should_read_buffer = False
         self.latency = 0
         self.delta = 0
-        self.should_ignore_old = False
         self.player_id = 0
         self.errlim = 5
         self.errc = 0
 
     def fileno(self):
+        '''Return the file descriptor of the socket.
+        This method is needed for select().
+        '''
         return self.sock.fileno()
 
     def ReadEvent(self, timeout=0):
+        '''Attempt to read an event for timeout seconds.
+        An event is any object that implements GetSize(), Serialize(),
+        and Deserialize() and has the attribute event_type.
+        '''
         if self.should_read_buffer:
             self.should_read_buffer = False
             return self.buffered_event
@@ -69,10 +77,13 @@ class UDPEventSocket:
         return evt
 
     def UnreadEvent(self):
+        '''Undo a ReadEvent.
+        The next ReadEvent will return the unread event.
+        '''
         self.should_read_buffer = True
 
     def WriteEvent(self, evt, timeout=0.0, resend=1):
-        '''Send the evt, suppressing self.errlim consecutive errors
+        '''Send the evt, suppressing self.errlim consecutive errors.
         This method will attempt to send at least once.
         Argument:
         evt     -- The event to send.
@@ -203,8 +214,9 @@ class UDPEventSocket:
         return 0
 
     def RecvSync(self, timeout):
-        '''
-        Return value: 0 on success and -1 on failure.
+        '''The receiving end of Sync().
+        Return value:
+        0 on success and -1 on failure.
         '''
         end_time = time.time() + timeout
         reply = TPMessage()

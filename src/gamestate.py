@@ -9,17 +9,16 @@ import tplogger
 logger = tplogger.getTPLogger('gamestate.log', logging.DEBUG)
 class GameState:
     '''This class represents the current game state.
+    This class is compatible with UDPEventSocket.
 
     Attributes:
-    frame     -- The number of frames since the start of the game.
-    key_flags -- The keys pressed in the current frame.
-    game_length -- The maximum duration of the game. 
-    rounds    -- The number of rounds to play. A round consists of three 
-                 rotations.
-    round_length -- The duration of a round in frames.
+    frame           -- The number of frames since the start of the game.
+    key_flags       -- The keys pressed in the current frame.
+    game_length     -- The maximum duration of the game. 
+    rounds          -- The number of rounds to play. A round consists of three 
+                       rotations.
+    round_length    -- The duration of a round in frames.
     rotation_length -- The duration of a rotation in frames.
-
-    UDP
     bits            -- The key input of 64 previous frames for each player.
     '''
     ROLE_NONE = 0
@@ -28,17 +27,6 @@ class GameState:
     ROLE_BALL = 3
     SUBFORMAT = '!hhhhhhhhhQQQQ'
     FORMAT    = '!ihhhhhhhhhQQQQ'
-    OBJECT_NONE = 0
-    OBJECT_SCREEN = 1
-    OBJECT_LEFT_GOAL = 2
-    OBJECT_RIGHT_GOAL = 3
-    OBJECT_TOP_BALL_WALL = 4
-    OBJECT_BOTTOM_BALL_WALL = 5
-    OBJECT_TOP_WALL = 6
-    OBJECT_BOTTOM_WALL = 7
-    OBJECT_BALL = 9
-    OBJECT_LEFT_PADDLE = 9
-    OBJECT_RIGHT_PADDLE = 10
     def __init__(self):
         '''Create the initial game state.
         '''
@@ -62,10 +50,6 @@ class GameState:
         self.ball = GameObject()
         self.paddle_left = GameObject()
         self.paddle_right = GameObject()
-        #self.objects = [self.screen, self.goal_left, self.goal_right,
-        #        self.ball_wall_top, self.ball_wall_bottom,
-        #        self.paddle_wall_top, self.paddle_wall_bottom,
-        #        self.ball, self.paddle_left, self.paddle_right]
         # The number of players.
         self.player_size = 3
         self.game_length = 120.0
@@ -151,18 +135,18 @@ class GameState:
 
     def __hash__(self):
         '''Override default hash behaviour (which is to return the object ID).
-        We do this define equality.'''
+        We do this to define equality.'''
         return hash(tuple(sorted(self.__dict__.items())))
 
     def Diff(self, other):
+        '''Print the difference between GameObjects.
+        Used for debugging.
+        '''
         a = self.__dict__
         b = other.__dict__
         for key in a:
             if a[key] != b[key]:
                 logger.debug('{0}: {1} != {2}'.format(key, a[key], b[key]))
-                pass
-            pass
-        pass
 
     def GetSize(self):
         return struct.calcsize(GameState.SUBFORMAT)

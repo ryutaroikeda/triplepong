@@ -20,14 +20,20 @@ from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
 logger = tplogger.getTPLogger('udpclient.log', logging.DEBUG)
 class UDPClient:
-    '''
+    '''This class implements the Handshake and PlayFrames of the
+    Triple Pong client.
     Attributes:
+    keyboard            -- The keyboard to use for input.
+    renderer            -- The renderer to use.
     unacked_1           -- The first unacked frame.
     unacked_2           -- The second unacked frame.
     key_is_released     -- True if the key is not held down.
     loss_count          -- The number of event losses.
-    state_update_count  -- The number of times the server state was used.
+    state_update_count  -- The number of state updates with overwrite.
     old_count           -- The number of old events received.
+    rewind_count        -- The number of normal state updates.
+    behind_count        -- The number of times the client was behind schedule.
+    past_count          -- The number of times an update was in the past.
     '''
     def __init__(self):
         self.keyboard = NullKeyboard()
@@ -54,7 +60,7 @@ class UDPClient:
         resend  -- Number of duplicate messages to send.
         timeout -- Timeout for the handshake.
         Return value:
-        True if the handshake succeeded.
+        True if the handshake succeeded and False otherwise.
         '''
         start_time = time.time()
         end_time = start_time + timeout
@@ -118,6 +124,8 @@ class UDPClient:
     def Run(self, svraddr, renderer, keyboard, user_conf, tries, resend,
             timeout):
         '''Run the game as a client.
+        This method connects to the server at svraddr, performs a handshake,
+        synchronizes the clock, and starts the game.
         Argument:
         svraddr    -- The address of the server.
         renderer  -- The renderer to use.
@@ -126,7 +134,8 @@ class UDPClient:
         tries     -- Number of tries before failing.
         resend    -- The number of duplicate messages to send.
         timeout   -- The timeout for Handshake().
-        Return value: True if a game was completed successfully.
+        Return value:
+        True if a game was completed successfully and False otherwise.
         '''
         e = UDPGameEngine()
         sock = UDPSocket()
@@ -181,7 +190,7 @@ class UDPClient:
         1 if we should use the server state,
         2 if an event was lost and we should use the server state and copy the
         server bitrec,
-        0 if shouldn't update with the server state.
+        0 if we shouldn't update the player with the server state.
         '''
         assert e != None
         assert isinstance(size, int)
@@ -209,7 +218,7 @@ class UDPClient:
         return 0
 
     def HandleServerEvents(self, e, s, rec, size):
-        '''
+        '''Handles state updates and other events from the server.
         Arguments:
         e      -- The GameEngine.
         s      -- The GameState.
@@ -273,8 +282,7 @@ class UDPClient:
                 break
 
     def HandleKeyboardEvents(self, e, bitrec, frame, delay, cool_down, size):
-        '''
-        This method is responsible for getting keyboard input, applying
+        ''' This method is responsible for getting keyboard input, applying
         delay, buffering, and setting bitrec.
         Arguments:
         bitrec       -- The BitRecord to update.
@@ -333,7 +341,8 @@ class UDPClient:
         return True
 
     def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
-        '''
+        '''This method is implemented to support UDPGameEngine's 
+        PlayAs().
         Arguments:
         e             -- The game engine.
         s             -- The game state.

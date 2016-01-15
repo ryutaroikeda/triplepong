@@ -8,6 +8,10 @@ from eventtype import EventType
 from gamestate import GameState
 
 class TPMessage(object):
+    '''This class is used for performing the handshake and sync prior to
+    the start of game.
+    This class is compatible with UDPEventSocket.
+    '''
     METHOD_NONE = 0
     METHOD_ASKREADY = 1
     METHOD_CONFIRM = 2
@@ -38,12 +42,3 @@ class TPMessage(object):
     def Deserialize(self, b):
         (self.method, self.player_id, self.seq, self.ack, self.timestamp) = \
                 struct.unpack(self.SUBFORMAT, b)
-
-    def pack(self):
-        return struct.pack(self.SUBFORMAT, self.method, self.player_id)
-
-    def unpack(self, b):
-        self.Deserialize(b)
-
-    def getsize(self):
-        return self.GetSize()

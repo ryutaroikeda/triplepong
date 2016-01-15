@@ -8,8 +8,7 @@ import unittest
 sys.path.append(os.path.abspath('src'))
 from endgameevent import EndGameEvent
 from udpgameengine import UDPGameEngine
-from engine import GameRecord
-from eventsocket import EventSocket
+from gamerecord import GameRecord
 from gamestate import GameState
 from gameevent import GameEvent
 import tplogger

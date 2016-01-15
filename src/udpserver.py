@@ -14,20 +14,15 @@ import tplogger
 from tpmessage import TPMessage
 from udpeventsocket import UDPEventSocket
 from udpsocket import UDPSocket
-#sys.path.append(os.path.abspath('profiling'))
-#import lineprofiler
 logger = tplogger.getTPLogger('udpserver.log', logging.DEBUG)
 
-'''
-Handling events:
-Events older than size frames before bitrec.frame are ignored.
-Events newer than size frames after state.frame are ignored.
-'''
 class UDPServer:
-    '''
+    '''The server for Triple Pong.
     Attributes:
     send_rate      -- Number of updates to send per second.
     buffer_time    -- The time in msec between invitations and game start.
+    server_behind_count -- The number of times the server was significantly
+                            behind schedule.
     '''
     def __init__(self):
         self.game_start_time = 0.0

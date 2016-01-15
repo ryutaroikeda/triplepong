@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 sys.path.append(os.path.abspath('src'))
-from engine import GameEngine
+from udpgameengine import UDPGameEngine
 from gameconfig import GameConfig
 from gamestate import GameState
 class GameConfigTest(unittest.TestCase):
@@ -64,7 +64,7 @@ class GameConfigTest(unittest.TestCase):
         conf.ball_size = 100
         conf.player_id = 2
         conf.cool_down = 5
-        e = GameEngine()
+        e = UDPGameEngine()
         conf.Apply(e)
         self.assertTrue(e.player_id == conf.player_id)
         self.assertTrue(e.key_cool_down_time == conf.cool_down)
