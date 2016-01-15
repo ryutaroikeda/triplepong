@@ -134,7 +134,6 @@ class UDPClient:
         for i in range(0, tries):
             logger.info('Connecting to server.')
             if not sock.Connect(svraddr, 1):
-                sock.Close()
                 logger.info('Connection failed.')
                 continue
             logger.info('Connected as {0}.'.format(sock.sock.getsockname()))
@@ -144,7 +143,6 @@ class UDPClient:
                 logger.info('Syncing clock with server.')
                 svr.RecvSync(user_conf.sync_timeout * 3)
             if not self.Handshake(svr, resend, timeout):
-                sock.Close()
                 logger.info('Handshake failed.')
                 continue
             self.conf.Apply(e)
