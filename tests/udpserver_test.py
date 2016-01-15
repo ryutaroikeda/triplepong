@@ -74,7 +74,7 @@ class UDPServerTest(unittest.TestCase):
         ps = []
         svrs = []
         clients = []
-        timeout = 1
+        timeout = 0.5
         resend = 1
         # Spawn clients.
         for i in range(0, n):

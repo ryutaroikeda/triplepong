@@ -71,26 +71,47 @@ class UDPEventSocket:
     def UnreadEvent(self):
         self.should_read_buffer = True
 
-    def WriteEvent(self, evt, timeout=0):
-        '''Send the evt.
+    def WriteEvent(self, evt, timeout=0.0, resend=1):
+        '''Send the evt, suppressing self.errlim consecutive errors
+        This method will attempt to send at least once.
+        Argument:
+        evt     -- The event to send.
+        timeout -- Time allocated in sec.
+        resend  -- Number of times to send. If timeout > 0, sends are spaced.
         Return value:
-        On success, return 0. On failure, return -1.
+        Return 0 on success and -1 if no events were sent.
         '''
+        assert resend > 0
         if evt == None:
             return -1
         b = evt.Serialize()
-        (_, ready, _) = select.select([], [self.sock.sock], [], timeout)
-        if len(ready) == 0:
-            return -1
-        try:
-            self.sock.Send(b)
-            self.errc = 0
-        except Exception as ex:
-            self.errc += 1
-            if self.errc > self.errlim:
-                raise ex
-            logger.info('Suppressing error')
-            logger.exception(ex)
+        end_time = time.time() + timeout
+        time_between_send = float(timeout) / resend
+        next_send = 0.0
+        did_send = False
+        logger.debug('timeout: {0} resend: {1} tbs: {2}'.format(timeout, 
+            resend, time_between_send))
+        while True:
+            now = time.time()
+            if now < next_send:
+                continue
+            next_send = now + time_between_send
+            try:
+                (_, ready, _) = \
+                    select.select([], [self.sock.sock], [], time_between_send)
+                if len(ready) > 0:
+                    self.sock.Send(b)
+                    self.errc = 0
+                    did_send = True
+            except Exception as ex:
+                self.errc += 1
+                if self.errc > self.errlim:
+                    raise ex
+                logger.info('Suppressing error')
+                logger.exception(ex)
+            if time.time() >= end_time:
+                break
+        if not did_send:
             return -1
         return 0
 

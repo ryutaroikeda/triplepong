@@ -58,21 +58,15 @@ class UDPServer:
         '''
         logger.info('Starting handshake.')
         start_time = time.time()
-        end_time = start_time + timeout
         resend = conf.resend
+        send_time = (timeout / 4.0) / 3.0
         try:
             player_id = 0
             for c in list(conns):
                 conf.player_id = player_id
                 c.player_id = player_id
-                sent_successfully = False
-                for i in range(0, resend):
-                    time_left = max(end_time - time.time(), 0)
-                    status = c.WriteEvent(conf, time_left)
-                    if not status == 0:
-                        continue
-                    sent_successfully = True
-                if not sent_successfully:
+                status = c.WriteEvent(conf, send_time, resend)
+                if status != 0:
                     conns.remove(c)
                     logger.error('Failed to send config to {0}'.format(
                         c.player_id))
@@ -85,6 +79,7 @@ class UDPServer:
             return -1
         logger.info('Waiting for confirmation.')
         waiting = list(conns)
+        end_time = start_time + (timeout / 2.0)
         while time.time() < end_time and len(waiting) > 0:
             time_left = max(end_time - time.time(), 0)
             (ready, [], []) = select.select(waiting, [], [], time_left)
@@ -122,13 +117,8 @@ class UDPServer:
                 msg.timestamp = int(self.game_start_time + c.delta)
                 logger.info('Telling client {0} to start at {1}'.format(
                     c.player_id, msg.timestamp))
-                did_send = False
-                for i in range(0, resend):
-                    time_left = max(end_time - time.time(), 0)
-                    status = c.WriteEvent(msg, time_left)
-                    if status == 0:
-                        did_send = True
-                if not did_send:
+                status = c.WriteEvent(msg, send_time, resend)
+                if status != 0:
                     raise Exception('send to {0} failed'.format(c.player_id))
             except Exception as e:
                 did_lose_client = True
@@ -170,6 +160,7 @@ class UDPServer:
             # The minimum frame of s at the end of this iteration.
             target_frame = min(e.GetCurrentFrame(start_time, frame_rate, now),
                     end_frame)
+            should_send = False
             for c in list(e.clients):
                 evt = None
                 try:
@@ -197,6 +188,7 @@ class UDPServer:
                     if e.bitrec.frame < e.buffer_size:
                         idx = 0
                     e.rec.states[idx].Copy(s)
+                    should_send = True
                     assert s.frame <= initial_frame
             if s.frame < e.bitrec.frame - e.buffer_size:
                 # BUG: This is not meant to happen.
@@ -220,7 +212,7 @@ class UDPServer:
                         e.buffer_size)
             # Send state and bitrec to clients.
             s.bits = e.bitrec.bits
-            if next_send < now:
+            if next_send < now or should_send:
                 next_send = time.time() + (1.0/self.send_rate)
                 for c in list(e.clients):
                     try:
@@ -325,11 +317,11 @@ if __name__ == '__main__':
             help='Number of duplicates to send in handshake')
     parser.add_argument('--nosync', default=False, action='store_true',
             help='Measure latency and clock of clients.')
-    parser.add_argument('--synctimeout', type=int, default=3,
+    parser.add_argument('--synctimeout', type=int, default=2,
             help='Duration of sampling for Sync()')
     parser.add_argument('--syncrate', type=int, default=5,
             help='Sync messages to send per second.')
-    parser.add_argument('--buffertime', type=int, default=2000,
+    parser.add_argument('--buffertime', type=int, default=500,
             help='The time between invitation and game start in msec.')
     parser.add_argument('--cooldown', type=int, default=6,
             help='Minimum frames between events.')

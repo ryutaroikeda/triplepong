@@ -81,21 +81,17 @@ class UDPClient:
         logger.info('Sending confirmation.')
         reply = TPMessage()
         reply.method = TPMessage.METHOD_CONFIRM
-        did_send = False
-        for i in range(0, resend):
-            try:
-                status = svr.WriteEvent(reply)
-                if status == 0:
-                    did_send = True
-            except Exception as e:
-                logger.exception(e)
-                return False           
-        if not did_send:
+        try:
+            status = svr.WriteEvent(reply, 0.5, resend)
+        except Exception as e:
+            logger.exception(e)
+            return False           
+        if status != 0:
             logger.error('Failed to send confirmation.')
             return False
         logger.info('Waiting for start of game.')
         did_receive_start = False
-        end_time = time.time() + timeout
+        end_time = time.time() + 0.5
         while time.time() < end_time:
             try:
                 (ready, _, _) = select.select([svr], [], [], 
@@ -288,6 +284,8 @@ class UDPClient:
         frame        -- The current frame.
         delay        -- The number of frames of delay to apply.
         cool_down    -- The minimum frames between key events.
+        Return value:
+        True if a bit was set and false otherwise.
         '''
         assert e != None
         assert bitrec != None
@@ -318,9 +316,9 @@ class UDPClient:
         if frame < e.buffered_frame_1 and \
                 e.buffered_frame_1 < e.buffered_frame_2:
             # Both buffers are full.
-            return
+            return False
         if b == 0:
-            return
+            return False
         if e.buffered_frame_1 < frame:
             # Fill the first buffer.
             e.buffered_frame_1 = evt_frame
@@ -335,6 +333,7 @@ class UDPClient:
         e.UpdateBitRecordFrame(bitrec, max(evt_frame+1, bitrec.frame), size)
         bitrec.bits[e.player_id] = e.SetBit(bitrec.bits[e.player_id],
                 evt_frame % size, b, size)
+        return True
 
     def PlayFrames(self, e, s, start_time, max_frame, frame_rate):
         '''
@@ -365,10 +364,10 @@ class UDPClient:
             target_frame = e.GetCurrentFrame(start_time, frame_rate, now)
             logger.debug('Playing from frome {0}, target {1}.'.format(s.frame,
                 target_frame))
-            self.HandleKeyboardEvents(e, e.bitrec, s.frame, e.buffer_delay,
-                    e.key_cool_down_time, e.buffer_size)
+            should_send = self.HandleKeyboardEvents(e, e.bitrec, s.frame,
+                    e.buffer_delay, e.key_cool_down_time, e.buffer_size)
             # Send bitrec to server.
-            if e.server != None and now >= next_send:
+            if e.server != None and (now >= next_send or should_send):
                 msg.keybits = e.bitrec.bits[e.player_id]
                 msg.frame = e.bitrec.frame
                 next_send = now + time_between_send
