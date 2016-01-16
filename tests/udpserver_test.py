@@ -45,67 +45,79 @@ def UDPServerTestPickleJar_Run(tries, resend, timeout, c, svraddr, r, k,
 
 class UDPServerTest(unittest.TestCase):
     def template_AcceptN(self, n):
-        ssock = UDPSocket()
-        ssock.Open()
-        ssock.Bind(('127.0.0.1', 0))
-        svr_addr = ssock.sock.getsockname()
-        svr = UDPServer()
-        timeout = 1.0
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=UDPServerTestPickleJar_AcceptN,
-                args=(timeout, svr, ssock, n, q))
-        p.start()
-        try:
-            for i in range(0, n):
-                c = UDPSocket()
-                c.Open()
-                c.Connect(svr_addr, 1)
-                c.Close()
-        except Exception as ex:
-            logger.exception(ex)
-        connected = q.get()
-        p.join()
-        ssock.Close()
+        test_tries = 4
+        for i in range(0, test_tries):
+            try:
+                ssock = UDPSocket()
+                ssock.Open()
+                ssock.Bind(('127.0.0.1', 0))
+                svr_addr = ssock.sock.getsockname()
+            except Exception as ex:
+                logger.exception(ex)
+                ssock.Close()
+                continue
+            svr = UDPServer()
+            timeout = 1.0
+            q = multiprocessing.Queue()
+            p = multiprocessing.Process(target=UDPServerTestPickleJar_AcceptN,
+                    args=(timeout, svr, ssock, n, q))
+            p.start()
+            try:
+                for i in range(0, n):
+                    c = UDPSocket()
+                    c.Open()
+                    c.Connect(svr_addr, 1)
+                    c.Close()
+            except Exception as ex:
+                logger.exception(ex)
+            connected = q.get()
+            p.join()
+            ssock.Close()
+            if connected == n:
+                break
         self.assertTrue(connected == n)
 
     def template_Handshake(self, n):
-        # to do: if this fails intermittently, retry when client dies.
-        qs = []
-        ps = []
-        svrs = []
-        clients = []
-        timeout = 0.5
-        resend = 1
-        # Spawn clients.
-        for i in range(0, n):
-            csock, ssock = UDPSocket.Pair()
-            cesock = UDPEventSocket(csock)
-            sesock = UDPEventSocket(ssock)
-            client = UDPClient()
-            q = multiprocessing.Queue()
-            p = multiprocessing.Process(target=\
-                    UDPServerTestPickleJar_Handshake,
-                    args=(resend, timeout, client, sesock, q))
-            p.start()
-            qs.append(q)
-            ps.append(p)
-            clients.append(cesock)
-            svrs.append(sesock)
-        conf = GameConfig()
-        server = UDPServer()
-        try:
-            status = server.Handshake(clients, conf, timeout)
-        except Exception as ex:
-            logger.exception(ex)
-            status = 1
-        res = []
-        for i in range(0, n):
-            res.append(qs[i].get())
-            ps[i].join()
-        for s in svrs:
-            s.Close()
-        for c in clients:
-            c.Close()
+        test_tries = 4
+        for i in range(0, test_tries):
+            qs = []
+            ps = []
+            svrs = []
+            clients = []
+            timeout = 1.0
+            resend = 1
+            # Spawn clients.
+            for i in range(0, n):
+                csock, ssock = UDPSocket.Pair()
+                cesock = UDPEventSocket(csock)
+                sesock = UDPEventSocket(ssock)
+                client = UDPClient()
+                q = multiprocessing.Queue()
+                p = multiprocessing.Process(target=\
+                        UDPServerTestPickleJar_Handshake,
+                        args=(resend, timeout, client, sesock, q))
+                p.start()
+                qs.append(q)
+                ps.append(p)
+                clients.append(cesock)
+                svrs.append(sesock)
+            conf = GameConfig()
+            server = UDPServer()
+            try:
+                status = server.Handshake(clients, conf, timeout)
+            except Exception as ex:
+                logger.exception(ex)
+                status = 1
+            res = []
+            for i in range(0, n):
+                res.append(qs[i].get())
+                ps[i].join()
+            for s in svrs:
+                s.Close()
+            for c in clients:
+                c.Close()
+            if status == 0:
+                break
         self.assertTrue(status == 0)
         for i in range(0, n):
             self.assertTrue(res[i])
